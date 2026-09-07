@@ -24,33 +24,33 @@ InnerVoice is a privacy-focused web platform designed to provide a safe and anon
 ## Technology Stack
 
 ### Frontend
-React.js
-Vite
-JavaScript
-HTML5
-CSS3
-React Router
+React.js,
+Vite,
+JavaScript,
+HTML5,
+CSS3,
+React Router,
 Axios
 
 ### Backend
-Node.js
-Express.js
-Socket.IO
-WebRTC
+Node.js,
+Express.js,
+Socket.IO,
+WebRTC,
 Multer
 
 ### Database & Authentication
-Firebase Authentication
+Firebase Authentication,
 Firebase Firestore
 
 ### AI & Cloud Services
-Google Gemini API
+Google Gemini API,
 Cloudinary
 
 ### Security
-AES-256-GCM encryption
-Firebase Authentication
-Role-Based Access Control
+AES-256-GCM encryption,
+Firebase Authentication,
+Role-Based Access Control,
 Environment-based secret management
 
 ## User Roles
@@ -79,12 +79,9 @@ Only verified experts can appear in the user-facing expert directory and receive
 
 InnerVoice uses AI to provide supportive responses and identify different levels of emotional severity:
 
-LOW
-MODERATE
-HIGH
+LOW,
+MODERATE,
+HIGH,
 CRITICAL
 
 Critical situations are handled with safety-oriented guidance and escalation toward professional or emergency support.
-       │
-       ▼
-Cloudinary
