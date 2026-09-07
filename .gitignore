@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+serviceAccountKey.json
+*.log
+dist/
+coverage/
+.DS_Store

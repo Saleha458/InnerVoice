@@ -1,0 +1,242 @@
+/* =========================================
+   EXPERT PROFILE
+========================================= */
+
+.expert-profile-card {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 36px;
+  border-radius: 28px;
+  background: rgba(255,255,255,.86);
+  border: 1px solid rgba(100,100,130,.12);
+  box-shadow: 0 20px 60px rgba(30,30,60,.08);
+}
+
+.expert-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.expert-avatar {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: linear-gradient(135deg,#7c6cff,#a594ff);
+  color: white;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.expert-profile-header h1 {
+  margin: 8px 0 4px;
+  font-size: 2rem;
+}
+
+.expert-specialization {
+  margin: 0;
+  color: #777a86;
+}
+
+.verification-badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(36,170,100,.1);
+  color: #218b59;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.expert-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 14px;
+  margin: 32px 0;
+}
+
+.expert-profile-grid > div {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(124,108,255,.05);
+}
+
+.expert-profile-grid span {
+  display: block;
+  color: #888b96;
+  font-size: .8rem;
+  margin-bottom: 7px;
+}
+
+.expert-profile-grid strong {
+  display: block;
+}
+
+.expert-about {
+  padding-top: 25px;
+  border-top: 1px solid rgba(100,100,130,.1);
+}
+
+.expert-about p {
+  color: #6f7280;
+  line-height: 1.8;
+}
+
+.expert-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+@media(max-width:700px) {
+  .expert-profile-card {
+    padding: 24px;
+  }
+
+  .expert-profile-header {
+    align-items: flex-start;
+  }
+
+  .expert-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .expert-actions {
+    flex-direction: column;
+  }
+}
+
+/* =========================================
+   PARENT HUB
+========================================= */
+
+.parent-hub-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.parent-hub-header {
+  max-width: 760px;
+  margin-bottom: 28px;
+}
+
+.parent-hub-header h1 {
+  font-size: clamp(2rem,5vw,3.2rem);
+  line-height: 1.1;
+  letter-spacing: -.04em;
+  margin: 8px 0 15px;
+}
+
+.parent-hub-header p {
+  color: #737683;
+  line-height: 1.7;
+}
+
+.age-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.age-tab {
+  border: 1px solid rgba(100,100,130,.15);
+  background: white;
+  padding: 10px 15px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #666976;
+}
+
+.age-tab.active {
+  background: #7c6cff;
+  color: white;
+  border-color: #7c6cff;
+}
+
+.parent-content-card {
+  padding: 30px;
+  border-radius: 28px;
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(100,100,130,.1);
+  box-shadow: 0 18px 55px rgba(30,30,60,.07);
+}
+
+.parent-age-heading h2 {
+  margin: 5px 0;
+  font-size: 2rem;
+}
+
+.parent-age-heading p {
+  color: #777a86;
+}
+
+.parent-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.parent-info-card {
+  padding: 22px;
+  border-radius: 20px;
+  background: #fafaff;
+  border: 1px solid rgba(100,100,130,.08);
+}
+
+.parent-info-card h3 {
+  margin-top: 0;
+}
+
+.parent-info-card p,
+.parent-info-card li {
+  color: #737683;
+  line-height: 1.7;
+}
+
+.parent-info-card ul {
+  padding-left: 20px;
+  margin-bottom: 0;
+}
+
+.help-highlight {
+  margin-top: 22px;
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(230,85,110,.07);
+  border: 1px solid rgba(230,85,110,.12);
+}
+
+.help-highlight strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.help-highlight p {
+  margin: 0;
+  color: #737683;
+  line-height: 1.65;
+}
+
+.warning-card {
+  border-top: 4px solid #df6576;
+}
+
+.warning-list li {
+  margin-bottom: 8px;
+}
+
+@media(max-width:750px) {
+  .parent-hub-page {
+    padding: 20px 16px;
+  }
+
+  .parent-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
