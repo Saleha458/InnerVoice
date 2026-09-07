@@ -1,16 +1,16 @@
-InnerVoice 
+# InnerVoice 
 
-Anonymous AI-Powered Emotional Support Platform
+### Anonymous AI-Powered Emotional Support Platform
 
 InnerVoice is a privacy-focused web platform designed to provide a safe and anonymous space for individuals seeking emotional support. The platform combines AI-powered assistance with verified human experts to help users access support without the fear of judgment or immediate disclosure of their identity.
 
-Features:
+## Features
 
 🔐 Anonymous user authentication
 🤖 AI-powered emotional support using Google Gemini
 🧠 Emotional severity detection and safety escalation
 👩‍⚕️ Verified expert registration and admin approval
- 📅 Expert support session booking
+📅 Expert support session booking
 💬 Real-time user–expert chat
 📞 Audio and video communication
 🎤 Voice messaging
@@ -21,9 +21,9 @@ Features:
 🔔 Session notifications and reminders
 🛡️ Role-based access control and privacy-focused architecture
 
-Technology Stack:
+## Technology Stack
 
-Frontend
+### Frontend
 React.js
 Vite
 JavaScript
@@ -53,7 +53,7 @@ Firebase Authentication
 Role-Based Access Control
 Environment-based secret management
 
-## User Roles:
+## User Roles
 
 ### User
 Users can anonymously access AI support, track their mood, maintain private journals, discover verified experts, request sessions, communicate with experts, and use audio/video support.
@@ -85,3 +85,6 @@ HIGH
 CRITICAL
 
 Critical situations are handled with safety-oriented guidance and escalation toward professional or emergency support.
+       │
+       ▼
+Cloudinary
