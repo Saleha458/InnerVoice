@@ -1,134 +1,135 @@
+"use strict";
+
 const express = require("express");
-
-const router =
-  express.Router();
-
-const authenticate =
-  require("../middleware/auth");
+const authenticate = require("../middleware/auth");
 
 const {
   createMood,
   getUserMoods,
-  deleteMood,
+  updateMood,
+  migrateMood,
+  deleteMood
 } = require("../services/moodService");
 
+const router = express.Router();
 
-// CREATE
+router.use(authenticate);
 
-router.post(
-  "/",
-  authenticate,
-  async (req, res) => {
-    try {
-      const {
-        mood,
-        note = "",
-        intensity,
-      } = req.body;
-
-      const numericIntensity =
-        Number(intensity);
-
-      if (
-        !mood ||
-        !Number.isInteger(
-          numericIntensity
-        ) ||
-        numericIntensity < 1 ||
-        numericIntensity > 10
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Mood and intensity from 1 to 10 are required.",
-        });
-      }
-
-      const result =
-        await createMood({
-          userId:
-            req.user.uid,
-
-          mood,
-
-          note,
-
-          intensity:
-            numericIntensity,
-        });
-
-      res.status(201).json({
-        success: true,
-        mood: result,
-      });
-    } catch (error) {
-      console.error(error);
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Could not save mood.",
-      });
-    }
+router.use((req, res, next) => {
+  if (req.user.role !== "user") {
+    return res.status(403).json({
+      success: false,
+      message: "Only the account owner can access mood history."
+    });
   }
-);
 
+  next();
+});
 
-// GET CURRENT USER MOODS
+function handleError(res, error, fallback) {
+  return res.status(error.status || 500).json({
+    success: false,
+    message: error.status ? error.message : fallback
+  });
+}
 
-router.get(
-  "/",
-  authenticate,
-  async (req, res) => {
-    try {
-      const moods =
-        await getUserMoods(
-          req.user.uid
-        );
+router.get("/", async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
 
-      res.json({
-        success: true,
-        moods,
-      });
-    } catch (error) {
-      console.error(error);
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch mood history.",
-      });
-    }
+    return res.json({
+      success: true,
+      moods: await getUserMoods(req.user.uid)
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Could not load private mood history."
+    );
   }
-);
+});
 
+router.post("/", async (req, res) => {
+  try {
+    const mood = await createMood({
+      userId: req.user.uid,
+      id: req.body?.id,
+      e2ee: req.body?.e2ee
+    });
 
-// DELETE
-
-router.delete(
-  "/:moodId",
-  authenticate,
-  async (req, res) => {
-    try {
-      await deleteMood(
-        req.params.moodId,
-        req.user.uid
-      );
-
-      res.json({
-        success: true,
-        message:
-          "Mood entry deleted.",
-      });
-    } catch (error) {
-      res.status(404).json({
-        success: false,
-        message:
-          error.message ||
-          "Mood entry not found.",
-      });
-    }
+    return res.status(201).json({
+      success: true,
+      mood
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Could not save encrypted mood."
+    );
   }
-);
+});
+
+router.post("/:moodId/migrate", async (req, res) => {
+  try {
+    await migrateMood(
+      req.params.moodId,
+      req.user.uid,
+      req.body?.e2ee
+    );
+
+    return res.json({
+      success: true
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Could not migrate mood."
+    );
+  }
+});
+
+router.patch("/:moodId", async (req, res) => {
+  try {
+    const mood = await updateMood(
+      req.params.moodId,
+      req.user.uid,
+      req.body?.e2ee
+    );
+
+    return res.json({
+      success: true,
+      mood
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Could not update encrypted mood."
+    );
+  }
+});
+
+router.delete("/:moodId", async (req, res) => {
+  try {
+    await deleteMood(
+      req.params.moodId,
+      req.user.uid
+    );
+
+    return res.json({
+      success: true,
+      message: "Mood entry deleted."
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Could not delete mood."
+    );
+  }
+});
 
 module.exports = router;

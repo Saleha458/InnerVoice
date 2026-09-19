@@ -1,0 +1,669 @@
+/* =========================================================
+   INNERVOICE PROFILE
+
+   Shared profile design:
+   - User
+   - Expert
+   - Parent
+   - Admin
+
+   Clean single-column layout
+   Responsive from mobile to desktop
+========================================================= */
+
+
+/* =========================================================
+   1. PAGE CONTAINER
+========================================================= */
+
+.dashboard-layout .ivp-page {
+  --ivp-ink: #292725;
+  --ivp-muted: #766f68;
+  --ivp-line: #e9dfd5;
+  --ivp-accent: #a7674b;
+
+  width: 100%;
+  max-width: 920px;
+  min-width: 0;
+
+  margin: 0 auto;
+  padding: 0 0 48px;
+
+  color: var(--ivp-ink);
+}
+
+.ivp-page * {
+  min-width: 0;
+}
+
+
+/* =========================================================
+   2. PAGE HEADING
+========================================================= */
+
+.ivp-page .ivp-heading {
+  margin-bottom: 24px;
+}
+
+.ivp-page .ivp-eyebrow {
+  display: block;
+
+  color: #9d684d;
+
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+}
+
+.ivp-page .ivp-heading h1 {
+  margin: 8px 0 5px;
+
+  color: var(--ivp-ink);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: clamp(30px, 3.3vw, 39px);
+  font-weight: 500;
+
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.ivp-page .ivp-heading p {
+  margin: 0;
+
+  color: var(--ivp-muted);
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   3. SHARED CARDS
+========================================================= */
+
+.ivp-page .ivp-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.ivp-page .ivp-card {
+  border: 1px solid var(--ivp-line);
+  border-radius: 16px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 4px 18px rgba(60, 42, 28, 0.025);
+}
+
+
+/* =========================================================
+   4. PROFILE IDENTITY CARD
+========================================================= */
+
+.ivp-page .ivp-identity {
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+  flex-wrap: wrap;
+
+  padding: 22px 26px;
+}
+
+.ivp-page .ivp-avatar {
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 60px;
+
+  width: 60px;
+  height: 60px;
+
+  border-radius: 50%;
+
+  background: #f7e7da;
+  color: #9f644a;
+}
+
+.ivp-page .ivp-identity-copy {
+  flex: 1 1 200px;
+}
+
+.ivp-page .ivp-role {
+  color: #9c694f;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 0.025em;
+}
+
+.ivp-page .ivp-identity-copy h2 {
+  margin: 4px 0 0;
+
+  color: var(--ivp-ink);
+
+  font-family: inherit;
+  font-size: clamp(19px, 2vw, 24px);
+  font-weight: 700;
+
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+
+  overflow-wrap: anywhere;
+}
+
+.ivp-page .ivp-identity-copy p {
+  margin: 4px 0 0;
+
+  color: var(--ivp-muted);
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   5. ACCOUNT STATUS
+========================================================= */
+
+.ivp-page .ivp-status {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 6px;
+
+  flex: 0 0 auto;
+
+  max-width: 100%;
+
+  padding: 7px 11px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ivp-page .ivp-status--success {
+  color: #386b4c;
+  background: #e9f4ed;
+}
+
+.ivp-page .ivp-status--warning {
+  color: #a04741;
+  background: #fff0ec;
+}
+
+.ivp-page .ivp-status--pending {
+  color: #856026;
+  background: #fff3df;
+}
+
+
+/* =========================================================
+   6. PROFILE SECTIONS
+========================================================= */
+
+.ivp-page .ivp-section {
+  padding: 26px 30px;
+}
+
+.ivp-page .ivp-section-heading {
+  padding-bottom: 18px;
+  margin-bottom: 4px;
+
+  border-bottom: 1px solid var(--ivp-line);
+}
+
+.ivp-page .ivp-section-heading h2 {
+  margin: 0;
+
+  color: var(--ivp-ink);
+
+  font-family: inherit;
+
+  font-size: 17px;
+  font-weight: 750;
+
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+
+.ivp-page .ivp-section-heading p {
+  margin: 4px 0 0;
+
+  color: var(--ivp-muted);
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   7. PERSONAL INFORMATION ROWS
+========================================================= */
+
+.ivp-page .ivp-details {
+  margin: 0;
+}
+
+.ivp-page .ivp-detail {
+  display: grid;
+
+  grid-template-columns:
+    minmax(140px, 0.7fr)
+    minmax(0, 1fr);
+
+  align-items: start;
+
+  gap: 16px;
+
+  padding: 15px 0;
+
+  border-bottom: 1px solid #f1ebe5;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ivp-page .ivp-detail:last-child {
+  border-bottom: 0;
+}
+
+.ivp-page .ivp-detail dt {
+  color: var(--ivp-muted);
+}
+
+.ivp-page .ivp-detail dd {
+  margin: 0;
+
+  color: var(--ivp-ink);
+
+  font-weight: 650;
+
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   8. AGE EDITING FORM
+========================================================= */
+
+.ivp-page .ivp-age-form {
+  display: grid;
+
+  gap: 10px;
+
+  padding-top: 17px;
+  margin-top: 6px;
+
+  border-top: 1px solid var(--ivp-line);
+}
+
+.ivp-page .ivp-age-form > label,
+.ivp-page .ivp-controls > label,
+.ivp-page .ivp-control-option > label {
+  color: var(--ivp-ink);
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ivp-page .ivp-form-row {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+
+/* =========================================================
+   9. INPUTS
+========================================================= */
+
+.ivp-page input {
+  min-width: 0;
+  min-height: 43px;
+
+  padding: 9px 12px;
+
+  border: 1px solid #ded2c7;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+  color: var(--ivp-ink);
+
+  font: inherit;
+  font-size: 13px;
+}
+
+.ivp-page input:focus-visible {
+  border-color: #a7674b;
+
+  box-shadow:
+    0 0 0 3px #a7674b19;
+}
+
+.ivp-page .ivp-age-form input {
+  flex: 1 1 170px;
+
+  width: 100%;
+}
+
+
+/* =========================================================
+   10. BUTTONS
+========================================================= */
+
+.ivp-page button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  min-height: 43px;
+
+  padding: 10px 16px;
+
+  border: 1px solid transparent;
+  border-radius: 9px;
+
+  background: var(--ivp-accent);
+  color: #ffffff;
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.ivp-page button:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.ivp-page button:focus-visible {
+  outline: 3px solid #a7674b55;
+  outline-offset: 2px;
+}
+
+.ivp-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   11. EXPERT BIO
+========================================================= */
+
+.ivp-page .ivp-bio {
+  margin-top: 16px;
+  padding-top: 17px;
+
+  border-top: 1px solid var(--ivp-line);
+}
+
+.ivp-page .ivp-bio h3 {
+  margin: 0 0 6px;
+
+  font-size: 13px;
+}
+
+.ivp-page .ivp-bio p,
+.ivp-page .ivp-verification-note p {
+  margin: 0;
+
+  color: var(--ivp-muted);
+
+  font-size: 12px;
+  line-height: 1.7;
+
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   12. EXPERT VERIFICATION
+========================================================= */
+
+.ivp-page .ivp-verification-note {
+  padding: 14px 16px;
+  margin-top: 18px;
+
+  border: 1px solid #efdec9;
+  border-radius: 10px;
+
+  background: #fffaf3;
+}
+
+.ivp-page .ivp-verification-note strong {
+  display: block;
+
+  margin-bottom: 4px;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   13. ACCOUNT SECURITY
+========================================================= */
+
+.ivp-page .ivp-security-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+.ivp-page .ivp-security-heading svg {
+  flex-shrink: 0;
+
+  color: #a7674b;
+}
+
+.ivp-page .ivp-control-toggle {
+  min-height: 0;
+
+  padding: 10px 0 0;
+
+  border: 0;
+
+  background: transparent;
+  color: #965a40;
+
+  font-size: 12px;
+}
+
+.ivp-page .ivp-control-toggle:hover:not(:disabled) {
+  filter: none;
+  text-decoration: underline;
+}
+
+
+/* =========================================================
+   14. ACCOUNT CONTROLS
+========================================================= */
+
+.ivp-page .ivp-controls {
+  display: grid;
+
+  gap: 11px;
+
+  padding-top: 19px;
+  margin-top: 15px;
+
+  border-top: 1px solid var(--ivp-line);
+}
+
+.ivp-page .ivp-controls > input {
+  width: min(100%, 420px);
+}
+
+.ivp-page .ivp-control-option {
+  display: grid;
+
+  gap: 10px;
+  justify-items: start;
+
+  padding: 17px 0;
+
+  border-top: 1px solid #f1ebe5;
+}
+
+.ivp-page .ivp-control-option h3 {
+  margin: 0 0 4px;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ivp-page .ivp-control-option p {
+  margin: 0;
+
+  color: var(--ivp-muted);
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ivp-page .ivp-control-option input {
+  width: min(100%, 420px);
+}
+
+.ivp-page .ivp-secondary-button {
+  background: #f6e7dc;
+  color: #8e543c;
+}
+
+.ivp-page .ivp-danger-button {
+  background: #a84848;
+}
+
+
+/* =========================================================
+   15. ERROR / SUCCESS MESSAGES
+========================================================= */
+
+.ivp-page .ivp-feedback {
+  margin-bottom: 16px;
+
+  padding: 12px 15px;
+
+  border-radius: 9px;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ivp-page .ivp-feedback--error {
+  border: 1px solid #f1d3cd;
+
+  background: #fff0eb;
+  color: #9a443f;
+}
+
+.ivp-page .ivp-feedback--success {
+  border: 1px solid #d7e8da;
+
+  background: #edf6ee;
+  color: #387049;
+}
+
+
+/* =========================================================
+   16. LOADING STATE
+========================================================= */
+
+.ivp-page .ivp-loading {
+  padding: 45px 22px;
+
+  color: var(--ivp-muted);
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   17. MOBILE RESPONSIVENESS
+========================================================= */
+
+@media (max-width: 640px) {
+  .dashboard-layout .ivp-page {
+    padding-bottom: 26px;
+  }
+
+  .ivp-page .ivp-heading {
+    margin-bottom: 19px;
+  }
+
+  .ivp-page .ivp-identity {
+    gap: 12px;
+
+    padding: 18px;
+  }
+
+  .ivp-page .ivp-avatar {
+    flex-basis: 48px;
+
+    width: 48px;
+    height: 48px;
+  }
+
+  .ivp-page .ivp-identity-copy {
+    flex: 1 1 160px;
+  }
+
+  .ivp-page .ivp-status {
+    margin-left: 60px;
+  }
+
+  .ivp-page .ivp-section {
+    padding: 20px 18px;
+  }
+
+  .ivp-page .ivp-detail {
+    grid-template-columns: minmax(0, 1fr);
+
+    gap: 3px;
+
+    padding: 12px 0;
+  }
+
+  .ivp-page .ivp-form-row {
+    flex-wrap: wrap;
+  }
+
+  .ivp-page .ivp-form-row button {
+    flex: 1 1 auto;
+  }
+}
+
+
+/* =========================================================
+   18. SMALL MOBILE SCREENS
+========================================================= */
+
+@media (max-width: 380px) {
+  .ivp-page .ivp-status {
+    margin-left: 0;
+  }
+
+  .ivp-page .ivp-form-row button {
+    width: 100%;
+  }
+}

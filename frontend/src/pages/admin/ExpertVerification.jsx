@@ -1,10 +1,36 @@
 import {
   useEffect,
-  useState,
+  useState
 } from "react";
 
 import api from "../../services/api";
-import { auth } from "../../services/firebase";
+
+import {
+  auth
+} from "../../services/firebase";
+
+const errorMessage = error =>
+  error?.response?.data?.message ||
+  error?.message ||
+  "Request failed.";
+
+async function adminConfig() {
+  const token =
+    await auth.currentUser?.getIdToken();
+
+  if (!token) {
+    throw new Error(
+      "Admin sign-in required."
+    );
+  }
+
+  return {
+    headers: {
+      Authorization:
+        `Bearer ${token}`
+    }
+  };
+}
 
 export default function ExpertVerification() {
   const [experts, setExperts] =
@@ -19,100 +45,159 @@ export default function ExpertVerification() {
   const [processingId, setProcessingId] =
     useState(null);
 
-  const getConfig = async () => {
-    const token =
-      await auth.currentUser?.getIdToken();
+  const [documentUrls, setDocumentUrls] =
+    useState({});
 
-    return {
-      headers: {
-        Authorization:
-          `Bearer ${token}`,
-      },
-    };
-  };
+  const [reviewed, setReviewed] =
+    useState({});
 
-  const load = async () => {
+  async function load() {
+    setLoading(true);
+    setError("");
+
     try {
-      setLoading(true);
-      setError("");
-
-      const response =
-        await api.get(
-          "/admin/experts/pending",
-          await getConfig()
-        );
+      const { data } = await api.get(
+        "/admin/experts/pending",
+        await adminConfig()
+      );
 
       setExperts(
-        response.data.experts || []
+        data.experts || []
       );
-    } catch (err) {
+    } catch (cause) {
       setError(
-        err.response?.data?.message ||
-          "Could not load expert applications."
+        errorMessage(cause)
       );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
-  const verify = async (
-    expert,
-    status
-  ) => {
-    let reason = "";
+  async function openDocument(
+    expert
+  ) {
+    setError("");
 
-    if (status === "rejected") {
-      reason =
-        window.prompt(
-          "Please enter the reason for rejecting this application:"
-        ) || "";
-
-      if (!reason.trim()) {
-        setError(
-          "Rejection cancelled. A reason is required."
-        );
-        return;
-      }
-    }
+    setProcessingId(expert.id);
 
     try {
-      setProcessingId(
-        expert.id
+      const { data } = await api.get(
+        `/admin/experts/${encodeURIComponent(
+          expert.id
+        )}/license-url`,
+
+        await adminConfig()
       );
 
-      await api.patch(
-        `/admin/experts/${expert.id}/verify`,
-        {
-          status,
-          reason:
-            reason.trim(),
-        },
-        await getConfig()
-      );
+      if (
+        !data?.success ||
+        !data.url
+      ) {
+        throw new Error(
+          "Protected document unavailable."
+        );
+      }
 
-      setExperts((current) =>
-        current.filter(
-          (item) =>
-            item.id !== expert.id
-        )
-      );
-    } catch (err) {
+      setDocumentUrls(previous => ({
+        ...previous,
+
+        [expert.id]: data.url
+      }));
+
+      setReviewed(previous => ({
+        ...previous,
+
+        [expert.id]: false
+      }));
+    } catch (cause) {
       setError(
-        err.response?.data?.message ||
-          "Verification failed."
+        errorMessage(cause)
       );
     } finally {
       setProcessingId(null);
     }
-  };
+  }
+
+  async function decide(
+    expert,
+    status
+  ) {
+    if (
+      status === "verified" &&
+      !reviewed[expert.id]
+    ) {
+      setError(
+        "Review the protected document and confirm that you checked the credentials first."
+      );
+
+      return;
+    }
+
+    let reason = "";
+
+    if (
+      status === "rejected"
+    ) {
+      reason = (
+        window.prompt(
+          "Reason for rejection:"
+        ) || ""
+      ).trim();
+
+      if (!reason) {
+        return;
+      }
+    }
+
+    setError("");
+    setProcessingId(expert.id);
+
+    try {
+      await api.patch(
+        `/admin/experts/${encodeURIComponent(
+          expert.id
+        )}/verify`,
+
+        {
+          status,
+          reason
+        },
+
+        await adminConfig()
+      );
+
+      setExperts(previous =>
+        previous.filter(
+          item =>
+            item.id !== expert.id
+        )
+      );
+
+      setDocumentUrls(previous => {
+        const next = {
+          ...previous
+        };
+
+        delete next[expert.id];
+
+        return next;
+      });
+    } catch (cause) {
+      setError(
+        errorMessage(cause)
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  }
 
   return (
     <div className="page-shell">
-      <div className="page-header">
+      <header className="page-header">
         <div>
           <span className="eyebrow">
             ADMINISTRATION
@@ -123,14 +208,17 @@ export default function ExpertVerification() {
           </h1>
 
           <p>
-            Review professional credentials before
-            an expert becomes visible to users.
+            Review professional credentials
+            using protected document access.
           </p>
         </div>
-      </div>
+      </header>
 
       {error && (
-        <div className="error-box">
+        <div
+          className="error-box"
+          role="alert"
+        >
           {error}
         </div>
       )}
@@ -139,20 +227,13 @@ export default function ExpertVerification() {
         <div className="empty-card">
           Loading applications...
         </div>
-      ) : !experts.length ? (
+      ) : experts.length === 0 ? (
         <div className="empty-card">
-          <h2>
-            No pending applications
-          </h2>
-
-          <p>
-            New expert registrations will appear
-            here.
-          </p>
+          No pending applications.
         </div>
       ) : (
         <div className="list-grid">
-          {experts.map((expert) => (
+          {experts.map(expert => (
             <article
               className="feature-card"
               key={expert.id}
@@ -176,9 +257,7 @@ export default function ExpertVerification() {
 
               <div className="verification-grid">
                 <p>
-                  <b>
-                    Professional email:
-                  </b>{" "}
+                  <b>Professional email:</b>{" "}
                   {expert.email}
                 </p>
 
@@ -194,46 +273,30 @@ export default function ExpertVerification() {
                 </p>
 
                 <p>
-                  <b>
-                    License number:
-                  </b>{" "}
+                  <b>License number:</b>{" "}
                   {expert.licenseNumber}
                 </p>
 
                 <p>
-                  <b>
-                    Qualification:
-                  </b>{" "}
+                  <b>Qualification:</b>{" "}
                   {expert.qualification}
                 </p>
 
                 <p>
-                  <b>
-                    Specialization:
-                  </b>{" "}
+                  <b>Specialization:</b>{" "}
                   {expert.specialization}
                 </p>
 
                 <p>
-                  <b>
-                    Experience:
-                  </b>{" "}
-                  {expert.experienceYears ||
-                    0}{" "}
-                  years
+                  <b>Experience:</b>{" "}
+                  {expert.experienceYears || 0}
+                  {" "}years
                 </p>
               </div>
 
               {expert.bio && (
-                <div
-                  className="notice-box"
-                  style={{
-                    marginTop: 15,
-                  }}
-                >
-                  <b>
-                    Professional bio:
-                  </b>
+                <div className="notice-box">
+                  <b>Professional bio:</b>
 
                   <p>
                     {expert.bio}
@@ -241,87 +304,135 @@ export default function ExpertVerification() {
                 </div>
               )}
 
-              {expert.licenseImageUrl && (
+              {expert.documentNeedsMigration && (
+                <div className="error-box">
+                  Old verification document
+                  requires protected-storage
+                  migration before approval.
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="secondary-button"
+
+                disabled={
+                  processingId === expert.id ||
+                  !expert.hasDocument
+                }
+
+                onClick={() =>
+                  openDocument(expert)
+                }
+              >
+                {processingId === expert.id
+                  ? "Loading..."
+                  : "Open protected license"}
+              </button>
+
+              {documentUrls[expert.id] && (
                 <div
                   style={{
-                    marginTop: 18,
+                    marginTop: 16
                   }}
                 >
-                  <p>
-                    <b>
-                      Submitted license:
-                    </b>
-                  </p>
-
                   <img
                     src={
-                      expert.licenseImageUrl
+                      documentUrls[expert.id]
                     }
-                    alt="Submitted professional license"
+
+                    alt="Confidential professional credential"
+
+                    referrerPolicy="no-referrer"
+
                     style={{
-                      maxWidth: "320px",
-                      maxHeight: "220px",
-                      objectFit:
-                        "contain",
-                      borderRadius:
-                        "12px",
-                      border:
-                        "1px solid #e5e7eb",
+                      maxWidth: "100%",
+                      maxHeight: 340,
+                      objectFit: "contain"
+                    }}
+
+                    onError={() => {
+                      setError(
+                        "Document link expired or failed. Request another link."
+                      );
                     }}
                   />
 
-                  <div
+                  <label
                     style={{
-                      marginTop: 8,
+                      display: "flex",
+                      gap: 8,
+                      marginTop: 12
                     }}
                   >
-                    <a
-                      href={
-                        expert.licenseImageUrl
+                    <input
+                      type="checkbox"
+                      checked={
+                        Boolean(
+                          reviewed[expert.id]
+                        )
                       }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-link"
-                    >
-                      Open full-size license →
-                    </a>
-                  </div>
+
+                      onChange={event =>
+                        setReviewed(previous => ({
+                          ...previous,
+
+                          [expert.id]:
+                            event.target.checked
+                        }))
+                      }
+                    />
+
+                    <span>
+                      I reviewed the document
+                      and checked the
+                      professional credentials.
+                    </span>
+                  </label>
+
+                  <small>
+                    This document URL expires
+                    after 60 seconds. Request
+                    another link if necessary.
+                  </small>
                 </div>
               )}
 
               <div
                 className="button-row"
                 style={{
-                  marginTop: 20,
+                  marginTop: 18
                 }}
               >
                 <button
+                  type="button"
                   className="primary-button"
+
                   disabled={
-                    processingId ===
-                    expert.id
+                    processingId === expert.id ||
+                    !reviewed[expert.id]
                   }
+
                   onClick={() =>
-                    verify(
+                    decide(
                       expert,
                       "verified"
                     )
                   }
                 >
-                  {processingId ===
-                  expert.id
-                    ? "Processing..."
-                    : "✓ Verify credentials"}
+                  Verify credentials
                 </button>
 
                 <button
+                  type="button"
                   className="danger-button"
+
                   disabled={
-                    processingId ===
-                    expert.id
+                    processingId === expert.id
                   }
+
                   onClick={() =>
-                    verify(
+                    decide(
                       expert,
                       "rejected"
                     )

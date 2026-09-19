@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+  <meta name="referrer" content="no-referrer" />
+
+  <title>InnerVoice — Vault Recovery</title>
+
+  <style>
+    body {
+      font: 16px/1.5 system-ui, sans-serif;
+      max-width: 700px;
+      margin: 3rem auto;
+      padding: 0 1rem;
+      background: #f8f8fa;
+      color: #18202c;
+    }
+
+    section {
+      background: white;
+      border: 1px solid #d7dbe0;
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    input, button {
+      font: inherit;
+      padding: .65rem;
+      width: 100%;
+      box-sizing: border-box;
+      margin: .4rem 0;
+    }
+
+    button {
+      cursor: pointer;
+      background: #263b65;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+    }
+
+    #created, #recovered {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    small {
+      color: #444;
+    }
+
+    label {
+      display: block;
+      margin-top: .75rem;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>InnerVoice vault recovery kit</h1>
+
+  <p>
+    This page encrypts a copy of your existing
+    private vault passphrase into a recovery file.
+    Your original vault is unchanged.
+  </p>
+
+  <p>
+    <strong>Before creating a kit:</strong>
+    unlock your real InnerVoice Journal using
+    this passphrase and verify that an encrypted
+    entry opens on another device.
+  </p>
+
+  <section>
+    <h2>1. Create a recovery kit</h2>
+
+    <label for="pass">
+      Current private vault passphrase
+    </label>
+
+    <input
+      id="pass"
+      type="password"
+      autocomplete="off"
+      minlength="16"
+    />
+
+    <label for="confirm">
+      Confirm passphrase
+    </label>
+
+    <input
+      id="confirm"
+      type="password"
+      autocomplete="off"
+      minlength="16"
+    />
+
+    <button id="create">
+      Create encrypted recovery file
+    </button>
+
+    <div id="created" role="status"></div>
+  </section>
+
+  <section>
+    <h2>2. Recover a forgotten passphrase</h2>
+
+    <label for="kit">
+      Choose your saved recovery JSON file
+    </label>
+
+    <input
+      id="kit"
+      type="file"
+      accept="application/json,.json"
+    />
+
+    <label for="code">
+      64-character recovery code
+    </label>
+
+    <input
+      id="code"
+      type="password"
+      autocomplete="off"
+      maxlength="64"
+    />
+
+    <button id="recover">
+      Decrypt recovery file locally
+    </button>
+
+    <div id="recovered" role="status"></div>
+  </section>
+
+  <p>
+    <small>
+      Never send your passphrase, recovery JSON
+      or recovery code to support. If you lose
+      both the passphrase and recovery materials,
+      the server cannot decrypt your Journal.
+    </small>
+  </p>
+
+  <script>
+    "use strict";
+
+    const $ = id =>
+      document.getElementById(id);
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    const AAD = enc.encode(
+      "InnerVoice-recovery-kit-v1"
+    );
+
+    const hex = bytes =>
+      Array.from(
+        bytes,
+        b => b.toString(16).padStart(2, "0")
+      ).join("");
+
+    const bytes = text =>
+      new Uint8Array(
+        text.match(/.{2}/g).map(
+          value => parseInt(value, 16)
+        )
+      );
+
+    const b64 = value =>
+      btoa(
+        String.fromCharCode(
+          ...new Uint8Array(value)
+        )
+      );
+
+    const fromB64 = text =>
+      Uint8Array.from(
+        atob(text),
+        char => char.charCodeAt(0)
+      );
+
+    function requireCrypto() {
+      if (
+        !window.isSecureContext ||
+        !crypto?.subtle
+      ) {
+        throw Error(
+          "Open this page over HTTPS or localhost."
+        );
+      }
+    }
+
+    function show(id, text) {
+      $(id).replaceChildren(
+        document.createTextNode(text)
+      );
+    }
+
+    $("create").onclick = async () => {
+      const pass = $("pass").value;
+
+      try {
+        requireCrypto();
+
+        if (
+          pass.length < 16 ||
+          pass !== $("confirm").value
+        ) {
+          throw Error(
+            "Enter the same 16+ character passphrase twice."
+          );
+        }
+
+        const secret =
+          crypto.getRandomValues(
+            new Uint8Array(32)
+          );
+
+        const iv =
+          crypto.getRandomValues(
+            new Uint8Array(12)
+          );
+
+        const key =
+          await crypto.subtle.importKey(
+            "raw",
+            secret,
+            "AES-GCM",
+            false,
+            ["encrypt"]
+          );
+
+        const ciphertext =
+          await crypto.subtle.encrypt(
+            {
+              name: "AES-GCM",
+              iv,
+              additionalData: AAD,
+              tagLength: 128
+            },
+            key,
+            enc.encode(pass)
+          );
+
+        const kit = {
+          format:
+            "InnerVoice-passphrase-recovery",
+
+          version: 1,
+
+          iv: b64(iv),
+
+          ciphertext: b64(ciphertext)
+        };
+
+        const file = new Blob(
+          [JSON.stringify(kit, null, 2)],
+          {
+            type: "application/json"
+          }
+        );
+
+        const url =
+          URL.createObjectURL(file);
+
+        const link =
+          document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+          "innervoice-recovery-kit.json";
+
+        link.click();
+
+        URL.revokeObjectURL(url);
+
+        show(
+          "created",
+
+          "Recovery code — save separately " +
+          "from the downloaded JSON file:\n\n" +
+
+          hex(secret) +
+
+          "\n\nNow TEST the saved file and " +
+          "code in section 2."
+        );
+
+        $("pass").value = "";
+        $("confirm").value = "";
+      } catch (error) {
+        show("created", error.message);
+      }
+    };
+
+    $("recover").onclick = async () => {
+      try {
+        requireCrypto();
+
+        const file = $("kit").files[0];
+
+        if (
+          !file ||
+          file.size > 10000
+        ) {
+          throw Error(
+            "Choose a recovery JSON file smaller than 10 KB."
+          );
+        }
+
+        const kit = JSON.parse(
+          await file.text()
+        );
+
+        if (
+          kit.format !==
+            "InnerVoice-passphrase-recovery" ||
+          kit.version !== 1
+        ) {
+          throw Error(
+            "Unknown recovery file format."
+          );
+        }
+
+        const code =
+          $("code").value.trim();
+
+        if (
+          !/^[a-fA-F0-9]{64}$/.test(code)
+        ) {
+          throw Error(
+            "Recovery code must contain 64 hexadecimal characters."
+          );
+        }
+
+        const iv = fromB64(kit.iv);
+
+        const ciphertext =
+          fromB64(kit.ciphertext);
+
+        if (
+          iv.length !== 12 ||
+          ciphertext.length < 17 ||
+          ciphertext.length > 10000
+        ) {
+          throw Error(
+            "Invalid recovery file."
+          );
+        }
+
+        const key =
+          await crypto.subtle.importKey(
+            "raw",
+            bytes(code),
+            "AES-GCM",
+            false,
+            ["decrypt"]
+          );
+
+        const plaintext =
+          await crypto.subtle.decrypt(
+            {
+              name: "AES-GCM",
+              iv,
+              additionalData: AAD,
+              tagLength: 128
+            },
+            key,
+            ciphertext
+          );
+
+        const pass =
+          dec.decode(plaintext);
+
+        if (pass.length < 16) {
+          throw Error(
+            "Recovered passphrase invalid."
+          );
+        }
+
+        show(
+          "recovered",
+
+          "Recovered passphrase:\n\n" +
+
+          pass +
+
+          "\n\nUse it to unlock your " +
+          "original InnerVoice vault. " +
+          "Clear this page afterward."
+        );
+
+        $("code").value = "";
+      } catch {
+        show(
+          "recovered",
+
+          "Could not decrypt kit. " +
+          "Check the recovery file and code."
+        );
+      }
+    };
+  </script>
+</body>
+</html>

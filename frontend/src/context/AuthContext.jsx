@@ -14,217 +14,303 @@ import {
 import { auth } from "../services/firebase";
 import api from "../services/api";
 
-const AuthContext =
-  createContext(null);
+const AuthContext = createContext(null);
 
-// =========================================================
-// BUILD USER FROM FIREBASE USER
-// =========================================================
+async function buildUser(firebaseUser) {
+  if (!firebaseUser) return null;
 
-const buildUser = async (
-  firebaseUser
-) => {
-  if (!firebaseUser) {
-    return null;
-  }
-
-  const tokenResult =
+  const { claims } =
     await firebaseUser.getIdTokenResult();
 
-  const claims =
-    tokenResult.claims || {};
-
   return {
-    uid:
-      firebaseUser.uid,
+    uid: firebaseUser.uid,
 
     anonymousId:
       claims.anonymousId ||
       firebaseUser.displayName ||
       "",
 
-    role:
-      claims.role ||
-      "user",
+    role: claims.role || "user",
 
-    age:
-      claims.age ??
-      null,
+    age: claims.age ?? null,
 
     verificationStatus:
-      claims.verificationStatus ||
-      null,
+      claims.verificationStatus || null,
 
-    status:
-      claims.status ||
-      "active",
+    status: "active",
   };
-};
+}
 
-// =========================================================
-// PROVIDER
-// =========================================================
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
 
-export const AuthProvider = ({
-  children,
-}) => {
-  const [user, setUser] =
-    useState(null);
+  const [
+    accountProfile,
+    setAccountProfile,
+  ] = useState(null);
 
   const [loading, setLoading] =
     useState(true);
 
-  // -------------------------------------------------------
-  // FIREBASE AUTH STATE
-  // -------------------------------------------------------
+  /* =========================================
+     AUTHENTICATION STATE
+  ========================================= */
 
   useEffect(() => {
-    const unsubscribe =
-      onIdTokenChanged(
-        auth,
-        async (firebaseUser) => {
-          try {
-            if (!firebaseUser) {
+    let sequence = 0;
+
+    const unsubscribe = onIdTokenChanged(
+      auth,
+      async (firebaseUser) => {
+        const current = ++sequence;
+
+        try {
+          if (!firebaseUser) {
+            if (current === sequence) {
               setUser(null);
-              setLoading(false);
-              return;
+              setAccountProfile(null);
             }
 
-            const nextUser =
-              await buildUser(
-                firebaseUser
-              );
+            return;
+          }
 
-            setUser(nextUser);
-          } catch (error) {
-            console.error(
-              "Auth state error:",
-              error
-            );
+          // Keep the server-side account-status check.
+          // Reuse its response instead of discarding it.
 
+          const [next, response] =
+            await Promise.all([
+              buildUser(firebaseUser),
+              api.get("/users/me"),
+            ]);
+
+          if (current !== sequence) {
+            return;
+          }
+
+          const latest =
+            response.data?.user || null;
+
+          setAccountProfile(
+            latest
+              ? {
+                  ...latest,
+                  uid: firebaseUser.uid,
+                }
+              : null
+          );
+
+          setUser({
+            ...next,
+            age: latest?.age ?? next.age,
+          });
+        } catch (err) {
+          if (current === sequence) {
             setUser(null);
-          } finally {
+            setAccountProfile(null);
+          }
+
+          if (
+            [401, 403].includes(
+              err?.response?.status
+            )
+          ) {
+            await signOut(auth);
+          } else {
+            console.error(
+              "Could not verify account session:",
+              err
+            );
+          }
+        } finally {
+          if (current === sequence) {
             setLoading(false);
           }
         }
-      );
+      }
+    );
 
     return () => {
+      sequence++;
       unsubscribe();
     };
   }, []);
 
-  // =======================================================
-  // LOGIN
-  // =======================================================
+  /* =========================================
+     LOGIN
+  ========================================= */
 
   const login = async (
     anonymousId,
     password
   ) => {
-    const response =
-      await api.post(
-        "/auth/login",
-        {
-          anonymousId,
-          password,
-        }
-      );
+    const response = await api.post(
+      "/auth/login",
+      {
+        anonymousId,
+        password,
+      }
+    );
 
-    const token =
-      response.data?.token;
+    const token = response.data?.token;
 
     if (!token) {
       throw new Error(
-        "Login token was not returned by the server."
+        "Login token was not returned."
       );
     }
 
-    // Sign into Firebase
     await signInWithCustomToken(
       auth,
       token
     );
 
-    // Force fresh token so role claims are available
     const firebaseUser =
       auth.currentUser;
 
     if (!firebaseUser) {
       throw new Error(
-        "Firebase authentication failed."
+        "Firebase sign-in failed."
       );
     }
 
-    await firebaseUser.getIdToken(
-      true
-    );
+    await firebaseUser.getIdToken(true);
 
-    const nextUser =
-      await buildUser(
-        firebaseUser
-      );
+    const next =
+      await buildUser(firebaseUser);
 
-    setUser(nextUser);
+    // The authentication listener supplies
+    // the verified /users/me profile.
+
+    setUser(next);
 
     return {
       ...response.data,
-      user: nextUser,
+      user: next,
     };
   };
 
-  // =======================================================
-  // REFRESH USER
-  // =======================================================
+  /* =========================================
+     RESTORE
+  ========================================= */
 
-  const refreshUser =
-    async () => {
-      const firebaseUser =
-        auth.currentUser;
-
-      if (!firebaseUser) {
-        setUser(null);
-        return null;
+  const restore = async (
+    anonymousId,
+    password
+  ) => {
+    const response = await api.post(
+      "/auth/restore",
+      {
+        anonymousId,
+        password,
       }
+    );
 
-      await firebaseUser.getIdToken(
-        true
-      );
+    return response.data;
+  };
 
-      const nextUser =
-        await buildUser(
-          firebaseUser
-        );
+  /* =========================================
+     REFRESH USER
+  ========================================= */
 
-      setUser(nextUser);
+  const refreshUser = async () => {
+    const firebaseUser =
+      auth.currentUser;
 
-      return nextUser;
+    if (!firebaseUser) {
+      setUser(null);
+      setAccountProfile(null);
+
+      return null;
+    }
+
+    await firebaseUser.getIdToken(true);
+
+    const [next, response] =
+      await Promise.all([
+        buildUser(firebaseUser),
+        api.get("/users/me"),
+      ]);
+
+    const latest =
+      response.data?.user || null;
+
+    setAccountProfile(
+      latest
+        ? {
+            ...latest,
+            uid: firebaseUser.uid,
+          }
+        : null
+    );
+
+    const updated = {
+      ...next,
+      age: latest?.age ?? next.age,
     };
 
-  // =======================================================
-  // LOGOUT
-  // =======================================================
+    setUser(updated);
+
+    return updated;
+  };
+
+  /* =========================================
+     UPDATE CACHED ACCOUNT PROFILE
+  ========================================= */
+
+  const updateAccountProfile = (
+    changes
+  ) => {
+    const currentUid =
+      auth.currentUser?.uid;
+
+    if (!currentUid) return;
+
+    setAccountProfile((previous) =>
+      previous?.uid === currentUid
+        ? {
+            ...previous,
+            ...changes,
+            uid: currentUid,
+          }
+        : previous
+    );
+
+    if (changes.age !== undefined) {
+      setUser((previous) =>
+        previous?.uid === currentUid
+          ? {
+              ...previous,
+              age: changes.age,
+            }
+          : previous
+      );
+    }
+  };
+
+  /* =========================================
+     LOGOUT
+  ========================================= */
 
   const logout = async () => {
     try {
       await signOut(auth);
     } finally {
       setUser(null);
+      setAccountProfile(null);
     }
   };
 
-  // =======================================================
-  // REGISTER
-  // =======================================================
+  /* =========================================
+     REGISTER
+  ========================================= */
 
   const register = async (
     registrationData
   ) => {
-    const response =
-      await api.post(
-        "/auth/register",
-        registrationData
-      );
+    const response = await api.post(
+      "/auth/register",
+      registrationData
+    );
 
     return response.data;
   };
@@ -233,25 +319,23 @@ export const AuthProvider = ({
     <AuthContext.Provider
       value={{
         user,
+        accountProfile,
         loading,
         login,
         logout,
         register,
         refreshUser,
-        isAuthenticated:
-          Boolean(user),
+        restore,
+        updateAccountProfile,
+        isAuthenticated: Boolean(user),
       }}
     >
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-// =========================================================
-// HOOK
-// =========================================================
-
-export const useAuth =
-  () => useContext(AuthContext);
+export const useAuth = () =>
+  useContext(AuthContext);
 
 export default AuthContext;

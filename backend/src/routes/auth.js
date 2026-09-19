@@ -7,6 +7,14 @@ const {
 } = require("../config/firebase");
 
 const {
+  rateLimit,
+} = require("express-rate-limit");
+
+const {
+  restoreAccount,
+} = require("../services/accountLifecycle");
+
+const {
   isRequired,
   isValidAnonymousId,
   isValidPassword,
@@ -16,530 +24,377 @@ const {
 
 const router = express.Router();
 
-/*
-=========================================================
-REGISTER
-=========================================================
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 12,
 
-Anonymous registration.
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
 
-Required:
-- Anonymous ID
-- Password
-- Confirm password
-- Role
-- Age
+  message: {
+    success: false,
+    message: "Too many attempts. Try again later.",
+  },
+});
 
-Age rules:
-- User   -> 15+
-- Parent -> no minimum restriction
-- Expert -> no minimum restriction
-=========================================================
-*/
+/* =========================================================
+   REGISTER
+========================================================= */
 
-router.post(
-  "/register",
-  async (req, res) => {
-    let createdFirebaseUid = null;
+router.post("/register", async (req, res) => {
+  let createdUid = null;
 
-    try {
-      const {
-        anonymousId,
-        password,
-        confirmPassword,
-        role,
-        age,
-      } = req.body;
+  try {
+    const {
+      anonymousId,
+      password,
+      confirmPassword,
+      role,
+      age,
+    } = req.body;
 
-      // ===================================================
-      // REQUIRED FIELDS
-      // ===================================================
+    const required = {
+      anonymousId,
+      password,
+      confirmPassword,
+      role,
+      age,
+    };
 
-      const requiredFields = {
-        anonymousId,
-        password,
-        confirmPassword,
-        role,
-        age,
-      };
+    const missingFields = Object.entries(required)
+      .filter(([, value]) => !isRequired(value))
+      .map(([key]) => key);
 
-      const missingFields =
-        Object.entries(
-          requiredFields
-        )
-          .filter(
-            ([_, value]) =>
-              !isRequired(value)
-          )
-          .map(
-            ([key]) => key
-          );
-
-      if (
-        missingFields.length > 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Please complete all required fields.",
-          missingFields,
-        });
-      }
-
-      // ===================================================
-      // ROLE
-      // ===================================================
-
-      if (!isValidRole(role)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid role selected.",
-        });
-      }
-
-      // ===================================================
-      // ANONYMOUS ID
-      // ===================================================
-
-      const cleanAnonymousId =
-        String(
-          anonymousId
-        ).trim();
-
-      if (
-        !isValidAnonymousId(
-          cleanAnonymousId
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Anonymous ID must be 3-30 characters and may contain only letters, numbers, and underscores.",
-        });
-      }
-
-      // ===================================================
-      // PASSWORD
-      // ===================================================
-
-      if (
-        !isValidPassword(
-          password
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-        });
-      }
-
-      // ===================================================
-      // CONFIRM PASSWORD
-      // ===================================================
-
-      if (
-        password !==
-        confirmPassword
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Passwords do not match.",
-        });
-      }
-
-      // ===================================================
-      // AGE
-      // ===================================================
-
-      const numericAge =
-        Number(age);
-
-      if (
-        !Number.isInteger(
-          numericAge
-        ) ||
-        numericAge <= 0 ||
-        numericAge > 120
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Please enter a valid age.",
-        });
-      }
-
-      // ===================================================
-      // AGE RULE
-      // ONLY USER HAS 15+ REQUIREMENT
-      // ===================================================
-
-      if (
-        !isValidAgeForRole(
-          numericAge,
-          role
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Users must be at least 15 years old.",
-        });
-      }
-
-      // ===================================================
-      // CHECK ANONYMOUS ID
-      // ===================================================
-
-      const existingUsers =
-        await db
-          .collection("users")
-          .where(
-            "anonymousId",
-            "==",
-            cleanAnonymousId
-          )
-          .limit(1)
-          .get();
-
-      if (
-        !existingUsers.empty
-      ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This Anonymous ID is already taken. Please choose another one.",
-        });
-      }
-
-      // ===================================================
-      // HASH PASSWORD
-      // ===================================================
-
-      const hashedPassword =
-        await bcrypt.hash(
-          String(password),
-          12
-        );
-
-      // ===================================================
-      // CREATE FIREBASE AUTH USER
-      // ===================================================
-
-      const firebaseUser =
-        await auth.createUser({
-          password:
-            String(password),
-          displayName:
-            cleanAnonymousId,
-        });
-
-      createdFirebaseUid =
-        firebaseUser.uid;
-
-      // ===================================================
-      // CREATE FIRESTORE USER
-      // ===================================================
-
-      const now =
-        new Date();
-
-      await db
-        .collection("users")
-        .doc(firebaseUser.uid)
-        .set({
-          uid:
-            firebaseUser.uid,
-
-          anonymousId:
-            cleanAnonymousId,
-
-          password:
-            hashedPassword,
-
-          role,
-
-          age:
-            numericAge,
-
-          ageVerified:
-            true,
-
-          status:
-            "active",
-
-          verificationStatus:
-            role === "expert"
-              ? "pending"
-              : null,
-
-          createdAt:
-            now,
-
-          updatedAt:
-            now,
-        });
-
-      // ===================================================
-      // CUSTOM TOKEN
-      // ===================================================
-
-      const token =
-        await auth.createCustomToken(
-          firebaseUser.uid,
-          {
-            role,
-            anonymousId:
-              cleanAnonymousId,
-
-            age:
-              numericAge,
-
-            ...(role === "expert"
-              ? {
-                  verificationStatus:
-                    "pending",
-                }
-              : {}),
-          }
-        );
-
-      // ===================================================
-      // RESPONSE
-      // ===================================================
-
-      return res.status(201).json({
-        success: true,
-
-        message:
-          "Anonymous account created successfully.",
-
-        user: {
-          uid:
-            firebaseUser.uid,
-
-          anonymousId:
-            cleanAnonymousId,
-
-          role,
-
-          age:
-            numericAge,
-
-          verificationStatus:
-            role === "expert"
-              ? "pending"
-              : null,
-        },
-
-        token,
-      });
-    } catch (error) {
-      console.error(
-        "Registration error:",
-        error
-      );
-
-      // ===================================================
-      // CLEANUP FIREBASE USER IF FIRESTORE FAILED
-      // ===================================================
-
-      if (
-        createdFirebaseUid
-      ) {
-        try {
-          await auth.deleteUser(
-            createdFirebaseUid
-          );
-        } catch (
-          cleanupError
-        ) {
-          console.error(
-            "Registration cleanup error:",
-            cleanupError
-          );
-        }
-      }
-
-      if (
-        error?.code ===
-        "auth/email-already-exists"
-      ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This account already exists.",
-        });
-      }
-
-      return res.status(500).json({
+    if (missingFields.length) {
+      return res.status(400).json({
         success: false,
-        message:
-          "Registration failed. Please try again.",
-
-        error:
-          process.env.NODE_ENV ===
-          "development"
-            ? error.message
-            : undefined,
+        message: "Please complete all required fields.",
+        missingFields,
       });
     }
-  }
-);
 
-/*
-=========================================================
-LOGIN
-=========================================================
-*/
+    if (!isValidRole(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role selected.",
+      });
+    }
+
+    const id = String(anonymousId).trim();
+
+    if (!isValidAnonymousId(id)) {
+      return res.status(400).json({
+        success: false,
+
+        message:
+          "Anonymous ID must be 3–30 letters, numbers or underscores.",
+      });
+    }
+
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        success: false,
+
+        message:
+          "Password needs 8+ characters, uppercase, lowercase, number and special character.",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match.",
+      });
+    }
+
+    const numericAge = Number(age);
+
+    if (
+      !Number.isInteger(numericAge) ||
+      numericAge <= 0 ||
+      numericAge > 120 ||
+      !isValidAgeForRole(numericAge, role)
+    ) {
+      return res.status(400).json({
+        success: false,
+
+        message:
+          role === "user"
+            ? "Users must be at least 15 years old."
+            : "Enter a valid age.",
+      });
+    }
+
+    const existing = await db
+      .collection("users")
+      .where("anonymousId", "==", id)
+      .limit(1)
+      .get();
+
+    if (!existing.empty) {
+      return res.status(409).json({
+        success: false,
+        message: "Anonymous ID is already taken.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      String(password),
+      12
+    );
+
+    const firebaseUser = await auth.createUser({
+      password: String(password),
+      displayName: id,
+    });
+
+    createdUid = firebaseUser.uid;
+
+    const verificationStatus =
+      role === "expert" ? "pending" : null;
+
+    await db
+      .collection("users")
+      .doc(createdUid)
+      .set({
+        uid: createdUid,
+        anonymousId: id,
+        password: hashedPassword,
+        role,
+        age: numericAge,
+        ageVerified: true,
+
+        status: "active",
+        verificationStatus,
+
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+    const claims = {
+      role,
+      anonymousId: id,
+      age: numericAge,
+
+      ...(verificationStatus
+        ? {
+            verificationStatus,
+          }
+        : {}),
+    };
+
+    const token = await auth.createCustomToken(
+      createdUid,
+      claims
+    );
+
+    return res.status(201).json({
+      success: true,
+
+      message:
+        "Anonymous account created successfully.",
+
+      user: {
+        uid: createdUid,
+        anonymousId: id,
+        role,
+        age: numericAge,
+        verificationStatus,
+      },
+
+      token,
+    });
+  } catch (err) {
+    console.error("Registration:", err);
+
+    if (createdUid) {
+      try {
+        await db
+          .collection("users")
+          .doc(createdUid)
+          .delete();
+
+        await auth.deleteUser(createdUid);
+      } catch (cleanupErr) {
+        console.error(
+          "Registration rollback:",
+          cleanupErr
+        );
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+
+      message:
+        "Registration failed. Please try again.",
+    });
+  }
+});
+
+/* =========================================================
+   LOGIN
+========================================================= */
 
 router.post(
   "/login",
+  loginLimiter,
   async (req, res) => {
     try {
-      const anonymousId =
-        String(
-          req.body.anonymousId ||
-            ""
-        ).trim();
+      const id = String(
+        req.body.anonymousId || ""
+      ).trim();
 
-      const password =
-        String(
-          req.body.password ||
-            ""
-        );
+      const password = String(
+        req.body.password || ""
+      );
 
-      if (
-        !anonymousId ||
-        !password
-      ) {
+      if (!id || !password) {
         return res.status(400).json({
           success: false,
+
           message:
             "Anonymous ID and password are required.",
         });
       }
 
-      const userSnapshot =
-        await db
-          .collection("users")
-          .where(
-            "anonymousId",
-            "==",
-            anonymousId
-          )
-          .limit(1)
-          .get();
+      const snapshot = await db
+        .collection("users")
+        .where("anonymousId", "==", id)
+        .limit(1)
+        .get();
+
+      const user = snapshot.empty
+        ? null
+        : snapshot.docs[0].data();
 
       if (
-        userSnapshot.empty
+        !user?.password ||
+        !(await bcrypt.compare(password, user.password))
       ) {
         return res.status(401).json({
           success: false,
+
           message:
             "Invalid Anonymous ID or password.",
         });
       }
 
-      const userDoc =
-        userSnapshot.docs[0];
-
-      const data =
-        userDoc.data();
-
-      if (
-        data.status ===
-          "suspended" ||
-        data.status === "deleted"
-      ) {
+      if (user.status === "deactivated") {
         return res.status(403).json({
           success: false,
+
+          code: "ACCOUNT_DEACTIVATED",
+
           message:
-            "This account is currently unavailable.",
+            "Account is deactivated. Restore it to sign in.",
+
+          deleteAfter: user.deleteAfter,
         });
       }
 
-      const validPassword =
-        await bcrypt.compare(
-          password,
-          data.password ||
-            ""
-        );
-
-      if (!validPassword) {
-        return res.status(401).json({
+      if (user.status !== "active") {
+        return res.status(403).json({
           success: false,
+
           message:
-            "Invalid Anonymous ID or password.",
+            "This account is unavailable.",
+        });
+      }
+
+      const uid =
+        user.uid || snapshot.docs[0].id;
+
+      const record = await auth.getUser(uid);
+
+      if (record.disabled) {
+        return res.status(403).json({
+          success: false,
+
+          message:
+            "Account access is disabled. Contact support.",
         });
       }
 
       const claims = {
-        role:
-          data.role ||
-          "user",
+        role: user.role || "user",
 
-        anonymousId:
-          data.anonymousId,
+        anonymousId: user.anonymousId,
 
-        age:
-          data.age,
+        age: user.age,
+
+        ...(user.verificationStatus
+          ? {
+              verificationStatus:
+                user.verificationStatus,
+            }
+          : {}),
       };
 
-      if (
-        data.verificationStatus
-      ) {
-        claims.verificationStatus =
-          data.verificationStatus;
-      }
+      const token = await auth.createCustomToken(
+        uid,
+        claims
+      );
 
-      const token =
-        await auth.createCustomToken(
-          data.uid ||
-            userDoc.id,
-          claims
-        );
+      return res.json({
+        success: true,
+        message: "Login successful.",
+
+        token,
+
+        user: {
+          uid,
+          anonymousId: user.anonymousId,
+          role: claims.role,
+          age: user.age,
+
+          verificationStatus:
+            user.verificationStatus || null,
+        },
+      });
+    } catch (err) {
+      console.error("Login:", err);
+
+      return res.status(500).json({
+        success: false,
+        message: "Login failed.",
+      });
+    }
+  }
+);
+
+/* =========================================================
+   RESTORE ACCOUNT
+========================================================= */
+
+router.post(
+  "/restore",
+  loginLimiter,
+  async (req, res) => {
+    try {
+      await restoreAccount(
+        req.body?.anonymousId,
+        req.body?.password
+      );
 
       return res.json({
         success: true,
 
         message:
-          "Login successful",
-
-        token,
-
-        user: {
-          uid:
-            data.uid ||
-            userDoc.id,
-
-          anonymousId:
-            data.anonymousId,
-
-          role:
-            data.role ||
-            "user",
-
-          age:
-            data.age,
-
-          verificationStatus:
-            data.verificationStatus ||
-            null,
-        },
+          "Account restored. Please sign in. Cancelled bookings cannot be restored.",
       });
-    } catch (error) {
+    } catch (err) {
       console.error(
-        "Login error:",
-        error
+        "Restore:",
+        err.status || err.message
       );
 
-      return res.status(500).json({
+      return res.status(err.status || 500).json({
         success: false,
-        message:
-          "Login failed.",
+
+        message: err.status
+          ? err.message
+          : "Restoration failed. Please contact support.",
       });
     }
   }

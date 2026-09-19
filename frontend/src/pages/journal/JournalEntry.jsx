@@ -1,96 +1,85 @@
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
 import {
   Link,
-  useNavigate,
+  useNavigate
 } from "react-router-dom";
 
 import {
-  createJournalEntry,
+  createJournalEntry
 } from "../../services/journalService";
 
+import {
+  isVaultUnlocked
+} from "../../services/privateVault";
+
 export default function JournalEntry() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const [title, setTitle] =
-    useState("");
+  const [title, setTitle] = useState("");
+  const [mood, setMood] = useState("");
+  const [content, setContent] = useState("");
 
-  const [mood, setMood] =
-    useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const [content, setContent] =
-    useState("");
+  if (!isVaultUnlocked()) {
+    return (
+      <div className="page-shell">
+        <div className="error-box">
+          Unlock your private vault on
+          the Journal page first.
+        </div>
 
-  const [error, setError] =
-    useState("");
+        <Link to="/journal">
+          Go to Journal
+        </Link>
+      </div>
+    );
+  }
 
-  const [saving, setSaving] =
-    useState(false);
-
-  const submit = async (
-    event
-  ) => {
+  async function submit(event) {
     event.preventDefault();
 
-    setError("");
+    if (saving) return;
 
-    if (
-      content.trim().length < 3
-    ) {
-      setError(
-        "Please write a little more before saving."
-      );
-      return;
-    }
+    setError("");
+    setSaving(true);
 
     try {
-      setSaving(true);
-
       await createJournalEntry({
-        title:
-          title.trim(),
-
+        title: title.trim(),
         mood,
-
-        content:
-          content.trim(),
+        content: content.trim()
       });
 
-      navigate(
-        "/journal",
-        {
-          replace: true,
-        }
-      );
-    } catch (err) {
+      navigate("/journal", {
+        replace: true
+      });
+    } catch (cause) {
       setError(
-        err.response?.data?.message ||
-          "Could not save journal entry."
+        cause?.response?.data?.message ||
+        cause.message ||
+        "Could not save encrypted journal."
       );
     } finally {
       setSaving(false);
     }
-  };
+  }
 
   return (
     <div className="page-shell">
-
-      <div className="page-header">
+      <header className="page-header">
         <div>
           <span className="eyebrow">
-            PRIVATE REFLECTION
+            DEVICE-ENCRYPTED REFLECTION
           </span>
 
-          <h1>
-            New journal entry
-          </h1>
+          <h1>New journal entry</h1>
 
           <p>
-            Your reflection is encrypted before
-            storage.
+            Title, mood and reflection are encrypted
+            before your browser sends them.
           </p>
         </div>
 
@@ -100,26 +89,26 @@ export default function JournalEntry() {
         >
           Back
         </Link>
-      </div>
+      </header>
 
       <form
         className="feature-card"
         onSubmit={submit}
         style={{
           maxWidth: 800,
+          display: "grid",
+          gap: 18
         }}
       >
-
         <label>
           Title
 
           <input
             className="form-input"
+            maxLength={200}
             value={title}
-            onChange={(e) =>
-              setTitle(
-                e.target.value
-              )
+            onChange={event =>
+              setTitle(event.target.value)
             }
             placeholder="A title for today"
           />
@@ -131,35 +120,25 @@ export default function JournalEntry() {
           <select
             className="form-input"
             value={mood}
-            onChange={(e) =>
-              setMood(
-                e.target.value
-              )
+            onChange={event =>
+              setMood(event.target.value)
             }
           >
             <option value="">
               Choose one
             </option>
 
-            <option value="Great">
-              Great
-            </option>
-
-            <option value="Good">
-              Good
-            </option>
-
-            <option value="Okay">
-              Okay
-            </option>
-
-            <option value="Low">
-              Low
-            </option>
-
-            <option value="Overwhelmed">
-              Overwhelmed
-            </option>
+            {[
+              "Great",
+              "Good",
+              "Okay",
+              "Low",
+              "Overwhelmed"
+            ].map(value => (
+              <option key={value}>
+                {value}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -168,30 +147,35 @@ export default function JournalEntry() {
 
           <textarea
             className="form-input"
-            rows="12"
+            rows={12}
+            maxLength={30000}
+            required
+            minLength={3}
             value={content}
-            onChange={(e) =>
-              setContent(
-                e.target.value
-              )
+            onChange={event =>
+              setContent(event.target.value)
             }
-            placeholder="Write whatever feels important..."
+            placeholder="Write whatever feels important…"
           />
         </label>
 
         {error && (
-          <div className="error-box">
+          <div
+            className="error-box"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
         <button
           className="primary-button"
+          type="submit"
           disabled={saving}
         >
           {saving
-            ? "Saving privately..."
-            : "Save privately"}
+            ? "Encrypting and saving…"
+            : "Save encrypted entry"}
         </button>
       </form>
     </div>

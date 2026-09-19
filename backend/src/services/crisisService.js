@@ -1,51 +1,77 @@
-const { db } = require("../config/firebase");
-const {
-  createNotification,
-} = require("../models/Notification");
+"use strict";
 
-const escalateCrisis = async ({
+const {
+  createNotification
+} = require("./notificationService");
+
+/*
+ * Privacy-first self-support.
+ *
+ * This service NEVER stores:
+ * - the user's message or voice transcript
+ * - the risk-detection reason
+ * - risk level in Firestore
+ * - a crisisAlerts document
+ *
+ * It does not notify an admin, expert,
+ * emergency responder, or trusted contact.
+ */
+
+async function escalateCrisis({
   userId,
-  message,
-  riskLevel,
-  reason,
-}) => {
-  const crisisRef = await db
-    .collection("crisisAlerts")
-    .add({
+  riskLevel
+}) {
+  if (
+    typeof userId !== "string" ||
+    !userId.trim()
+  ) {
+    throw new Error(
+      "Authenticated user required."
+    );
+  }
+
+  if (
+    !["high", "crisis"].includes(riskLevel)
+  ) {
+    throw new Error(
+      "Invalid self-support request."
+    );
+  }
+
+  try {
+    await createNotification({
       userId,
-      riskLevel,
-      reason,
-      message,
-      status: "pending",
-      createdAt: new Date(),
+
+      type: "support_resources",
+
+      title: "Support options are available",
+
+      message:
+        "If you feel unsafe, contact someone " +
+        "you trust or appropriate local emergency " +
+        "services. InnerVoice does not provide " +
+        "live emergency monitoring.",
+
+      data: {}
     });
 
-  await createNotification({
-    userId,
-    title:
-      riskLevel === "crisis"
-        ? "Immediate Support Recommended"
-        : "Additional Support Available",
+    return {
+      status: "self_support_only",
+      notificationSent: true,
+      humanNotified: false
+    };
+  } catch {
+    // Notification failure must not prevent
+    // the user from receiving a safety response.
 
-    message:
-      riskLevel === "crisis"
-        ? "Your message suggests you may need immediate support. Please stay with someone you trust and contact appropriate professional or emergency support if you may be in danger."
-        : "Your message suggests you may benefit from additional support. A verified InnerVoice expert may be able to help.",
-
-    type: "crisis_alert",
-
-    data: {
-      crisisAlertId: crisisRef.id,
-      riskLevel,
-    },
-  });
-
-  return {
-    id: crisisRef.id,
-    status: "pending",
-  };
-};
+    return {
+      status: "self_support_only",
+      notificationSent: false,
+      humanNotified: false
+    };
+  }
+}
 
 module.exports = {
-  escalateCrisis,
+  escalateCrisis
 };

@@ -1,101 +1,180 @@
-import { useEffect, useState } from "react";
 import {
-  getNotifications,
-  markNotificationRead,
-} from "../../services/notificationService";
-import { auth } from "../../services/firebase";
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  useNotifications,
+} from "../../context/NotificationContext";
+
+/* =========================================================
+   HELPERS
+========================================================= */
 
 const formatDate = (value) => {
-  try {
-    const date = value?.toDate
-      ? value.toDate()
-      : new Date(value);
+  if (!value) return "Just now";
 
-    if (Number.isNaN(date.getTime())) {
-      return "Just now";
-    }
+  const date = new Date(value);
 
-    return date.toLocaleString();
-  } catch {
-    return "Just now";
+  return Number.isNaN(date.getTime())
+    ? "Just now"
+    : date.toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+};
+
+const getIcon = (type) => {
+  switch (type) {
+    case "ai_response_ready":
+      return "✦";
+
+    case "expert_message":
+      return "💬";
+
+    case "expert_request":
+      return "↗";
+
+    case "request_accepted":
+      return "✓";
+
+    case "request_rejected":
+      return "!";
+
+    case "session_starting":
+      return "◷";
+
+    case "session_ending":
+      return "⌛";
+
+    case "session_completed":
+      return "✓";
+
+    default:
+      return "🔔";
   }
 };
 
-const Notifications = () => {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] =
-    useState(true);
-  const [error, setError] = useState("");
+/* =========================================================
+   PAGE
+========================================================= */
 
-  const loadNotifications =
-    async () => {
-      try {
-        setError("");
+export default function Notifications() {
+  const navigate = useNavigate();
 
-        const response =
-          await getNotifications(
-            auth.currentUser?.uid
-          );
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    error,
+    refreshNotifications,
+    markRead,
+    markAllRead,
+  } = useNotifications();
 
-        setList(
-          response.notifications || []
-        );
-      } catch (error) {
-        console.error(
-          "Notification loading error:",
-          error
-        );
+  /* =======================================================
+     OPEN NOTIFICATION
+  ======================================================= */
 
-        setError(
-          error.response?.data?.message ||
-            "Could not load notifications."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  useEffect(() => {
-    loadNotifications();
-
-    const interval = setInterval(
-      loadNotifications,
-      15000
-    );
-
-    return () =>
-      clearInterval(interval);
-  }, []);
-
-  const handleRead = async (
+  const openNotification = async (
     notification
   ) => {
-    if (notification.read) {
+    if (!notification) return;
+
+    try {
+      if (!notification.read) {
+        await markRead(
+          notification.id
+        );
+      }
+    } catch (err) {
+      console.error(
+        "Could not mark notification read:",
+        err
+      );
+    }
+
+    const {
+      type,
+      data = {},
+    } = notification;
+
+    /* AI RESPONSE */
+
+    if (
+      type === "ai_response_ready"
+    ) {
+      const conversationId =
+        data.conversationId;
+
+      if (conversationId) {
+        navigate(
+          `/chat?conversationId=${encodeURIComponent(
+            conversationId
+          )}`
+        );
+      } else {
+        navigate("/chat");
+      }
+
       return;
     }
 
-    try {
-      await markNotificationRead(
-        notification.id
+    /* EXPERT TEXT / VOICE MESSAGE */
+
+    if (
+      type === "expert_message"
+    ) {
+      if (data.sessionId) {
+        navigate(
+          `/session-chat/${encodeURIComponent(
+            data.sessionId
+          )}`
+        );
+      }
+
+      return;
+    }
+
+    /* EXPERT'S NEW BOOKING REQUEST */
+
+    if (
+      type === "expert_request"
+    ) {
+      navigate("/expert/requests");
+      return;
+    }
+
+    /* REJECTED BOOKING */
+
+    if (
+      type === "request_rejected"
+    ) {
+      navigate("/bookings");
+      return;
+    }
+
+    /* OTHER SESSION UPDATES */
+
+    if (data.sessionId) {
+      navigate(
+        `/session-chat/${encodeURIComponent(
+          data.sessionId
+        )}`
       );
 
-      setList((current) =>
-        current.map((item) =>
-          item.id === notification.id
-            ? {
-                ...item,
-                read: true,
-              }
-            : item
-        )
-      );
-    } catch (error) {
-      console.error(
-        "Could not mark notification read:",
-        error
-      );
+      return;
+    }
+
+    if (
+      type === "request_accepted"
+    ) {
+      navigate("/bookings");
     }
   };
+
+  /* =======================================================
+     UI
+  ======================================================= */
 
   return (
     <div className="page-shell">
@@ -108,86 +187,230 @@ const Notifications = () => {
           <h1>Notifications</h1>
 
           <p>
-            Your private InnerVoice updates,
-            session reminders and support
-            notifications.
+            Return to your AI conversations,
+            expert messages and session
+            updates.
           </p>
+        </div>
+
+        <div
+          className="button-row"
+          style={{
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={
+              refreshNotifications
+            }
+            disabled={loading}
+          >
+            ↻ Refresh
+          </button>
+
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              className="primary-button"
+              onClick={markAllRead}
+            >
+              ✓ Mark all read
+            </button>
+          )}
         </div>
       </div>
 
+      <div
+        className="feature-card"
+        style={{
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent:
+            "space-between",
+          gap: 16,
+        }}
+      >
+        <div>
+          <strong>
+            {unreadCount > 0
+              ? `${unreadCount} unread ${
+                  unreadCount === 1
+                    ? "notification"
+                    : "notifications"
+                }`
+              : "You're all caught up"}
+          </strong>
+
+          <p
+            style={{
+              margin: "6px 0 0",
+              color: "#697286",
+            }}
+          >
+            Your updates stay inside
+            your InnerVoice account.
+          </p>
+        </div>
+
+        <span
+          aria-hidden="true"
+          style={{
+            fontSize: 26,
+          }}
+        >
+          🔔
+        </span>
+      </div>
+
       {error && (
-        <div className="error-box">
+        <div
+          className="error-box"
+          role="alert"
+        >
           {error}
         </div>
       )}
 
-      {loading ? (
+      {loading &&
+      !notifications.length ? (
         <div className="empty-card">
-          <h2>Loading notifications...</h2>
-          <p>
-            Checking for your latest updates.
-          </p>
+          Loading your notifications...
         </div>
-      ) : !list.length ? (
+      ) : !notifications.length ? (
         <div className="empty-card">
           <h2>You're all caught up</h2>
 
           <p>
-            New InnerVoice updates will
-            appear here.
+            New replies and session updates
+            will appear here.
           </p>
         </div>
       ) : (
-        <div className="list-grid">
-          {list.map((notification) => (
-            <button
-              key={notification.id}
-              type="button"
-              onClick={() =>
-                handleRead(notification)
-              }
-              className="feature-card notification-item"
-              style={{
-                textAlign: "left",
-                opacity:
-                  notification.read
-                    ? 0.72
-                    : 1,
-              }}
-            >
-              <div className="item-top">
-                <strong>
-                  {notification.title}
-                </strong>
+        <div
+          style={{
+            display: "grid",
+            gap: 14,
+          }}
+        >
+          {notifications.map(
+            (notification) => (
+              <button
+                key={notification.id}
+                type="button"
+                onClick={() =>
+                  openNotification(
+                    notification
+                  )
+                }
+                className="feature-card"
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems:
+                    "flex-start",
+                  gap: 16,
+                  textAlign: "left",
+                  cursor: "pointer",
+
+                  background:
+                    notification.read
+                      ? "#ffffff"
+                      : "#f7f6ff",
+
+                  border:
+                    notification.read
+                      ? "1px solid #e6e8ee"
+                      : "1px solid #d6d1ff",
+
+                  borderRadius: 18,
+                  padding: 20,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    width: 46,
+                    height: 46,
+                    flexShrink: 0,
+                    borderRadius: 13,
+                    background: "#eceaff",
+                    fontSize: 21,
+                  }}
+                >
+                  {getIcon(
+                    notification.type
+                  )}
+                </span>
 
                 <span
-                  className={`status ${
-                    notification.read
-                      ? "active"
-                      : "pending"
-                  }`}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                  }}
                 >
-                  {notification.read
-                    ? "Read"
-                    : "New"}
+                  <span
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems:
+                        "center",
+                      gap: 9,
+                    }}
+                  >
+                    <strong>
+                      {notification.title}
+                    </strong>
+
+                    {!notification.read && (
+                      <span
+                        className="status pending"
+                      >
+                        New
+                      </span>
+                    )}
+                  </span>
+
+                  <span
+                    style={{
+                      display: "block",
+                      color: "#596174",
+                      lineHeight: 1.6,
+                      margin: "8px 0",
+                    }}
+                  >
+                    {notification.message}
+                  </span>
+
+                  <small
+                    style={{
+                      color: "#81899b",
+                    }}
+                  >
+                    {formatDate(
+                      notification.createdAt
+                    )}
+                  </small>
                 </span>
-              </div>
 
-              <p>
-                {notification.message}
-              </p>
-
-              <small>
-                {formatDate(
-                  notification.createdAt
-                )}
-              </small>
-            </button>
-          ))}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    color: "#655cff",
+                    fontSize: 20,
+                  }}
+                >
+                  →
+                </span>
+              </button>
+            )
+          )}
         </div>
       )}
     </div>
   );
-};
-
-export default Notifications;
+}

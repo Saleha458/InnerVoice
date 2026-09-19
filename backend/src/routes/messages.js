@@ -1,335 +1,294 @@
+"use strict";
+
 const express = require("express");
+const router = express.Router();
 
-const router =
-  express.Router();
+const authenticate = require("../middleware/auth");
 
-const authenticate =
-  require("../middleware/auth");
-
-const {
-  db,
-} = require("../config/firebase");
+const { db } = require("../config/firebase");
 
 const {
-  encrypt,
-  decrypt,
-} =
-  require("../services/encryptionService");
+  FieldValue
+} = require("firebase-admin/firestore");
 
-const canAccessSession =
-  async (
-    sessionId,
-    uid
-  ) => {
-    const sessionDoc =
-      await db
-        .collection(
-          "sessions"
-        )
-        .doc(sessionId)
-        .get();
+const {
+  decrypt
+} = require("../services/encryptionService");
 
-    if (
-      !sessionDoc.exists
-    ) {
-      return false;
-    }
+const {
+  getSessionAccess,
+  serializeSessionAccess,
+  getSessionLockMessage
+} = require("../services/sessionAccessService");
 
-    const session =
-      sessionDoc.data();
+const validId = value =>
+  typeof value === "string" &&
+  /^[A-Za-z0-9_-]{1,128}$/.test(value);
 
-    if (
-      session.userId ===
-      uid
-    ) {
-      return true;
-    }
+const b64 = value =>
+  typeof value === "string" &&
+  /^[A-Za-z0-9+/=]+$/.test(value);
 
-    const expert =
-      await db
-        .collection(
-          "experts"
-        )
-        .where(
-          "uid",
-          "==",
-          uid
-        )
-        .limit(1)
-        .get();
+const validEnvelope = value =>
+  value?.v === 1 &&
+  b64(value.epk) &&
+  value.epk.length < 1000 &&
+  b64(value.salt) &&
+  value.salt.length < 60 &&
+  [value.sender, value.receiver].every(
+    part =>
+      part?.v === 1 &&
+      b64(part.iv) &&
+      part.iv.length <= 24 &&
+      b64(part.ct) &&
+      part.ct.length < 850000
+  ) &&
+  JSON.stringify(value).length <= 1500000;
 
-    return (
-      !expert.empty &&
-      expert.docs[0].id ===
-        session.expertId
+router.use(authenticate);
+
+function fail(res, error, message) {
+  return res.status(error.status || 500).json({
+    success: false,
+    message: error.status
+      ? error.message
+      : message
+  });
+}
+
+async function accessOrFail(
+  uid,
+  sessionId,
+  mustBeActive
+) {
+  if (!validId(sessionId)) {
+    throw Object.assign(
+      new Error("Invalid session ID."),
+      { status: 400 }
     );
+  }
+
+  const access = await getSessionAccess(
+    uid,
+    sessionId
+  );
+
+  if (!access.exists) {
+    throw Object.assign(
+      new Error("Session not found."),
+      { status: 404 }
+    );
+  }
+
+  if (!access.isParticipant) {
+    throw Object.assign(
+      new Error("Access denied."),
+      { status: 403 }
+    );
+  }
+
+  if (
+    mustBeActive &&
+    !access.active
+  ) {
+    throw Object.assign(
+      new Error(
+        getSessionLockMessage(access)
+      ),
+      { status: 409 }
+    );
+  }
+
+  return access;
+}
+
+function publicMessage(doc) {
+  const data = doc.data();
+
+  const common = {
+    id: doc.id,
+    sessionId: data.sessionId,
+    senderId: data.senderId,
+    receiverId: data.receiverId,
+    type: data.type,
+    createdAt: data.createdAt,
+
+    ...(data.mimeType
+      ? { mimeType: data.mimeType }
+      : {})
   };
 
-/* =========================================================
-   SEND TEXT MESSAGE
-========================================================= */
-
-router.post(
-  "/",
-  authenticate,
-  async (req, res) => {
-    try {
-      const {
-        sessionId,
-        receiverId,
-        message,
-      } = req.body;
-
-      const clean =
-        String(
-          message || ""
-        )
-          .trim()
-          .slice(0, 4000);
-
-      if (
-        !sessionId ||
-        !clean
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Session and message are required.",
-        });
-      }
-
-      if (
-        !(await canAccessSession(
-          sessionId,
-          req.user.uid
-        ))
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Access denied.",
-        });
-      }
-
-      const encrypted =
-        encrypt(clean);
-
-      const ref =
-        await db
-          .collection(
-            "messages"
-          )
-          .add({
-            sessionId,
-
-            senderId:
-              req.user.uid,
-
-            receiverId:
-              receiverId ||
-              null,
-
-            type:
-              "text",
-
-            encryptedData:
-              encrypted.encryptedData,
-
-            iv:
-              encrypted.iv,
-
-            authTag:
-              encrypted.authTag,
-
-            createdAt:
-              new Date(),
-          });
-
-      return res.status(201).json({
-        success: true,
-        messageId:
-          ref.id,
-      });
-    } catch (error) {
-      console.error(
-        "Send message error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to send message.",
-      });
-    }
+  if (
+    data.privacyVersion === 2 &&
+    data.e2ee
+  ) {
+    return {
+      ...common,
+      privacyVersion: 2,
+      e2ee: data.e2ee
+    };
   }
-);
 
-/* =========================================================
-   LOAD SESSION CHAT
-========================================================= */
+  // Legacy data remains readable only to
+  // verified session participants for migration.
+
+  const plain = decrypt(
+    data.encryptedData,
+    data.iv,
+    data.authTag
+  );
+
+  return {
+    ...common,
+    legacy: true,
+
+    ...(data.type === "voice"
+      ? { audio: plain }
+      : { message: plain })
+  };
+}
 
 router.get(
   "/:sessionId",
-  authenticate,
   async (req, res) => {
     try {
-      const {
-        sessionId,
-      } = req.params;
-
-      if (
-        !(await canAccessSession(
-          sessionId,
-          req.user.uid
-        ))
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Access denied.",
-        });
-      }
-
-      const snapshot =
-        await db
-          .collection(
-            "messages"
-          )
-          .where(
-            "sessionId",
-            "==",
-            sessionId
-          )
-          .get();
-
-      const messages =
-        [];
-
-      snapshot.forEach(
-        (doc) => {
-          const data =
-            doc.data();
-
-          try {
-            /*
-             * VOICE
-             */
-            if (
-              data.type ===
-                "voice" &&
-              data.encryptedData
-            ) {
-              messages.push({
-                id:
-                  doc.id,
-
-                sessionId,
-
-                senderId:
-                  data.senderId,
-
-                type:
-                  "voice",
-
-                audio:
-                  decrypt(
-                    data.encryptedData,
-                    data.iv,
-                    data.authTag
-                  ),
-
-                mimeType:
-                  data.mimeType ||
-                  "audio/webm",
-
-                createdAt:
-                  data.createdAt,
-              });
-
-              return;
-            }
-
-            /*
-             * TEXT
-             */
-            if (
-              data.encryptedData
-            ) {
-              messages.push({
-                id:
-                  doc.id,
-
-                sessionId,
-
-                senderId:
-                  data.senderId,
-
-                receiverId:
-                  data.receiverId ||
-                  null,
-
-                type:
-                  "text",
-
-                message:
-                  decrypt(
-                    data.encryptedData,
-                    data.iv,
-                    data.authTag
-                  ),
-
-                createdAt:
-                  data.createdAt,
-              });
-            }
-          } catch (error) {
-            console.warn(
-              "Could not decrypt message:",
-              doc.id
-            );
-          }
-        }
+      const access = await accessOrFail(
+        req.user.uid,
+        req.params.sessionId,
+        false
       );
 
-      messages.sort(
-        (a, b) => {
-          const aDate =
-            a.createdAt?.toDate?.() ||
+      const snapshot = await db
+        .collection("messages")
+        .where(
+          "sessionId",
+          "==",
+          req.params.sessionId
+        )
+        .get();
+
+      const messages = snapshot.docs
+        .map(publicMessage)
+        .sort(
+          (a, b) =>
             new Date(
+              a.createdAt?.toDate?.() ||
               a.createdAt ||
-                0
-            );
-
-          const bDate =
-            b.createdAt?.toDate?.() ||
+              0
+            ) -
             new Date(
+              b.createdAt?.toDate?.() ||
               b.createdAt ||
-                0
-            );
+              0
+            )
+        );
 
-          return (
-            aDate -
-            bDate
-          );
-        }
-      );
+      res.set("Cache-Control", "no-store");
 
       return res.json({
         success: true,
         messages,
+        communication:
+          serializeSessionAccess(access)
       });
     } catch (error) {
-      console.error(
-        "Get messages error:",
-        error
+      return fail(
+        res,
+        error,
+        "Could not load private messages."
+      );
+    }
+  }
+);
+
+router.post("/", async (_req, res) => {
+  return res.status(400).json({
+    success: false,
+    message:
+      "Plaintext messaging is disabled. Use client-encrypted chat."
+  });
+});
+
+router.post(
+  "/:id/migrate",
+  async (req, res) => {
+    try {
+      if (
+        !validId(req.params.id) ||
+        !validEnvelope(req.body?.e2ee)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid encrypted migration."
+        });
+      }
+
+      const ref = db
+        .collection("messages")
+        .doc(req.params.id);
+
+      const message = await ref.get();
+
+      if (!message.exists) {
+        return res.status(404).json({
+          success: false,
+          message: "Message not found."
+        });
+      }
+
+      const data = message.data();
+
+      await accessOrFail(
+        req.user.uid,
+        data.sessionId,
+        false
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to retrieve messages.",
+      await db.runTransaction(
+        async transaction => {
+          const latest =
+            await transaction.get(ref);
+
+          if (
+            !latest.exists ||
+            latest.data().privacyVersion === 2 ||
+            latest.data().sessionId !==
+              data.sessionId
+          ) {
+            throw Object.assign(
+              new Error(
+                "Message already migrated or missing."
+              ),
+              { status: 409 }
+            );
+          }
+
+          transaction.update(ref, {
+            privacyVersion: 2,
+            e2ee: req.body.e2ee,
+
+            encryptedData: FieldValue.delete(),
+            iv: FieldValue.delete(),
+            authTag: FieldValue.delete(),
+
+            message: FieldValue.delete(),
+            audio: FieldValue.delete(),
+
+            legacyMigratedAt: new Date()
+          });
+        }
+      );
+
+      return res.json({
+        success: true
       });
+    } catch (error) {
+      return fail(
+        res,
+        error,
+        "Could not migrate private message."
+      );
     }
   }
 );

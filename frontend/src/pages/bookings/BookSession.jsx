@@ -18,44 +18,168 @@ import {
   getAvailableSlots,
 } from "../../services/bookingService";
 
-const getToday =
-  () => {
-    const now =
-      new Date();
+/* =========================================================
+   DATE HELPERS
+========================================================= */
 
-    return `${now.getFullYear()}-${String(
-      now.getMonth() + 1
-    ).padStart(
-      2,
-      "0"
-    )}-${String(
-      now.getDate()
-    ).padStart(
-      2,
-      "0"
-    )}`;
-  };
+const formatDateForInput = (dateObject) => {
+  const year =
+    dateObject.getFullYear();
 
-const formatDateTime =
-  (value) => {
-    const date =
-      new Date(value);
+  const month =
+    String(
+      dateObject.getMonth() + 1
+    ).padStart(2, "0");
 
-    return Number.isNaN(
+  const day =
+    String(
+      dateObject.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getToday = () => {
+  return formatDateForInput(
+    new Date()
+  );
+};
+
+const addDays = (
+  dateString,
+  numberOfDays
+) => {
+  const [
+    year,
+    month,
+    day,
+  ] = dateString
+    .split("-")
+    .map(Number);
+
+  const date =
+    new Date(
+      year,
+      month - 1,
+      day
+    );
+
+  date.setDate(
+    date.getDate() +
+      numberOfDays
+  );
+
+  return formatDateForInput(
+    date
+  );
+};
+
+/*
+ * InnerVoice booking hours:
+ * 09:00 AM -> 09:00 PM
+ *
+ * Latest possible START time depends on duration.
+ * Example:
+ * 30-minute session:
+ * latest start = 08:30 PM.
+ */
+const getDefaultBookingDate = (
+  duration = 30
+) => {
+  const now =
+    new Date();
+
+  const currentMinutes =
+    now.getHours() * 60 +
+    now.getMinutes();
+
+  const dayEnd =
+    21 * 60;
+
+  const latestStart =
+    dayEnd -
+    Number(duration);
+
+  /*
+   * If there is no longer enough
+   * time today for this duration,
+   * start booking from tomorrow.
+   */
+  if (
+    currentMinutes >=
+    latestStart
+  ) {
+    return addDays(
+      getToday(),
+      1
+    );
+  }
+
+  return getToday();
+};
+
+const formatDateTime = (
+  value
+) => {
+  const date =
+    new Date(value);
+
+  return Number.isNaN(
+    date.getTime()
+  )
+    ? "Date unavailable"
+    : date.toLocaleString(
+        [],
+        {
+          dateStyle:
+            "medium",
+
+          timeStyle:
+            "short",
+        }
+      );
+};
+
+const formatFriendlyDate = (
+  dateString
+) => {
+  if (!dateString) {
+    return "";
+  }
+
+  const [
+    year,
+    month,
+    day,
+  ] = dateString
+    .split("-")
+    .map(Number);
+
+  const date =
+    new Date(
+      year,
+      month - 1,
+      day
+    );
+
+  if (
+    Number.isNaN(
       date.getTime()
     )
-      ? "Date unavailable"
-      : date.toLocaleString(
-          [],
-          {
-            dateStyle:
-              "medium",
+  ) {
+    return dateString;
+  }
 
-            timeStyle:
-              "short",
-          }
-        );
-  };
+  return date.toLocaleDateString(
+    [],
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
+};
 
 export default function BookSession() {
   const [
@@ -71,22 +195,28 @@ export default function BookSession() {
       "expertId"
     );
 
+  /* =======================================================
+     STATE
+  ======================================================= */
+
   const [
     expert,
     setExpert,
   ] = useState(null);
 
   const [
-    date,
-    setDate,
-  ] = useState(
-    getToday()
-  );
-
-  const [
     duration,
     setDuration,
   ] = useState(30);
+
+  const [
+    date,
+    setDate,
+  ] = useState(() =>
+    getDefaultBookingDate(
+      30
+    )
+  );
 
   const [
     slots,
@@ -123,12 +253,19 @@ export default function BookSession() {
     setError,
   ] = useState("");
 
+  const [
+    availabilityMessage,
+    setAvailabilityMessage,
+  ] = useState("");
+
   const minimumDate =
     useMemo(
-      () =>
-        getToday(),
+      () => getToday(),
       []
     );
+
+  const isToday =
+    date === getToday();
 
   /* =======================================================
      LOAD EXPERT
@@ -138,12 +275,14 @@ export default function BookSession() {
     let active =
       true;
 
-    const load =
+    const loadExpert =
       async () => {
         try {
           setLoading(
             true
           );
+
+          setError("");
 
           const response =
             await getExpert(
@@ -154,13 +293,17 @@ export default function BookSession() {
             response?.expert ||
             response;
 
-          if (active) {
+          if (
+            active
+          ) {
             setExpert(
               item
             );
           }
         } catch (err) {
-          if (active) {
+          if (
+            active
+          ) {
             setError(
               err?.response
                 ?.data
@@ -169,7 +312,9 @@ export default function BookSession() {
             );
           }
         } finally {
-          if (active) {
+          if (
+            active
+          ) {
             setLoading(
               false
             );
@@ -177,12 +322,15 @@ export default function BookSession() {
         }
       };
 
-    if (expertId) {
-      load();
+    if (
+      expertId
+    ) {
+      loadExpert();
     } else {
       setLoading(
         false
       );
+
       setError(
         "No expert was selected."
       );
@@ -194,6 +342,59 @@ export default function BookSession() {
     };
   }, [
     expertId,
+  ]);
+
+  /* =======================================================
+     WHEN DURATION CHANGES
+
+     If today's remaining time is no longer enough
+     for the chosen duration, automatically move to tomorrow.
+  ======================================================= */
+
+  useEffect(() => {
+    const today =
+      getToday();
+
+    if (
+      date !== today
+    ) {
+      return;
+    }
+
+    const now =
+      new Date();
+
+    const currentMinutes =
+      now.getHours() *
+        60 +
+      now.getMinutes();
+
+    const latestStart =
+      21 * 60 -
+      Number(duration);
+
+    if (
+      currentMinutes >=
+      latestStart
+    ) {
+      setDate(
+        addDays(
+          today,
+          1
+        )
+      );
+
+      setSelectedSlot(
+        ""
+      );
+
+      setAvailabilityMessage(
+        "Today's booking window has ended for this session length, so we moved you to tomorrow."
+      );
+    }
+  }, [
+    duration,
+    date,
   ]);
 
   /* =======================================================
@@ -225,30 +426,77 @@ export default function BookSession() {
             ""
           );
 
+          /*
+           * Do not permanently remove useful
+           * informational messages here unless
+           * new availability is actually found.
+           */
           const response =
             await getAvailableSlots(
               {
                 expertId,
-
                 date,
-
                 duration,
               }
             );
 
-          if (active) {
-            setSlots(
-              Array.isArray(
-                response?.slots
-              )
-                ? response.slots
-                : []
+          if (
+            !active
+          ) {
+            return;
+          }
+
+          const availableSlots =
+            Array.isArray(
+              response?.slots
+            )
+              ? response.slots
+              : [];
+
+          setSlots(
+            availableSlots
+          );
+
+          if (
+            availableSlots.length >
+            0
+          ) {
+            setAvailabilityMessage(
+              `${availableSlots.length} free ${
+                availableSlots.length ===
+                1
+                  ? "time is"
+                  : "times are"
+              } available for this date.`
             );
+          } else {
+            /*
+             * Today may legitimately have no slots
+             * because the booking day is almost over.
+             */
+            if (
+              date ===
+              getToday()
+            ) {
+              setAvailabilityMessage(
+                "There are no remaining free times today. Choose another date to continue."
+              );
+            } else {
+              setAvailabilityMessage(
+                "This expert has no free times for the selected date and session length."
+              );
+            }
           }
         } catch (err) {
-          if (active) {
+          if (
+            active
+          ) {
             setSlots(
               []
+            );
+
+            setAvailabilityMessage(
+              ""
             );
 
             setError(
@@ -259,7 +507,9 @@ export default function BookSession() {
             );
           }
         } finally {
-          if (active) {
+          if (
+            active
+          ) {
             setSlotsLoading(
               false
             );
@@ -281,7 +531,100 @@ export default function BookSession() {
   ]);
 
   /* =======================================================
-     SUBMIT
+     DATE CHANGE
+  ======================================================= */
+
+  const handleDateChange =
+    (event) => {
+      const newDate =
+        event.target.value;
+
+      if (
+        !newDate
+      ) {
+        return;
+      }
+
+      setDate(
+        newDate
+      );
+
+      setSlots(
+        []
+      );
+
+      setSelectedSlot(
+        ""
+      );
+
+      setError("");
+
+      setAvailabilityMessage(
+        ""
+      );
+    };
+
+  /* =======================================================
+     DURATION CHANGE
+  ======================================================= */
+
+  const handleDurationChange =
+    (event) => {
+      const newDuration =
+        Number(
+          event.target
+            .value
+        );
+
+      setDuration(
+        newDuration
+      );
+
+      setSlots(
+        []
+      );
+
+      setSelectedSlot(
+        ""
+      );
+
+      setError("");
+
+      setAvailabilityMessage(
+        ""
+      );
+    };
+
+  /* =======================================================
+     NEXT DAY
+  ======================================================= */
+
+  const goToNextDay =
+    () => {
+      setDate(
+        addDays(
+          date,
+          1
+        )
+      );
+
+      setSlots(
+        []
+      );
+
+      setSelectedSlot(
+        ""
+      );
+
+      setError("");
+
+      setAvailabilityMessage(
+        ""
+      );
+    };
+
+  /* =======================================================
+     SUBMIT BOOKING REQUEST
   ======================================================= */
 
   const submit =
@@ -295,6 +638,29 @@ export default function BookSession() {
       ) {
         setError(
           "Please select a free session time."
+        );
+
+        return;
+      }
+
+      const selectedDate =
+        new Date(
+          selectedSlot
+        );
+
+      if (
+        Number.isNaN(
+          selectedDate.getTime()
+        ) ||
+        selectedDate <=
+          new Date()
+      ) {
+        setError(
+          "This session time is no longer available. Please choose another free time."
+        );
+
+        setSelectedSlot(
+          ""
         );
 
         return;
@@ -323,7 +689,7 @@ export default function BookSession() {
         );
 
         window.alert(
-          "Your request has been sent. The expert has been notified. The session will become confirmed after the expert accepts it."
+          "Your session request has been sent successfully. The expert must accept it before the session is confirmed."
         );
 
         navigate(
@@ -341,6 +707,10 @@ export default function BookSession() {
             "Could not send session request."
         );
 
+        /*
+         * Reload availability because someone else
+         * may have taken the selected slot.
+         */
         try {
           const response =
             await getAvailableSlots(
@@ -352,14 +722,21 @@ export default function BookSession() {
             );
 
           setSlots(
-            response?.slots ||
-              []
+            Array.isArray(
+              response?.slots
+            )
+              ? response.slots
+              : []
           );
 
           setSelectedSlot(
             ""
           );
-        } catch (_) {}
+        } catch (_) {
+          setSlots(
+            []
+          );
+        }
       } finally {
         setSubmitting(
           false
@@ -367,7 +744,13 @@ export default function BookSession() {
       }
     };
 
-  if (loading) {
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
+  if (
+    loading
+  ) {
     return (
       <div className="page-shell">
         <div className="empty-card">
@@ -377,7 +760,13 @@ export default function BookSession() {
     );
   }
 
-  if (!expert) {
+  /* =======================================================
+     EXPERT NOT FOUND
+  ======================================================= */
+
+  if (
+    !expert
+  ) {
     return (
       <div className="page-shell">
         <div className="error-box">
@@ -387,6 +776,10 @@ export default function BookSession() {
       </div>
     );
   }
+
+  /* =======================================================
+     PAGE
+  ======================================================= */
 
   return (
     <div className="page-shell">
@@ -401,17 +794,22 @@ export default function BookSession() {
           </h1>
 
           <p>
-            Choose the date,
+            Choose a date,
             session length and
-            genuinely free time.
-            Your request is only
-            confirmed after the
-            expert accepts it.
+            genuinely available
+            time. Your request
+            becomes confirmed only
+            after the expert accepts
+            it.
           </p>
         </div>
       </div>
 
       <section className="feature-card">
+        {/* ===============================================
+            EXPERT HEADER
+        =============================================== */}
+
         <div className="item-top">
           <div>
             <h2>
@@ -445,17 +843,27 @@ export default function BookSession() {
           </span>
         </div>
 
+        {/* ===============================================
+            ERROR
+        =============================================== */}
+
         {error && (
           <div className="error-box">
             {error}
           </div>
         )}
 
+        {/* ===============================================
+            FORM
+        =============================================== */}
+
         <form
           onSubmit={
             submit
           }
         >
+          {/* DATE */}
+
           <div className="form-group">
             <label className="form-label">
               Date
@@ -467,16 +875,28 @@ export default function BookSession() {
               min={
                 minimumDate
               }
-              value={date}
-              onChange={(e) =>
-                setDate(
-                  e.target
-                    .value
-                )
+              value={
+                date
+              }
+              onChange={
+                handleDateChange
+              }
+              disabled={
+                submitting
               }
               required
             />
+
+            <small>
+              {isToday
+                ? "Showing only future times remaining today."
+                : `Selected: ${formatFriendlyDate(
+                    date
+                  )}`}
+            </small>
           </div>
+
+          {/* SESSION LENGTH */}
 
           <div className="form-group">
             <label className="form-label">
@@ -485,21 +905,27 @@ export default function BookSession() {
 
             <select
               className="form-input"
-              value={duration}
-              onChange={(e) =>
-                setDuration(
-                  Number(
-                    e.target
-                      .value
-                  )
-                )
+              value={
+                duration
+              }
+              onChange={
+                handleDurationChange
               }
               disabled={
                 submitting
               }
             >
-              {[20, 25, 30, 35, 40, 45].map(
-                (minutes) => (
+              {[
+                20,
+                25,
+                30,
+                35,
+                40,
+                45,
+              ].map(
+                (
+                  minutes
+                ) => (
                   <option
                     key={
                       minutes
@@ -508,7 +934,9 @@ export default function BookSession() {
                       minutes
                     }
                   >
-                    {minutes}{" "}
+                    {
+                      minutes
+                    }{" "}
                     minutes
                   </option>
                 )
@@ -518,24 +946,29 @@ export default function BookSession() {
             <small>
               Minimum 20 minutes
               and maximum 45
-              minutes. For
-              longer support,
-              book another
+              minutes. For longer
+              support, book another
               session.
             </small>
           </div>
 
+          {/* AVAILABLE TIMES */}
+
           <div className="form-group">
             <label className="form-label">
               Free times on{" "}
-              {date}
+              {formatFriendlyDate(
+                date
+              )}
             </label>
 
             {slotsLoading ? (
               <div className="empty-card">
-                Checking the
-                expert's live
-                availability...
+                <p>
+                  Checking the
+                  expert&apos;s live
+                  availability...
+                </p>
               </div>
             ) : slots.length ===
               0 ? (
@@ -545,71 +978,152 @@ export default function BookSession() {
                 </h3>
 
                 <p>
-                  Try another
-                  date or session
-                  length.
+                  {availabilityMessage ||
+                    "Try another date or session length."}
                 </p>
+
+                <div
+                  className="button-row"
+                  style={{
+                    marginTop:
+                      "12px",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={
+                      goToNextDay
+                    }
+                    disabled={
+                      submitting
+                    }
+                  >
+                    Check next day
+                  </button>
+                </div>
               </div>
             ) : (
-              <div
-                className="button-row"
-                style={{
-                  flexWrap:
-                    "wrap",
-                }}
-              >
-                {slots.map(
-                  (slot) => (
-                    <button
-                      key={
-                        slot.startTime
-                      }
-                      type="button"
-                      className={
-                        selectedSlot ===
-                        slot.startTime
-                          ? "primary-button"
-                          : "secondary-button"
-                      }
-                      onClick={() =>
-                        setSelectedSlot(
-                          slot.startTime
-                        )
-                      }
-                      disabled={
-                        submitting
-                      }
-                    >
-                      {new Date(
-                        slot.startTime
-                      ).toLocaleTimeString(
-                        [],
-                        {
-                          hour:
-                            "2-digit",
-
-                          minute:
-                            "2-digit",
-                        }
-                      )}
-                    </button>
-                  )
+              <>
+                {availabilityMessage && (
+                  <div className="notice-box">
+                    {
+                      availabilityMessage
+                    }
+                  </div>
                 )}
-              </div>
+
+                <div
+                  className="button-row"
+                  style={{
+                    flexWrap:
+                      "wrap",
+
+                    gap:
+                      "10px",
+
+                    marginTop:
+                      "12px",
+                  }}
+                >
+                  {slots.map(
+                    (
+                      slot
+                    ) => {
+                      const slotDate =
+                        new Date(
+                          slot.startTime
+                        );
+
+                      const label =
+                        Number.isNaN(
+                          slotDate.getTime()
+                        )
+                          ? "Unavailable"
+                          : slotDate.toLocaleTimeString(
+                              [],
+                              {
+                                hour:
+                                  "2-digit",
+
+                                minute:
+                                  "2-digit",
+                              }
+                            );
+
+                      return (
+                        <button
+                          key={
+                            slot.startTime
+                          }
+                          type="button"
+                          className={
+                            selectedSlot ===
+                            slot.startTime
+                              ? "primary-button"
+                              : "secondary-button"
+                          }
+                          onClick={() => {
+                            setSelectedSlot(
+                              slot.startTime
+                            );
+
+                            setError(
+                              ""
+                            );
+                          }}
+                          disabled={
+                            submitting
+                          }
+                        >
+                          {
+                            label
+                          }
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </>
             )}
 
+            {/* SELECTED SLOT */}
+
             {selectedSlot && (
-              <div className="notice-box">
-                Selected:
+              <div
+                className="notice-box"
+                style={{
+                  marginTop:
+                    "14px",
+                }}
+              >
+                Selected session:
                 <strong>
                   {" "}
                   {formatDateTime(
                     selectedSlot
                   )}
                 </strong>
+
+                <div
+                  style={{
+                    marginTop:
+                      "6px",
+                  }}
+                >
+                  Duration:{" "}
+                  <strong>
+                    {
+                      duration
+                    }{" "}
+                    minutes
+                  </strong>
+                </div>
               </div>
             )}
           </div>
+
+          {/* OPTIONAL MESSAGE */}
 
           <div className="form-group">
             <label className="form-label">
@@ -619,20 +1133,37 @@ export default function BookSession() {
             <textarea
               className="form-input"
               rows="5"
-              maxLength={2000}
-              value={message}
-              onChange={(e) =>
+              maxLength={
+                2000
+              }
+              value={
+                message
+              }
+              onChange={(event) =>
                 setMessage(
-                  e.target
+                  event.target
                     .value
                 )
               }
               placeholder="Share only what you are comfortable sharing before the session."
+              disabled={
+                submitting
+              }
             />
+
+            <small>
+              {
+                message.length
+              }
+              /2000 characters
+            </small>
           </div>
+
+          {/* BUTTONS */}
 
           <div className="button-row">
             <button
+              type="submit"
               className="primary-button"
               disabled={
                 submitting ||
@@ -649,7 +1180,12 @@ export default function BookSession() {
               type="button"
               className="secondary-button"
               onClick={() =>
-                navigate(-1)
+                navigate(
+                  -1
+                )
+              }
+              disabled={
+                submitting
               }
             >
               Cancel

@@ -1,0 +1,1022 @@
+
+/* =========================================================
+   INNERVOICE — LOGIN & REGISTER
+   Warm cream · Soft peach · Terracotta · Charcoal
+
+   Complete replacement:
+   frontend/src/pages/auth/Auth.css
+
+   Scoped to authentication pages only.
+========================================================= */
+
+/* =========================================================
+   1. COLOUR SYSTEM & PAGE BACKGROUND
+========================================================= */
+
+.iv-auth-page.auth-page {
+  --auth-cream: #fff7ed;
+  --auth-cream-soft: #fffbf6;
+  --auth-white: #ffffff;
+  --auth-ink: #292826;
+  --auth-muted: #746a62;
+  --auth-terracotta: #b97452;
+  --auth-terracotta-dark: #97583a;
+  --auth-peach: #f3c3a6;
+  --auth-peach-light: #fff0e3;
+  --auth-border: #eddfd2;
+  --auth-error: #a34846;
+
+  display: block;
+
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100svh;
+
+  margin: 0;
+  padding: 0;
+
+  background:
+    radial-gradient(
+      ellipse 40% 42% at 5% 28%,
+      rgba(249, 213, 185, 0.43),
+      transparent 80%
+    ),
+    radial-gradient(
+      ellipse 36% 42% at 95% 86%,
+      rgba(241, 199, 163, 0.24),
+      transparent 80%
+    ),
+    var(--auth-cream);
+
+  color: var(--auth-ink);
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+}
+
+.iv-auth-page *,
+.iv-auth-page *::before,
+.iv-auth-page *::after {
+  box-sizing: border-box;
+}
+
+.iv-auth-page a {
+  text-decoration: none;
+}
+
+.iv-auth-page :is(
+  a,
+  button,
+  input,
+  select,
+  textarea
+):focus-visible {
+  outline: 2px solid var(--auth-terracotta);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   2. TOP NAVIGATION
+========================================================= */
+
+.iv-auth-page .iv-auth-container {
+  width: min(100% - 64px, 1180px);
+  margin-inline: auto;
+}
+
+.iv-auth-page .iv-auth-header {
+  border-bottom: 1px solid var(--auth-border);
+  background: rgba(255, 251, 246, 0.92);
+}
+
+.iv-auth-page .iv-auth-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  min-height: 82px;
+}
+
+.iv-auth-page .iv-auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+
+  color: var(--auth-ink) !important;
+}
+
+.iv-auth-page .iv-auth-brand-icon {
+  display: grid;
+  place-items: center;
+
+  width: 42px;
+  height: 42px;
+
+  border-radius: 13px;
+
+  background: var(--auth-peach-light);
+  color: var(--auth-terracotta);
+
+  font-size: 25px;
+  line-height: 1;
+}
+
+.iv-auth-page .iv-auth-brand-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.055em;
+}
+
+.iv-auth-page .iv-auth-brand-name > span {
+  color: var(--auth-terracotta);
+}
+
+.iv-auth-page .iv-auth-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
+  color: #66584e !important;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  transition: color 0.2s ease;
+}
+
+.iv-auth-page .iv-auth-home-link > span {
+  font-size: 19px;
+}
+
+.iv-auth-page .iv-auth-home-link:hover {
+  color: var(--auth-terracotta-dark) !important;
+}
+
+/* =========================================================
+   3. MAIN TWO-COLUMN LAYOUT
+========================================================= */
+
+.iv-auth-page .iv-auth-main {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 0.88fr)
+    minmax(0, 1fr);
+
+  align-items: center;
+
+  gap: clamp(42px, 6vw, 96px);
+
+  min-height: calc(100svh - 82px);
+
+  padding-block: 60px 78px;
+}
+
+.iv-auth-page--register .iv-auth-main {
+  grid-template-columns:
+    minmax(0, 0.77fr)
+    minmax(0, 1.1fr);
+
+  align-items: center;
+
+  gap: clamp(32px, 5vw, 74px);
+}
+
+/* =========================================================
+   4. EDITORIAL INTRO
+========================================================= */
+
+.iv-auth-page .iv-auth-intro {
+  position: relative;
+  isolation: isolate;
+
+  min-width: 0;
+  padding: 34px 0 100px;
+}
+
+.iv-auth-page .iv-auth-intro-content {
+  position: relative;
+  z-index: 2;
+}
+
+.iv-auth-page .iv-auth-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  color: #98684d;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  line-height: 1.7;
+}
+
+.iv-auth-page .iv-auth-eyebrow-dot {
+  flex-shrink: 0;
+
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+  background: var(--auth-terracotta);
+}
+
+.iv-auth-page .iv-auth-intro h2 {
+  margin: 26px 0 22px;
+
+  color: var(--auth-ink);
+
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(48px, 5.2vw, 76px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+}
+
+.iv-auth-page .iv-auth-intro h2 em {
+  color: var(--auth-terracotta);
+
+  font-weight: 400;
+  font-style: italic;
+}
+
+.iv-auth-page .iv-auth-intro p {
+  max-width: 410px;
+  margin: 0;
+
+  color: #766d65;
+
+  font-size: 15px;
+  line-height: 1.95;
+}
+
+.iv-auth-page .iv-auth-intro-line {
+  width: 76px;
+  height: 1px;
+
+  margin-top: 34px;
+
+  background: #d4a78b;
+}
+
+.iv-auth-page .iv-auth-intro-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 21px;
+
+  color: #987d6a;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.iv-auth-page .iv-auth-intro-note > span {
+  color: var(--auth-terracotta);
+  font-size: 20px;
+}
+
+/* =========================================================
+   5. SUBTLE DECORATION
+========================================================= */
+
+.iv-auth-page .iv-auth-art {
+  position: absolute;
+  z-index: 0;
+
+  right: 0;
+  bottom: -20px;
+
+  width: 260px;
+  height: 260px;
+
+  pointer-events: none;
+}
+
+.iv-auth-page .iv-auth-art-ring {
+  position: absolute;
+
+  border: 1px solid rgba(185, 116, 82, 0.17);
+  border-radius: 50%;
+}
+
+.iv-auth-page .iv-auth-art-ring-one {
+  inset: 18px;
+}
+
+.iv-auth-page .iv-auth-art-ring-two {
+  inset: 0;
+}
+
+.iv-auth-page .iv-auth-art-star {
+  position: absolute;
+
+  top: 35px;
+  right: 21px;
+
+  color: #c99775;
+
+  font-size: 38px;
+  line-height: 1;
+}
+
+/* =========================================================
+   6. AUTH FORM CARD
+========================================================= */
+
+.iv-auth-page .iv-auth-form-column {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.iv-auth-page .auth-card {
+  width: 100%;
+  max-width: none !important;
+
+  margin: 0;
+  padding: 43px 42px 37px;
+
+  border: 1px solid #eedfd3;
+  border-radius: 24px;
+
+  background: var(--auth-white);
+
+  box-shadow:
+    0 25px 65px rgba(100, 62, 38, 0.075),
+    0 5px 16px rgba(100, 62, 38, 0.025);
+}
+
+.iv-auth-page .auth-card::before,
+.iv-auth-page .auth-card::after {
+  display: none;
+}
+
+/* =========================================================
+   7. CARD HEADING
+========================================================= */
+
+.iv-auth-page .auth-header {
+  margin: 0 0 29px;
+}
+
+.iv-auth-page .auth-header .eyebrow {
+  display: inline-block;
+
+  margin-bottom: 12px;
+
+  color: var(--auth-terracotta);
+
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.7;
+  letter-spacing: 0.18em;
+}
+
+.iv-auth-page .auth-header h1 {
+  margin: 0 0 12px;
+
+  color: var(--auth-ink);
+
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(33px, 3.1vw, 43px);
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.045em;
+}
+
+.iv-auth-page .auth-header p {
+  margin: 0;
+
+  color: var(--auth-muted);
+
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+/* =========================================================
+   8. FORM STRUCTURE
+========================================================= */
+
+.iv-auth-page .auth-form {
+  display: block;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.iv-auth-page .form-group {
+  display: block;
+
+  min-width: 0;
+  margin: 0 0 21px;
+}
+
+.iv-auth-page .form-group label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #39332f;
+
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   9. INPUTS / SELECTS / TEXTAREA
+========================================================= */
+
+.iv-auth-page .form-group input:not([type="file"]),
+.iv-auth-page .form-group select,
+.iv-auth-page .form-group textarea {
+  display: block;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 51px;
+
+  margin: 0;
+  padding: 13px 15px;
+
+  border: 1px solid #e7dad0;
+  border-radius: 11px;
+
+  outline: none;
+
+  background: #fffdfa;
+  color: var(--auth-ink);
+
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.iv-auth-page .form-group input::placeholder,
+.iv-auth-page .form-group textarea::placeholder {
+  color: #a49a92;
+}
+
+.iv-auth-page .form-group select {
+  cursor: pointer;
+}
+
+.iv-auth-page .form-group textarea {
+  min-height: 120px;
+
+  resize: vertical;
+  line-height: 1.7;
+}
+
+.iv-auth-page .form-group input:focus,
+.iv-auth-page .form-group select:focus,
+.iv-auth-page .form-group textarea:focus {
+  border-color: #c9906e;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 4px rgba(185, 116, 82, 0.11);
+}
+
+.iv-auth-page .form-group small {
+  display: block;
+
+  margin-top: 7px;
+
+  color: #847a72;
+
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.iv-auth-page .form-group input:disabled,
+.iv-auth-page .form-group select:disabled,
+.iv-auth-page .form-group textarea:disabled {
+  background: #f6f2ed;
+}
+
+/* =========================================================
+   10. PASSWORD SHOW / HIDE
+========================================================= */
+
+.iv-auth-page .iv-auth-password-field {
+  position: relative;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.iv-auth-page .iv-auth-password-field input {
+  padding-right: 82px !important;
+}
+
+.iv-auth-page .iv-auth-password-field > button[type="button"] {
+  color: var(--auth-terracotta-dark) !important;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.iv-auth-page .iv-auth-password-field > button[type="button"]:hover {
+  color: var(--auth-terracotta) !important;
+}
+
+/* =========================================================
+   11. PASSWORD RULES
+========================================================= */
+
+.iv-auth-page .iv-auth-password-rules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 15px;
+
+  margin-top: 13px;
+  padding: 16px;
+
+  border: 1px solid #f0e1d2;
+  border-radius: 12px;
+
+  background: #fff8f1;
+  color: #78675a;
+
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.iv-auth-page .iv-auth-password-rules > div {
+  min-width: 0;
+}
+
+/* =========================================================
+   12. PRIMARY & SECONDARY BUTTONS
+========================================================= */
+
+.iv-auth-page .auth-form button[type="submit"],
+.iv-auth-page .primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  min-height: 52px;
+
+  margin-top: 8px;
+  padding: 13px 18px;
+
+  border: 1px solid var(--auth-terracotta);
+  border-radius: 11px;
+
+  background: var(--auth-terracotta);
+  color: #ffffff;
+
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 19px rgba(185, 116, 82, 0.13);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.iv-auth-page .auth-form button[type="submit"]:hover:not(:disabled),
+.iv-auth-page .primary-button:hover:not(:disabled) {
+  background: var(--auth-terracotta-dark);
+
+  box-shadow:
+    0 12px 24px rgba(185, 116, 82, 0.18);
+
+  transform: translateY(-1px);
+}
+
+.iv-auth-page .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: auto;
+  min-height: 42px;
+
+  padding: 10px 15px;
+
+  border: 1px solid #e8d2c0;
+  border-radius: 10px;
+
+  background: #fff5ea;
+  color: #905b3e;
+
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.iv-auth-page .secondary-button:hover:not(:disabled) {
+  border-color: #ddb89e;
+  background: #fbe9d8;
+}
+
+.iv-auth-page button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.iv-auth-page .iv-auth-extra-actions {
+  margin-top: 18px;
+}
+
+/* =========================================================
+   13. ERROR / SUCCESS / INFORMATION
+========================================================= */
+
+.iv-auth-page .error-box,
+.iv-auth-page .success-box,
+.iv-auth-page .notice-box {
+  margin: 0 0 21px;
+  padding: 15px 17px;
+
+  border-radius: 12px;
+
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.iv-auth-page .error-box {
+  border: 1px solid #efcfca;
+
+  background: #fff3f1;
+  color: var(--auth-error);
+}
+
+.iv-auth-page .success-box {
+  border: 1px solid #d7e5d6;
+
+  background: #f1f7ef;
+  color: #436a4a;
+}
+
+.iv-auth-page .notice-box {
+  border: 1px solid #efd8c4;
+
+  background: #fff4e9;
+  color: #75513a;
+}
+
+.iv-auth-page .notice-box strong {
+  font-weight: 800;
+}
+
+.iv-auth-page .notice-box p {
+  margin: 6px 0 0;
+
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+/* =========================================================
+   14. EXPERT VERIFICATION FORM
+========================================================= */
+
+.iv-auth-page .expert-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  column-gap: 19px;
+}
+
+.iv-auth-page .expert-grid > * {
+  min-width: 0;
+}
+
+/* FILE UPLOAD */
+
+.iv-auth-page input[type="file"] {
+  display: block;
+
+  width: 100%;
+  max-width: 100%;
+
+  padding: 14px;
+
+  border: 1px dashed #d8b59a;
+  border-radius: 11px;
+
+  background: #fff8f1;
+  color: #705748;
+
+  font: inherit;
+  font-size: 12px;
+}
+
+.iv-auth-page input[type="file"]::file-selector-button {
+  margin-right: 13px;
+  padding: 10px 14px;
+
+  border: 1px solid #e9d3c0;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #905b3e;
+
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+
+  cursor: pointer;
+}
+
+.iv-auth-page input[type="file"]::file-selector-button:hover {
+  background: #fff0e3;
+}
+
+/* Expert form gets more horizontal space. */
+
+.iv-auth-page--register:has(input[type="file"])
+.iv-auth-container.iv-auth-main {
+  grid-template-columns: minmax(0, 1fr);
+
+  width: min(100% - 64px, 940px);
+
+  padding-block: 48px 80px;
+}
+
+.iv-auth-page--register:has(input[type="file"])
+.iv-auth-intro {
+  display: none;
+}
+
+.iv-auth-page--register:has(input[type="file"])
+.iv-auth-form-column {
+  width: 100%;
+}
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-card {
+  padding: 43px 48px;
+}
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  column-gap: 22px;
+}
+
+/* Keep long information and full-width fields together. */
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form > .form-group:first-child,
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form > .notice-box,
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form > .expert-grid,
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form > .expert-grid + .form-group,
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form > .expert-grid + .form-group + .form-group,
+
+.iv-auth-page--register:has(input[type="file"])
+.auth-form > button[type="submit"] {
+  grid-column: 1 / -1;
+}
+
+/* =========================================================
+   15. FOOTER LINK
+========================================================= */
+
+.iv-auth-page .auth-footer {
+  margin-top: 24px;
+  padding-top: 20px;
+
+  border-top: 1px solid #f0e5da;
+
+  color: var(--auth-muted);
+  text-align: center;
+}
+
+.iv-auth-page .auth-footer p {
+  margin: 0;
+
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.iv-auth-page .auth-footer a,
+.iv-auth-page .auth-card > p a {
+  color: var(--auth-terracotta-dark);
+
+  font-weight: 800;
+}
+
+.iv-auth-page .auth-footer a:hover,
+.iv-auth-page .auth-card > p a:hover {
+  color: var(--auth-terracotta);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* =========================================================
+   16. TABLETS
+========================================================= */
+
+@media (max-width: 980px) {
+  .iv-auth-page .iv-auth-main,
+  .iv-auth-page--register .iv-auth-main {
+    gap: 33px;
+  }
+
+  .iv-auth-page .iv-auth-intro h2 {
+    font-size: clamp(43px, 5vw, 57px);
+  }
+
+  .iv-auth-page .auth-card {
+    padding: 36px 30px;
+  }
+}
+
+/* =========================================================
+   17. SMALL TABLETS / MOBILE LAYOUT
+========================================================= */
+
+@media (max-width: 760px) {
+  .iv-auth-page .iv-auth-container {
+    width: min(100% - 32px, 580px);
+  }
+
+  .iv-auth-page .iv-auth-nav {
+    min-height: 72px;
+  }
+
+  .iv-auth-page .iv-auth-main,
+  .iv-auth-page--register .iv-auth-main {
+    grid-template-columns: minmax(0, 1fr);
+
+    min-height: 0;
+    gap: 25px;
+
+    padding-block: 33px 52px;
+  }
+
+  .iv-auth-page .iv-auth-intro,
+  .iv-auth-page--register .iv-auth-intro {
+    padding: 0;
+  }
+
+  .iv-auth-page .iv-auth-intro h2 {
+    margin: 13px 0 9px;
+
+    font-size: clamp(35px, 7vw, 46px);
+  }
+
+  .iv-auth-page .iv-auth-intro p {
+    max-width: 480px;
+
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .iv-auth-page .iv-auth-intro-line,
+  .iv-auth-page .iv-auth-intro-note,
+  .iv-auth-page .iv-auth-art {
+    display: none;
+  }
+
+  .iv-auth-page .auth-card {
+    padding: 32px 27px;
+  }
+
+  /* Expert layout */
+
+  .iv-auth-page--register:has(input[type="file"])
+  .iv-auth-container.iv-auth-main {
+    width: min(100% - 32px, 580px);
+    padding-block: 34px 55px;
+  }
+
+  .iv-auth-page--register:has(input[type="file"])
+  .auth-card {
+    padding: 32px 27px;
+  }
+
+  .iv-auth-page .expert-grid,
+  .iv-auth-page--register:has(input[type="file"])
+  .auth-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* =========================================================
+   18. SMALL PHONES
+========================================================= */
+
+@media (max-width: 480px) {
+  .iv-auth-page .iv-auth-container {
+    width: min(100% - 24px, 580px);
+  }
+
+  .iv-auth-page .iv-auth-brand-name {
+    font-size: 19px;
+  }
+
+  .iv-auth-page .iv-auth-brand-icon {
+    width: 36px;
+    height: 36px;
+
+    font-size: 22px;
+  }
+
+  .iv-auth-page .iv-auth-home-link {
+    font-size: 11px;
+  }
+
+  .iv-auth-page .iv-auth-main,
+  .iv-auth-page--register .iv-auth-main {
+    padding-block: 25px 40px;
+  }
+
+  .iv-auth-page .iv-auth-intro h2 {
+    font-size: 38px;
+  }
+
+  .iv-auth-page .auth-card,
+  .iv-auth-page--register:has(input[type="file"])
+  .auth-card {
+    padding: 27px 21px;
+
+    border-radius: 18px;
+  }
+
+  .iv-auth-page .auth-header h1 {
+    font-size: 34px;
+  }
+
+  .iv-auth-page .form-group input:not([type="file"]),
+  .iv-auth-page .form-group select,
+  .iv-auth-page .form-group textarea {
+    font-size: 16px;
+  }
+
+  .iv-auth-page .iv-auth-password-rules {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .iv-auth-page--register:has(input[type="file"])
+  .iv-auth-container.iv-auth-main {
+    width: min(100% - 24px, 580px);
+  }
+}
+
+/* =========================================================
+   19. REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .iv-auth-page *,
+  .iv-auth-page *::before,
+  .iv-auth-page *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

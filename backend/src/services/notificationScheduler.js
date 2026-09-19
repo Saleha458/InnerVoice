@@ -1,112 +1,212 @@
-const cron =
-  require("node-cron");
-
 const {
   db,
-} = require("../config/firebase");
+} =
+  require("../config/firebase");
 
 const {
   notifySessionStarting,
   notifySessionEnding,
   notifySessionCompleted,
-} = require("./notificationService");
+} =
+  require("./notificationService");
 
-const toDate = (value) => {
-  if (!value) {
-    return null;
-  }
+/* =========================================================
+   DATE
+========================================================= */
 
-  if (
-    typeof value.toDate ===
-    "function"
-  ) {
-    return value.toDate();
-  }
+const toDate =
+  (
+    value
+  ) => {
+    if (!value) {
+      return null;
+    }
 
-  const date =
-    new Date(value);
+    if (
+      typeof value.toDate ===
+      "function"
+    ) {
+      const date =
+        value.toDate();
 
-  return Number.isNaN(
-    date.getTime()
-  )
-    ? null
-    : date;
-};
+      return Number.isNaN(
+        date.getTime()
+      )
+        ? null
+        : date;
+    }
 
-const withinFiveMinutes = (
-  target,
-  now
-) => {
-  const difference =
-    target.getTime() -
-    now.getTime();
+    if (
+      value instanceof Date
+    ) {
+      return Number.isNaN(
+        value.getTime()
+      )
+        ? null
+        : value;
+    }
 
-  return (
-    difference >=
-      4 * 60000 &&
-    difference <=
-      6 * 60000
-  );
-};
+    if (
+      typeof value ===
+      "object"
+    ) {
+      const seconds =
+        value.seconds ??
+        value._seconds;
+
+      const nanoseconds =
+        value.nanoseconds ??
+        value._nanoseconds ??
+        0;
+
+      if (
+        Number.isFinite(
+          Number(
+            seconds
+          )
+        )
+      ) {
+        return new Date(
+          Number(
+            seconds
+          ) *
+            1000 +
+            Number(
+              nanoseconds
+            ) /
+              1000000
+        );
+      }
+    }
+
+    const date =
+      new Date(
+        value
+      );
+
+    return Number.isNaN(
+      date.getTime()
+    )
+      ? null
+      : date;
+  };
+
+/* =========================================================
+   FIVE MINUTE WINDOW
+========================================================= */
+
+const shouldSendReminder =
+  (
+    target,
+    now
+  ) => {
+    const difference =
+      target.getTime() -
+      now.getTime();
+
+    return (
+      difference >
+        0 &&
+      difference <=
+        5 *
+          60 *
+          1000
+    );
+  };
+
+/* =========================================================
+   LOCK
+========================================================= */
 
 let running =
   false;
 
-const notifyBoth = async (
-  session,
-  sessionId,
-  notificationFunction
-) => {
-  const jobs = [];
+let schedulerInterval =
+  null;
 
-  if (
-    session.userId
-  ) {
-    jobs.push(
-      notificationFunction(
-        session.userId,
-        sessionId
-      )
-    );
-  }
+/* =========================================================
+   NOTIFY BOTH
+========================================================= */
 
-  if (
-    session.expertId
-  ) {
-    const expertDoc =
-      await db
-        .collection(
-          "experts"
-        )
-        .doc(
-          session.expertId
-        )
-        .get();
+const notifyBoth =
+  async (
+    session,
+    sessionId,
+    notifier
+  ) => {
+    const jobs =
+      [];
 
-    const expertUid =
-      expertDoc.exists
-        ? expertDoc.data()
-            .uid
-        : null;
-
-    if (expertUid) {
+    if (
+      session.userId
+    ) {
       jobs.push(
-        notificationFunction(
-          expertUid,
+        notifier(
+          session.userId,
           sessionId
         )
       );
     }
-  }
 
-  await Promise.all(
-    jobs
-  );
-};
+    if (
+      session.expertId
+    ) {
+      try {
+        const expertDoc =
+          await db
+            .collection(
+              "experts"
+            )
+            .doc(
+              session.expertId
+            )
+            .get();
+
+        if (
+          expertDoc.exists
+        ) {
+          const expert =
+            expertDoc.data();
+
+          if (
+            expert.uid
+          ) {
+            jobs.push(
+              notifier(
+                expert.uid,
+                sessionId
+              )
+            );
+          }
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          "Expert notification lookup:",
+          error.message
+        );
+      }
+    }
+
+    if (
+      jobs.length
+    ) {
+      await Promise.all(
+        jobs
+      );
+    }
+  };
+
+/* =========================================================
+   CHECK
+========================================================= */
 
 const runNotificationCheck =
   async () => {
-    if (running) {
+    if (
+      running
+    ) {
       return;
     }
 
@@ -130,108 +230,143 @@ const runNotificationCheck =
           .get();
 
       for (
-        const doc of
-          snapshot.docs
+        const doc
+        of snapshot.docs
       ) {
-        const session =
-          doc.data();
+        try {
+          const session =
+            doc.data();
 
-        const start =
-          toDate(
-            session.startTime
-          );
+          const start =
+            toDate(
+              session.startTime
+            );
 
-        const end =
-          toDate(
-            session.endTime
-          );
+          const end =
+            toDate(
+              session.endTime
+            );
 
-        if (
-          !start ||
-          !end
+          if (
+            !start ||
+            !end
+          ) {
+            continue;
+          }
+
+          /* ---------------------------------------------
+             START REMINDER
+          --------------------------------------------- */
+
+          if (
+            !session.startReminderSent &&
+            shouldSendReminder(
+              start,
+              now
+            )
+          ) {
+            await notifyBoth(
+              session,
+              doc.id,
+              notifySessionStarting
+            );
+
+            await doc.ref.update({
+              startReminderSent:
+                true,
+
+              startReminderSentAt:
+                new Date(),
+
+              updatedAt:
+                new Date(),
+            });
+
+            console.log(
+              `Start reminder sent: ${doc.id}`
+            );
+          }
+
+          /* ---------------------------------------------
+             END REMINDER
+          --------------------------------------------- */
+
+          if (
+            !session.endReminderSent &&
+            shouldSendReminder(
+              end,
+              now
+            )
+          ) {
+            await notifyBoth(
+              session,
+              doc.id,
+              notifySessionEnding
+            );
+
+            await doc.ref.update({
+              endReminderSent:
+                true,
+
+              endReminderSentAt:
+                new Date(),
+
+              updatedAt:
+                new Date(),
+            });
+
+            console.log(
+              `End reminder sent: ${doc.id}`
+            );
+          }
+
+          /* ---------------------------------------------
+             SESSION COMPLETE
+          --------------------------------------------- */
+
+          if (
+            end <= now &&
+            !session.completedNotificationSent
+          ) {
+            await notifyBoth(
+              session,
+              doc.id,
+              notifySessionCompleted
+            );
+
+            await doc.ref.update({
+              status:
+                "completed",
+
+              completedNotificationSent:
+                true,
+
+              completedAt:
+                new Date(),
+
+              updatedAt:
+                new Date(),
+            });
+
+            console.log(
+              `Session completed: ${doc.id}`
+            );
+          }
+        } catch (
+          error
         ) {
-          continue;
-        }
-
-        /*
-         * 5 MIN BEFORE START
-         */
-        if (
-          !session.startReminderSent &&
-          withinFiveMinutes(
-            start,
-            now
-          )
-        ) {
-          await notifyBoth(
-            session,
-            doc.id,
-            notifySessionStarting
+          console.error(
+            `Notification check failed for ${doc.id}:`,
+            error.message
           );
-
-          await doc.ref.update({
-            startReminderSent:
-              true,
-
-            updatedAt:
-              new Date(),
-          });
-        }
-
-        /*
-         * 5 MIN BEFORE END
-         */
-        if (
-          !session.endReminderSent &&
-          withinFiveMinutes(
-            end,
-            now
-          )
-        ) {
-          await notifyBoth(
-            session,
-            doc.id,
-            notifySessionEnding
-          );
-
-          await doc.ref.update({
-            endReminderSent:
-              true,
-
-            updatedAt:
-              new Date(),
-          });
-        }
-
-        /*
-         * SESSION COMPLETED
-         */
-        if (
-          end <= now &&
-          !session.completedNotificationSent
-        ) {
-          await notifyBoth(
-            session,
-            doc.id,
-            notifySessionCompleted
-          );
-
-          await doc.ref.update({
-            status:
-              "completed",
-
-            completedNotificationSent:
-              true,
-
-            updatedAt:
-              new Date(),
-          });
         }
       }
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "Notification scheduler error:",
-        error.message
+        error
       );
     } finally {
       running =
@@ -239,18 +374,39 @@ const runNotificationCheck =
     }
   };
 
+/* =========================================================
+   START SCHEDULER
+========================================================= */
+
 const startNotificationScheduler =
   () => {
-    cron.schedule(
-      "* * * * *",
-      runNotificationCheck
-    );
+    if (
+      schedulerInterval
+    ) {
+      return;
+    }
 
     console.log(
-      "5-minute session notification scheduler started"
+      "Session notification scheduler started"
     );
 
+    /*
+     * First check immediately.
+     */
     runNotificationCheck();
+
+    /*
+     * Then every 30 seconds.
+     *
+     * No node-cron missed-execution spam.
+     */
+    schedulerInterval =
+      setInterval(
+        () => {
+          runNotificationCheck();
+        },
+        30000
+      );
   };
 
 module.exports = {

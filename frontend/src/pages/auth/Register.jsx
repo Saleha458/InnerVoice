@@ -1,26 +1,10 @@
-import {
-  useState,
-} from "react";
 
-import {
-  Link,
-  useNavigate,
-} from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import {
-  signInWithCustomToken,
-} from "firebase/auth";
-
+import api from "../../services/api";
 import useAuth from "../../hooks/useAuth";
-
-import {
-  auth,
-} from "../../services/firebase";
-
-import {
-  registerExpert,
-} from "../../services/expertService";
-
+import AuthShell from "./AuthShell";
 
 const initialForm = {
   anonymousId: "",
@@ -40,676 +24,347 @@ const initialForm = {
   bio: "",
 };
 
+export default function Register() {
+  const navigate = useNavigate();
+  const { register } = useAuth();
 
-const Register = () => {
-  const navigate =
-    useNavigate();
+  const [form, setForm] = useState(initialForm);
 
-  const {
-    register,
-  } = useAuth();
-
-
-  const [
-    form,
-    setForm,
-  ] = useState(
-    initialForm
-  );
-
-
-  const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
-
-
+  const [showPassword, setShowPassword] = useState(false);
   const [
     showConfirmPassword,
     setShowConfirmPassword,
   ] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+  /* =========================================================
+     FORM CHANGES
+  ========================================================= */
 
+  const handleChange = (event) => {
+    const { name, value, files } = event.target;
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+    if (name === "licenseImage") {
+      setForm((previous) => ({
+        ...previous,
+        licenseImage: files?.[0] || null,
+      }));
 
+      return;
+    }
 
-  const [
-    success,
-    setSuccess,
-  ] = useState("");
-
-
-  // =========================================================
-  // CHANGE
-  // =========================================================
-
-  const handleChange =
-    (event) => {
-      const {
-        name,
-        value,
-        files,
-      } = event.target;
-
-
-      if (
-        name ===
-        "licenseImage"
-      ) {
-        setForm(
-          (previous) => ({
-            ...previous,
-            licenseImage:
-              files?.[0] ||
-              null,
-          })
-        );
-
-        return;
-      }
-
-
-      setForm(
-        (previous) => ({
-          ...previous,
-          [name]: value,
-        })
-      );
-    };
-
-
-  // =========================================================
-  // PASSWORD RULES
-  // =========================================================
-
-  const passwordRules = {
-    length:
-      form.password.length >= 8,
-
-    uppercase:
-      /[A-Z]/.test(
-        form.password
-      ),
-
-    lowercase:
-      /[a-z]/.test(
-        form.password
-      ),
-
-    number:
-      /\d/.test(
-        form.password
-      ),
-
-    special:
-      /[^A-Za-z0-9]/.test(
-        form.password
-      ),
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   };
 
+  /* =========================================================
+     PASSWORD REQUIREMENTS
+  ========================================================= */
+
+  const passwordRules = {
+    length: form.password.length >= 8,
+    uppercase: /[A-Z]/.test(form.password),
+    lowercase: /[a-z]/.test(form.password),
+    number: /\d/.test(form.password),
+    special: /[^A-Za-z0-9]/.test(form.password),
+  };
 
   const passwordValid =
-    Object.values(
-      passwordRules
-    ).every(Boolean);
+    Object.values(passwordRules).every(Boolean);
 
+  /* =========================================================
+     SUBMIT
+  ========================================================= */
 
-  // =========================================================
-  // SUBMIT
-  // =========================================================
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const handleSubmit =
-    async (event) => {
-      event.preventDefault();
+    setError("");
+    setSuccess("");
 
-      setError("");
-      setSuccess("");
+    const anonymousId = form.anonymousId.trim();
 
+    /* Anonymous ID */
 
-      // -------------------------------------------------------
-      // ANONYMOUS ID
-      // -------------------------------------------------------
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(anonymousId)) {
+      setError(
+        "Anonymous ID must be 3–30 characters and may contain only letters, numbers and underscores."
+      );
 
-      const anonymousId =
-        form.anonymousId.trim();
+      return;
+    }
 
+    /* Age */
 
-      if (!anonymousId) {
-        setError(
-          "Anonymous ID is required."
-        );
+    if (form.age === "") {
+      setError("Age is required.");
+      return;
+    }
 
+    const numericAge = Number(form.age);
+
+    if (
+      !Number.isInteger(numericAge) ||
+      numericAge <= 0 ||
+      numericAge > 120
+    ) {
+      setError("Please enter a valid age.");
+      return;
+    }
+
+    if (form.role === "user" && numericAge < 15) {
+      setError("Users must be at least 15 years old.");
+      return;
+    }
+
+    /* Password */
+
+    if (!passwordValid) {
+      setError(
+        "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number and one special character."
+      );
+
+      return;
+    }
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    /* Expert validation */
+
+    if (form.role === "expert") {
+      if (!form.professionalName.trim()) {
+        setError("Professional name is required.");
         return;
       }
 
+      if (!form.professionalEmail.trim()) {
+        setError("Professional email is required.");
+        return;
+      }
 
       if (
-        !/^[A-Za-z0-9_]{3,30}$/.test(
-          anonymousId
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          form.professionalEmail.trim()
         )
       ) {
         setError(
-          "Anonymous ID must be 3-30 characters and may contain only letters, numbers and underscores."
+          "Please enter a valid professional email."
         );
-
         return;
       }
 
+      if (!form.gender) {
+        setError("Please select your gender.");
+        return;
+      }
 
-      // -------------------------------------------------------
-      // AGE
-      // -------------------------------------------------------
+      if (!form.licenseNumber.trim()) {
+        setError("License number is required.");
+        return;
+      }
 
-      if (
-        form.age === ""
-      ) {
+      if (!form.qualification.trim()) {
+        setError("Qualification is required.");
+        return;
+      }
+
+      if (!form.specialization.trim()) {
+        setError("Specialization is required.");
+        return;
+      }
+
+      if (!form.licenseImage) {
         setError(
-          "Age is required."
+          "Please upload your license / verification image."
         );
-
         return;
       }
 
-
-      const numericAge =
-        Number(form.age);
-
-
-      if (
-        !Number.isInteger(
-          numericAge
-        ) ||
-        numericAge <= 0 ||
-        numericAge > 120
-      ) {
+      if (!form.licenseImage.type.startsWith("image/")) {
         setError(
-          "Please enter a valid age."
+          "License / verification file must be an image."
         );
-
         return;
       }
 
-
-      // User only: 15+
-      if (
-        form.role === "user" &&
-        numericAge < 15
-      ) {
-        setError(
-          "Users must be at least 15 years old."
-        );
-
+      if (form.licenseImage.size > 5 * 1024 * 1024) {
+        setError("License image must be 5 MB or smaller.");
         return;
       }
 
+      if (form.experienceYears !== "") {
+        const experience = Number(form.experienceYears);
 
-      // -------------------------------------------------------
-      // PASSWORD
-      // -------------------------------------------------------
+        if (
+          !Number.isFinite(experience) ||
+          experience < 0 ||
+          experience > 80
+        ) {
+          setError(
+            "Years of experience must be between 0 and 80."
+          );
+          return;
+        }
+      }
+    }
 
-      if (!passwordValid) {
-        setError(
-          "Password must contain at least 8 characters, uppercase, lowercase, number and special character."
+    /* =======================================================
+       SEND REGISTRATION REQUEST
+    ======================================================= */
+
+    try {
+      setLoading(true);
+
+      /* Expert registration */
+
+      if (form.role === "expert") {
+        const data = new FormData();
+
+        data.append("anonymousId", anonymousId);
+        data.append("password", form.password);
+        data.append(
+          "confirmPassword",
+          form.confirmPassword
+        );
+        data.append("age", String(numericAge));
+
+        data.append(
+          "professionalName",
+          form.professionalName.trim()
         );
 
-        return;
-      }
-
-
-      if (
-        form.password !==
-        form.confirmPassword
-      ) {
-        setError(
-          "Passwords do not match."
+        data.append(
+          "professionalEmail",
+          form.professionalEmail.trim().toLowerCase()
         );
 
-        return;
-      }
-
-
-      // -------------------------------------------------------
-      // EXPERT VALIDATION
-      // -------------------------------------------------------
-
-      if (
-        form.role === "expert"
-      ) {
-        if (
-          !form.professionalName.trim()
-        ) {
-          setError(
-            "Professional name is required."
-          );
-
-          return;
-        }
-
-
-        if (
-          !form.professionalEmail.trim()
-        ) {
-          setError(
-            "Professional email is required."
-          );
-
-          return;
-        }
-
-
-        const emailValid =
-          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-            form.professionalEmail.trim()
-          );
-
-
-        if (!emailValid) {
-          setError(
-            "Please enter a valid professional email."
-          );
-
-          return;
-        }
-
-
-        if (!form.gender) {
-          setError(
-            "Please select your gender."
-          );
-
-          return;
-        }
-
-
-        if (
-          !form.licenseNumber.trim()
-        ) {
-          setError(
-            "License number is required."
-          );
-
-          return;
-        }
-
-
-        if (!form.licenseImage) {
-          setError(
-            "Please upload your license / verification image."
-          );
-
-          return;
-        }
-
-
-        if (
-          !form.licenseImage.type.startsWith(
-            "image/"
-          )
-        ) {
-          setError(
-            "License file must be an image."
-          );
-
-          return;
-        }
-
-
-        if (
-          form.licenseImage.size >
-          5 * 1024 * 1024
-        ) {
-          setError(
-            "License image must be 5 MB or smaller."
-          );
-
-          return;
-        }
-
-
-        if (
-          !form.qualification.trim()
-        ) {
-          setError(
-            "Qualification is required."
-          );
-
-          return;
-        }
-
-
-        if (
-          !form.specialization.trim()
-        ) {
-          setError(
-            "Specialization is required."
-          );
-
-          return;
-        }
-
-
-        if (
-          form.experienceYears !== ""
-        ) {
-          const experience =
-            Number(
-              form.experienceYears
-            );
-
-
-          if (
-            !Number.isFinite(
-              experience
-            ) ||
-            experience < 0
-          ) {
-            setError(
-              "Please enter valid experience years."
-            );
-
-            return;
-          }
-        }
-      }
-
-
-      // =======================================================
-      // REGISTER ACCOUNT
-      // =======================================================
-
-      try {
-        setLoading(true);
-
-
-        const accountResponse =
-          await register({
-            anonymousId,
-
-            password:
-              form.password,
-
-            confirmPassword:
-              form.confirmPassword,
-
-            role:
-              form.role,
-
-            age:
-              numericAge,
-          });
-
-
-        // =====================================================
-        // EXPERT APPLICATION
-        // =====================================================
-
-        if (
-          form.role === "expert"
-        ) {
-          const token =
-            accountResponse?.token;
-
-
-          if (!token) {
-            throw new Error(
-              "Account was created but authentication token was not returned."
-            );
-          }
-
-
-          // Sign the newly-created account
-          // into Firebase so /experts/register
-          // can authenticate the request.
-          await signInWithCustomToken(
-            auth,
-            token
-          );
-
-
-          const firebaseUser =
-            auth.currentUser;
-
-
-          if (!firebaseUser) {
-            throw new Error(
-              "Could not authenticate the new expert account."
-            );
-          }
-
-
-          await firebaseUser.getIdToken(
-            true
-          );
-
-
-          const expertData =
-            new FormData();
-
-
-          expertData.append(
-            "anonymousId",
-            anonymousId
-          );
-
-
-          expertData.append(
-            "name",
-            form.professionalName.trim()
-          );
-
-
-          expertData.append(
-            "email",
-            form.professionalEmail
-              .trim()
-              .toLowerCase()
-          );
-
-
-          expertData.append(
-            "gender",
-            form.gender
-          );
-
-
-          expertData.append(
-            "age",
-            String(numericAge)
-          );
-
-
-          expertData.append(
-            "licenseNumber",
-            form.licenseNumber.trim()
-          );
-
-
-          expertData.append(
-            "qualification",
-            form.qualification.trim()
-          );
-
-
-          expertData.append(
-            "specialization",
-            form.specialization.trim()
-          );
-
-
-          expertData.append(
-            "experienceYears",
-            form.experienceYears === ""
-              ? "0"
-              : String(
-                  Number(
-                    form.experienceYears
-                  )
-                )
-          );
-
-
-          expertData.append(
-            "bio",
-            form.bio.trim()
-          );
-
-
-          expertData.append(
-            "licenseImage",
-            form.licenseImage
-          );
-
-
-          await registerExpert(
-            expertData
-          );
-
-
-          setSuccess(
-            "Expert account and application created successfully. Your application is now pending admin verification."
-          );
-
-
-          setForm(
-            initialForm
-          );
-
-
-          window.setTimeout(
-            () => {
-              navigate(
-                "/login",
-                {
-                  replace: true,
-                }
-              );
-            },
-            2500
-          );
-
-
-          return;
-        }
-
-
-        // =====================================================
-        // NORMAL USER / PARENT
-        // =====================================================
+        data.append("gender", form.gender);
+
+        data.append(
+          "licenseNumber",
+          form.licenseNumber.trim()
+        );
+
+        data.append(
+          "qualification",
+          form.qualification.trim()
+        );
+
+        data.append(
+          "specialization",
+          form.specialization.trim()
+        );
+
+        data.append(
+          "experienceYears",
+          form.experienceYears === ""
+            ? "0"
+            : String(Number(form.experienceYears))
+        );
+
+        data.append("bio", form.bio.trim());
+        data.append("licenseImage", form.licenseImage);
+
+        const response = await api.post(
+          "/experts/register-account",
+          data
+        );
 
         setSuccess(
-          "Account created successfully. You can now sign in."
+          response?.data?.message ||
+            "Expert account created successfully. Your application is pending admin verification."
         );
 
+        setForm(initialForm);
 
-        setForm(
-          initialForm
-        );
+        window.setTimeout(() => {
+          navigate("/login", {
+            replace: true,
+          });
+        }, 2500);
 
-
-        window.setTimeout(
-          () => {
-            navigate(
-              "/login",
-              {
-                replace: true,
-              }
-            );
-          },
-          1800
-        );
-      } catch (err) {
-        console.error(
-          "Registration:",
-          err
-        );
-
-
-        setError(
-          err?.response?.data
-            ?.message ||
-          err?.message ||
-          "Registration failed."
-        );
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
+      /* User / Parent registration */
 
-  // =========================================================
-  // UI
-  // =========================================================
+      await register({
+        anonymousId,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        role: form.role,
+        age: numericAge,
+      });
+
+      setSuccess(
+        "Account created successfully. You can now sign in."
+      );
+
+      setForm(initialForm);
+
+      window.setTimeout(() => {
+        navigate("/login", {
+          replace: true,
+        });
+      }, 1800);
+    } catch (err) {
+      console.error("Registration error:", err);
+
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
-    <div className="auth-page">
-
-      <div
-        className="auth-card"
-        style={{
-          maxWidth:
-            form.role === "expert"
-              ? "760px"
-              : "560px",
-        }}
-      >
-
+    <AuthShell variant="register">
+      <div className="auth-card">
         <div className="auth-header">
+          <span className="eyebrow">INNERVOICE</span>
 
-          <span className="eyebrow">
-            INNERVOICE
-          </span>
-
-          <h1>
-            Create your account
-          </h1>
+          <h1>Create your account.</h1>
 
           <p>
-            Your identity stays
-            anonymous.
+            Begin with an anonymous identity.
+            Your space is yours to shape.
           </p>
-
         </div>
 
-
         {error && (
-          <div
-            className="error-box"
-            role="alert"
-          >
+          <div className="error-box" role="alert">
             {error}
           </div>
         )}
 
-
         {success && (
-          <div
-            className="notice-box"
-            role="status"
-          >
+          <div className="notice-box" role="status">
             {success}
           </div>
         )}
 
-
         <form
-          onSubmit={
-            handleSubmit
-          }
           className="auth-form"
+          onSubmit={handleSubmit}
         >
-
-          {/* =================================================
+          {/* =============================================
               BASIC ACCOUNT
-          ================================================= */}
+          ============================================= */}
 
           <div className="form-group">
             <label htmlFor="anonymousId">
@@ -720,27 +375,24 @@ const Register = () => {
               id="anonymousId"
               name="anonymousId"
               type="text"
-              value={
-                form.anonymousId
-              }
-              onChange={
-                handleChange
-              }
-              placeholder="e.g. quiet_soul"
+              value={form.anonymousId}
+              onChange={handleChange}
+              placeholder="e.g. mind_helper_48212"
               autoComplete="username"
+              minLength={3}
+              maxLength={30}
+              pattern="[A-Za-z0-9_]+"
+              required
               disabled={loading}
             />
 
             <small>
-              3-30 characters. Letters,
-              numbers and underscores
-              only.
+              Use 3–30 letters, numbers or underscores.
+              No real name is required for user accounts.
             </small>
           </div>
 
-
           <div className="form-group">
-
             <label htmlFor="role">
               I am registering as
             </label>
@@ -749,32 +401,17 @@ const Register = () => {
               id="role"
               name="role"
               value={form.role}
-              onChange={
-                handleChange
-              }
+              onChange={handleChange}
               disabled={loading}
             >
-              <option value="user">
-                User
-              </option>
-
-              <option value="parent">
-                Parent
-              </option>
-
-              <option value="expert">
-                Expert
-              </option>
+              <option value="user">User</option>
+              <option value="parent">Parent</option>
+              <option value="expert">Expert</option>
             </select>
-
           </div>
 
-
           <div className="form-group">
-
-            <label htmlFor="age">
-              Age
-            </label>
+            <label htmlFor="age">Age</label>
 
             <input
               id="age"
@@ -783,62 +420,36 @@ const Register = () => {
               min="1"
               max="120"
               value={form.age}
-              onChange={
-                handleChange
-              }
+              onChange={handleChange}
               placeholder="Enter your age"
+              required
               disabled={loading}
             />
 
-            {form.role ===
-              "user" && (
-              <small>
-                Users must be
-                15 or older.
-              </small>
+            {form.role === "user" && (
+              <small>Users must be 15 or older.</small>
             )}
-
           </div>
 
+          {/* =============================================
+              EXPERT VERIFICATION
+          ============================================= */}
 
-          {/* =================================================
-              EXPERT PROFESSIONAL INFORMATION
-          ================================================= */}
-
-          {form.role ===
-            "expert" && (
+          {form.role === "expert" && (
             <>
-              <div
-                className="notice-box"
-              >
-                <strong>
-                  Expert Verification
-                </strong>
+              <div className="notice-box">
+                <strong>Expert verification</strong>
 
                 <p>
-                  Complete your
-                  professional profile
-                  below. Your application
-                  will remain pending and
-                  your profile will stay
-                  hidden from users until
-                  an admin verifies it.
+                  Complete your professional details
+                  below. Your application will stay
+                  pending and your profile will remain
+                  hidden until an admin verifies it.
                 </p>
               </div>
 
-
-              <div
-                style={{
-                  display:
-                    "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fit, minmax(240px, 1fr))",
-                  gap: 16,
-                }}
-              >
-
+              <div className="expert-grid">
                 <div className="form-group">
-
                   <label htmlFor="professionalName">
                     Professional Name
                   </label>
@@ -847,21 +458,14 @@ const Register = () => {
                     id="professionalName"
                     name="professionalName"
                     type="text"
-                    value={
-                      form.professionalName
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="Your professional name"
+                    value={form.professionalName}
+                    onChange={handleChange}
                     disabled={loading}
+                    required
                   />
-
                 </div>
 
-
                 <div className="form-group">
-
                   <label htmlFor="professionalEmail">
                     Professional Email
                   </label>
@@ -870,56 +474,32 @@ const Register = () => {
                     id="professionalEmail"
                     name="professionalEmail"
                     type="email"
-                    value={
-                      form.professionalEmail
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="professional@example.com"
+                    value={form.professionalEmail}
+                    onChange={handleChange}
                     disabled={loading}
+                    required
                   />
-
                 </div>
 
-
                 <div className="form-group">
-
-                  <label htmlFor="gender">
-                    Gender
-                  </label>
+                  <label htmlFor="gender">Gender</label>
 
                   <select
                     id="gender"
                     name="gender"
                     value={form.gender}
-                    onChange={
-                      handleChange
-                    }
+                    onChange={handleChange}
                     disabled={loading}
+                    required
                   >
-                    <option value="">
-                      Select gender
-                    </option>
-
-                    <option value="male">
-                      Male
-                    </option>
-
-                    <option value="female">
-                      Female
-                    </option>
-
-                    <option value="other">
-                      Other
-                    </option>
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
                   </select>
-
                 </div>
 
-
                 <div className="form-group">
-
                   <label htmlFor="licenseNumber">
                     License Number
                   </label>
@@ -928,21 +508,14 @@ const Register = () => {
                     id="licenseNumber"
                     name="licenseNumber"
                     type="text"
-                    value={
-                      form.licenseNumber
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="Professional license number"
+                    value={form.licenseNumber}
+                    onChange={handleChange}
                     disabled={loading}
+                    required
                   />
-
                 </div>
 
-
                 <div className="form-group">
-
                   <label htmlFor="qualification">
                     Qualification
                   </label>
@@ -951,21 +524,14 @@ const Register = () => {
                     id="qualification"
                     name="qualification"
                     type="text"
-                    value={
-                      form.qualification
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. MS Clinical Psychology"
+                    value={form.qualification}
+                    onChange={handleChange}
                     disabled={loading}
+                    required
                   />
-
                 </div>
 
-
                 <div className="form-group">
-
                   <label htmlFor="specialization">
                     Specialization
                   </label>
@@ -974,21 +540,14 @@ const Register = () => {
                     id="specialization"
                     name="specialization"
                     type="text"
-                    value={
-                      form.specialization
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. Child Psychology"
+                    value={form.specialization}
+                    onChange={handleChange}
                     disabled={loading}
+                    required
                   />
-
                 </div>
 
-
                 <div className="form-group">
-
                   <label htmlFor="experienceYears">
                     Years of Experience
                   </label>
@@ -999,23 +558,14 @@ const Register = () => {
                     type="number"
                     min="0"
                     max="80"
-                    value={
-                      form.experienceYears
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. 5"
+                    value={form.experienceYears}
+                    onChange={handleChange}
                     disabled={loading}
                   />
-
                 </div>
-
               </div>
 
-
               <div className="form-group">
-
                 <label htmlFor="licenseImage">
                   License / Verification Image
                 </label>
@@ -1025,33 +575,24 @@ const Register = () => {
                   name="licenseImage"
                   type="file"
                   accept="image/*"
-                  onChange={
-                    handleChange
-                  }
+                  onChange={handleChange}
                   disabled={loading}
+                  required
                 />
 
                 <small>
-                  Upload a clear image.
-                  Maximum size: 5 MB.
+                  Upload a clear image. Maximum size:
+                  5 MB.
                 </small>
 
                 {form.licenseImage && (
                   <small>
-                    Selected:{" "}
-                    {
-                      form
-                        .licenseImage
-                        .name
-                    }
+                    Selected: {form.licenseImage.name}
                   </small>
                 )}
-
               </div>
 
-
               <div className="form-group">
-
                 <label htmlFor="bio">
                   Professional Bio
                 </label>
@@ -1059,159 +600,103 @@ const Register = () => {
                 <textarea
                   id="bio"
                   name="bio"
-                  value={form.bio}
-                  onChange={
-                    handleChange
-                  }
-                  placeholder="Briefly describe your professional background and approach..."
                   rows={5}
                   maxLength={2000}
+                  value={form.bio}
+                  onChange={handleChange}
                   disabled={loading}
+                  placeholder="Briefly describe your professional background and approach..."
                 />
-
               </div>
-
             </>
           )}
 
-
-          {/* =================================================
+          {/* =============================================
               PASSWORD
-          ================================================= */}
+          ============================================= */}
 
           <div className="form-group">
+            <label htmlFor="password">Password</label>
 
-            <label htmlFor="password">
-              Password
-            </label>
-
-            <div
-              style={{
-                position:
-                  "relative",
-              }}
-            >
-
+            <div className="iv-auth-password-field">
               <input
                 id="password"
                 name="password"
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
-                value={
-                  form.password
-                }
-                onChange={
-                  handleChange
-                }
-                placeholder="Create a strong password"
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={handleChange}
                 autoComplete="new-password"
                 disabled={loading}
+                required
                 style={{
-                  paddingRight:
-                    80,
+                  paddingRight: 80,
                   width: "100%",
                 }}
               />
 
-
               <button
                 type="button"
                 onClick={() =>
-                  setShowPassword(
-                    (value) =>
-                      !value
-                  )
+                  setShowPassword((value) => !value)
                 }
                 disabled={loading}
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
                 style={{
-                  position:
-                    "absolute",
+                  position: "absolute",
                   right: 10,
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
+                  transform: "translateY(-50%)",
                   border: "none",
-                  background:
-                    "transparent",
-                  cursor:
-                    "pointer",
+                  background: "transparent",
+                  cursor: "pointer",
                 }}
               >
-                {showPassword
-                  ? "Hide"
-                  : "Show"}
+                {showPassword ? "Hide" : "Show"}
               </button>
-
             </div>
 
-
-            <div
-              style={{
-                marginTop: 10,
-                fontSize: 13,
-              }}
-            >
-
+            <div className="iv-auth-password-rules">
               <div>
-                {passwordRules.length
-                  ? "✓"
-                  : "○"}{" "}
+                {passwordRules.length ? "✓" : "○"}{" "}
                 At least 8 characters
               </div>
 
               <div>
-                {passwordRules.uppercase
-                  ? "✓"
-                  : "○"}{" "}
+                {passwordRules.uppercase ? "✓" : "○"}{" "}
                 One uppercase letter
               </div>
 
               <div>
-                {passwordRules.lowercase
-                  ? "✓"
-                  : "○"}{" "}
+                {passwordRules.lowercase ? "✓" : "○"}{" "}
                 One lowercase letter
               </div>
 
               <div>
-                {passwordRules.number
-                  ? "✓"
-                  : "○"}{" "}
+                {passwordRules.number ? "✓" : "○"}{" "}
                 One number
               </div>
 
               <div>
-                {passwordRules.special
-                  ? "✓"
-                  : "○"}{" "}
+                {passwordRules.special ? "✓" : "○"}{" "}
                 One special character
               </div>
-
             </div>
-
           </div>
 
-
-          {/* =================================================
+          {/* =============================================
               CONFIRM PASSWORD
-          ================================================= */}
+          ============================================= */}
 
           <div className="form-group">
-
             <label htmlFor="confirmPassword">
               Confirm Password
             </label>
 
-            <div
-              style={{
-                position:
-                  "relative",
-              }}
-            >
-
+            <div className="iv-auth-password-field">
               <input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -1220,89 +705,60 @@ const Register = () => {
                     ? "text"
                     : "password"
                 }
-                value={
-                  form.confirmPassword
-                }
-                onChange={
-                  handleChange
-                }
-                placeholder="Repeat your password"
+                value={form.confirmPassword}
+                onChange={handleChange}
                 autoComplete="new-password"
                 disabled={loading}
+                required
                 style={{
-                  paddingRight:
-                    80,
+                  paddingRight: 80,
                   width: "100%",
                 }}
               />
-
 
               <button
                 type="button"
                 onClick={() =>
                   setShowConfirmPassword(
-                    (value) =>
-                      !value
+                    (value) => !value
                   )
                 }
                 disabled={loading}
+                aria-label={
+                  showConfirmPassword
+                    ? "Hide confirmation password"
+                    : "Show confirmation password"
+                }
                 style={{
-                  position:
-                    "absolute",
+                  position: "absolute",
                   right: 10,
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
+                  transform: "translateY(-50%)",
                   border: "none",
-                  background:
-                    "transparent",
-                  cursor:
-                    "pointer",
+                  background: "transparent",
+                  cursor: "pointer",
                 }}
               >
-                {showConfirmPassword
-                  ? "Hide"
-                  : "Show"}
+                {showConfirmPassword ? "Hide" : "Show"}
               </button>
-
             </div>
-
           </div>
 
-
-          {/* =================================================
-              EXPERT FINAL NOTICE
-          ================================================= */}
-
-          {form.role ===
-            "expert" && (
-            <div
-              className="notice-box"
-            >
+          {form.role === "expert" && (
+            <div className="notice-box">
               <strong>
-                What happens after
-                registration?
+                What happens after registration?
               </strong>
 
               <p>
-                Your expert application
-                will be submitted as
-                <strong>
-                  {" "}Pending
-                </strong>
-                . An admin must verify
-                your professional details
-                before you become visible
-                to users and can receive
+                Your expert application will be submitted
+                as <strong>Pending</strong>. An admin must
+                verify your professional details before
+                you become visible to users and receive
                 support requests.
               </p>
             </div>
           )}
-
-
-          {/* =================================================
-              SUBMIT
-          ================================================= */}
 
           <button
             type="submit"
@@ -1310,37 +766,22 @@ const Register = () => {
             disabled={loading}
           >
             {loading
-              ? form.role ===
-                "expert"
+              ? form.role === "expert"
                 ? "Creating expert application..."
                 : "Creating account..."
-              : form.role ===
-                "expert"
+              : form.role === "expert"
               ? "Create Expert Account"
               : "Create Account"}
           </button>
-
         </form>
 
-
         <div className="auth-footer">
-
           <p>
-            Already have an
-            account?{" "}
-
-            <Link to="/login">
-              Sign in
-            </Link>
+            Already have an account?{" "}
+            <Link to="/login">Sign in</Link>
           </p>
-
         </div>
-
       </div>
-
-    </div>
+    </AuthShell>
   );
-};
-
-
-export default Register;
+}

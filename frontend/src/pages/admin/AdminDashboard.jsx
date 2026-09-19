@@ -1,589 +1,375 @@
+
 import {
   useCallback,
   useEffect,
-  useState,
+  useState
 } from "react";
 
+import { Link } from "react-router-dom";
+
 import {
-  Link,
-} from "react-router-dom";
+  ShieldCheck,
+  Users,
+  Flag,
+  ArrowUpRight,
+  RefreshCw,
+  LockKeyhole
+} from "lucide-react";
 
 import api from "../../services/api";
-import {
-  auth,
-} from "../../services/firebase";
 
-// =========================================================
-// AUTH CONFIG
-// =========================================================
-
-const getConfig = async () => {
-  const currentUser =
-    auth.currentUser;
-
-  if (!currentUser) {
-    throw new Error(
-      "Admin authentication is required."
-    );
+const pages = [
+  {
+    to: "/admin/experts",
+    title: "Expert verification",
+    detail: "Review qualifications and protected documents.",
+    icon: ShieldCheck,
+    tone: "peach"
+  },
+  {
+    to: "/admin/users",
+    title: "Account management",
+    detail: "Manage anonymous accounts and deletion requests.",
+    icon: Users,
+    tone: "cream"
+  },
+  {
+    to: "/admin/reports",
+    title: "Private reports",
+    detail: "Review reports shared with the admin vault.",
+    icon: Flag,
+    tone: "sage"
   }
+];
 
-  const token =
-    await currentUser.getIdToken();
+export default function AdminDashboard() {
+  const [counts, setCounts] = useState({
+    experts: null,
+    users: null
+  });
 
-  return {
-    headers: {
-      Authorization:
-        `Bearer ${token}`,
-    },
-  };
-};
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-// =========================================================
-// COMPONENT
-// =========================================================
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-const AdminDashboard = () => {
-  const [experts, setExperts] =
-    useState([]);
+    const [experts, users] =
+      await Promise.allSettled([
+        api.get("/admin/experts/pending"),
+        api.get("/admin/users")
+      ]);
 
-  const [loading, setLoading] =
-    useState(true);
+    setCounts({
+      experts:
+        experts.status === "fulfilled"
+          ? (experts.value.data.experts || []).length
+          : null,
 
-  const [processingId, setProcessingId] =
-    useState(null);
-
-  const [error, setError] =
-    useState("");
-
-  const [message, setMessage] =
-    useState("");
-
-  // =======================================================
-  // LOAD PENDING EXPERTS
-  // =======================================================
-
-  const loadPendingExperts =
-    useCallback(async () => {
-      try {
-        setError("");
-
-        const response =
-          await api.get(
-            "/admin/experts/pending",
-            await getConfig()
-          );
-
-        setExperts(
-          response.data?.experts ||
-            []
-        );
-      } catch (err) {
-        setError(
-          err.response?.data?.message ||
-            err.message ||
-            "Could not load pending expert applications."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  // =======================================================
-  // INITIAL LOAD + AUTO REFRESH
-  // =======================================================
-
-  useEffect(() => {
-    loadPendingExperts();
-
-    const timer =
-      window.setInterval(
-        loadPendingExperts,
-        5000
-      );
-
-    return () =>
-      window.clearInterval(timer);
-  }, [loadPendingExperts]);
-
-  // =======================================================
-  // VERIFY / REJECT
-  // =======================================================
-
-  const updateExpert = async (
-    expert,
-    status
-  ) => {
-    let reason = "";
+      users:
+        users.status === "fulfilled"
+          ? (users.value.data.users || []).filter(
+              item => item.role !== "admin"
+            ).length
+          : null
+    });
 
     if (
-      status === "rejected"
+      experts.status === "rejected" ||
+      users.status === "rejected"
     ) {
-      reason =
-        window.prompt(
-          "Enter the reason for rejecting this application:"
-        ) || "";
-
-      if (!reason.trim()) {
-        setError(
-          "Rejection cancelled. A reason is required."
-        );
-
-        return;
-      }
-    }
-
-    try {
-      setProcessingId(
-        expert.id
-      );
-
-      setError("");
-      setMessage("");
-
-      const response =
-        await api.patch(
-          `/admin/experts/${expert.id}/verify`,
-          {
-            status,
-            reason:
-              reason.trim(),
-          },
-          await getConfig()
-        );
-
-      setExperts(
-        (current) =>
-          current.filter(
-            (item) =>
-              item.id !==
-              expert.id
-          )
-      );
-
-      setMessage(
-        response.data?.message ||
-          (
-            status ===
-            "verified"
-              ? "Expert verified successfully."
-              : "Expert rejected successfully."
-          )
-      );
-    } catch (err) {
       setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Verification failed."
+        "Some counts are unavailable. Check your connection, then refresh."
       );
-    } finally {
-      setProcessingId(null);
     }
-  };
 
-  // =======================================================
-  // UI
-  // =======================================================
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   return (
-    <div className="page-shell">
-      {/* =================================================
-          HEADER
-      ================================================= */}
+    <div className="page-shell iv-admin-home">
+      <style>{`
+        .iv-admin-home {
+          max-width: 1280px;
+          margin: 0 auto;
+          color: #352922;
+        }
 
-      <div className="page-header">
+        .iv-admin-home .iv-admin-hero {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 24px;
+          padding: 28px 30px;
+          border: 1px solid #edd9cc;
+          border-radius: 24px;
+          background: linear-gradient(
+            115deg,
+            #fff7ef 0%,
+            #fffdf9 65%,
+            #faf0e6 100%
+          );
+        }
+
+        .iv-admin-home .iv-admin-kicker {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: .16em;
+          color: #a45c3b;
+        }
+
+        .iv-admin-home .iv-admin-hero h1 {
+          font-family: Georgia, serif;
+          font-size: clamp(28px, 3vw, 42px);
+          line-height: 1.12;
+          letter-spacing: -.03em;
+          margin: 10px 0 12px;
+        }
+
+        .iv-admin-home .iv-admin-hero p {
+          max-width: 600px;
+          color: #715b50;
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
+        .iv-admin-home .iv-admin-refresh {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: 1px solid #e6cfc0;
+          background: #fff;
+          border-radius: 12px;
+          padding: 11px 15px;
+          color: #83503a;
+          font: inherit;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .iv-admin-home .iv-admin-refresh:disabled {
+          opacity: .65;
+          cursor: wait;
+        }
+
+        .iv-admin-home .iv-admin-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 18px;
+          margin-top: 23px;
+        }
+
+        .iv-admin-home .iv-admin-tile {
+          display: flex;
+          flex-direction: column;
+          padding: 24px;
+          min-height: 235px;
+          border: 1px solid #e9dcd2;
+          border-radius: 22px;
+          background: #fff;
+          color: inherit;
+          text-decoration: none;
+          box-shadow: 0 10px 30px rgba(77, 47, 29, .04);
+          transition: transform .2s;
+        }
+
+        .iv-admin-home .iv-admin-tile:hover {
+          transform: translateY(-3px);
+        }
+
+        .iv-admin-home .iv-admin-icon {
+          display: grid;
+          place-items: center;
+          width: 52px;
+          height: 52px;
+          border-radius: 16px;
+          background: #ffecdf;
+          color: #9f573d;
+        }
+
+        .iv-admin-home .iv-admin-icon.cream {
+          background: #fff2d9;
+          color: #8f692d;
+        }
+
+        .iv-admin-home .iv-admin-icon.sage {
+          background: #eaf3e9;
+          color: #3d7654;
+        }
+
+        .iv-admin-home .iv-admin-tile h2 {
+          margin: 19px 0 7px;
+          font-size: 20px;
+        }
+
+        .iv-admin-home .iv-admin-tile p {
+          margin: 0;
+          color: #76655d;
+          line-height: 1.6;
+          font-size: 14px;
+        }
+
+        .iv-admin-home .iv-admin-foot {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: auto;
+          padding-top: 22px;
+          color: #a95e43;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .iv-admin-home .iv-admin-note {
+          display: flex;
+          align-items: flex-start;
+          gap: 13px;
+          margin-top: 22px;
+          padding: 16px 20px;
+          border: 1px solid #e8dbd1;
+          border-radius: 16px;
+          background: #fff;
+          color: #725d51;
+          font-size: 13px;
+          line-height: 1.65;
+        }
+
+        @media (max-width: 900px) {
+          .iv-admin-home .iv-admin-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 640px) {
+          .iv-admin-home .iv-admin-hero {
+            flex-direction: column;
+            padding: 22px;
+          }
+
+          .iv-admin-home .iv-admin-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .iv-admin-home .iv-admin-tile {
+            min-height: 205px;
+          }
+        }
+      `}</style>
+
+      <header className="iv-admin-hero">
         <div>
-          <span className="eyebrow">
-            ADMINISTRATION
+          <span className="iv-admin-kicker">
+            INNERVOICE / ADMINISTRATION
           </span>
 
-          <h1>
-            Admin Dashboard
-          </h1>
+          <h1>Admin dashboard</h1>
 
           <p>
-            Review expert applications
-            and manage InnerVoice safely.
+            Manage expert verification, anonymous accounts
+            and private report workflows. User–Expert
+            conversations and booked calls are not part
+            of Admin access.
           </p>
         </div>
-      </div>
 
-      {/* =================================================
-          MESSAGES
-      ================================================= */}
+        <button
+          type="button"
+          className="iv-admin-refresh"
+          onClick={refresh}
+          disabled={loading}
+        >
+          <RefreshCw size={16} aria-hidden="true" />
+
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
+      </header>
 
       {error && (
-        <div className="error-box">
+        <div
+          className="error-box"
+          role="alert"
+          style={{ marginTop: 18 }}
+        >
           {error}
         </div>
       )}
 
-      {message && (
-        <div className="notice-box">
-          {message}
-        </div>
-      )}
-
-      {/* =================================================
-          ADMIN CARDS
-      ================================================= */}
-
-      <div className="dashboard-cards">
-        <Link
-          className="dashboard-card"
-          to="/admin/experts"
-        >
-          <span>
-            ✓ Expert verification
-          </span>
-
-          <h2>
-            {experts.length} pending
-          </h2>
-
-          <p>
-            Open the full verification
-            queue.
-          </p>
-        </Link>
-
-        <Link
-          className="dashboard-card"
-          to="/admin/users"
-        >
-          <span>
-            ◉ Users
-          </span>
-
-          <h2>
-            Manage accounts
-          </h2>
-
-          <p>
-            Activate, suspend or delete
-            accounts.
-          </p>
-        </Link>
-
-        <Link
-          className="dashboard-card"
-          to="/admin/reports"
-        >
-          <span>
-            ▥ Reports
-          </span>
-
-          <h2>
-            Safety reports
-          </h2>
-
-          <p>
-            Review concerns submitted
-            by users.
-          </p>
-        </Link>
-
-        <Link
-          className="dashboard-card"
-          to="/admin/sessions"
-        >
-          <span>
-            ▣ Sessions
-          </span>
-
-          <h2>
-            Session overview
-          </h2>
-
-          <p>
-            Review scheduled support
-            sessions.
-          </p>
-        </Link>
-      </div>
-
-      {/* =================================================
-          PENDING EXPERTS
-      ================================================= */}
-
       <section
-        className="feature-card"
-        style={{
-          marginTop: 24,
-        }}
+        className="iv-admin-grid"
+        aria-label="Administration sections"
       >
-        <div className="item-top">
-          <div>
-            <span className="eyebrow">
-              ACTION REQUIRED
-            </span>
+        {pages.map(
+          ({
+            to,
+            title,
+            detail,
+            icon: Icon,
+            tone
+          }, index) => (
+            <Link
+              className="iv-admin-tile"
+              to={to}
+              key={to}
+            >
+              <span className={`iv-admin-icon ${tone}`}>
+                <Icon
+                  size={24}
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                />
+              </span>
 
-            <h2>
-              Pending Expert Applications
-            </h2>
+              <h2>{title}</h2>
 
-            <p>
-              Only approved experts
-              become visible to users.
-            </p>
-          </div>
+              <p>{detail}</p>
 
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={
-              loadPendingExperts
-            }
-            disabled={loading}
-          >
-            Refresh
-          </button>
-        </div>
+              <div className="iv-admin-foot">
+                <span>
+                  {index === 0
+                    ? counts.experts === null
+                      ? "Count unavailable"
+                      : `${counts.experts} pending applications`
+                    : index === 1
+                      ? counts.users === null
+                        ? "Count unavailable"
+                        : `${counts.users} non-admin accounts`
+                      : "Open review queue"}
+                </span>
 
-        {/* =================================================
-            LOADING
-        ================================================= */}
-
-        {loading ? (
-          <div className="empty-card">
-            Loading applications…
-          </div>
-        ) : experts.length === 0 ? (
-          /* =================================================
-             EMPTY
-          ================================================= */
-
-          <div className="empty-card">
-            <h2>
-              No pending applications
-            </h2>
-
-            <p>
-              New expert registrations
-              will appear here
-              automatically.
-            </p>
-          </div>
-        ) : (
-          /* =================================================
-             LIST
-          ================================================= */
-
-          <div className="list-grid">
-            {experts.map(
-              (expert) => (
-                <article
-                  className="feature-card"
-                  key={expert.id}
-                >
-                  <div className="item-top">
-                    <div>
-                      <h2>
-                        {expert.name ||
-                          "Unnamed professional"}
-                      </h2>
-
-                      <small>
-                        Anonymous ID:{" "}
-                        {expert.anonymousId ||
-                          "—"}
-                      </small>
-                    </div>
-
-                    <span className="status pending">
-                      Pending
-                    </span>
-                  </div>
-
-                  {/* =======================================
-                      DETAILS
-                  ======================================= */}
-
-                  <div className="verification-grid">
-                    <p>
-                      <b>
-                        Professional email:
-                      </b>{" "}
-                      {expert.email ||
-                        "—"}
-                    </p>
-
-                    <p>
-                      <b>Age:</b>{" "}
-                      {expert.age ||
-                        "—"}
-                    </p>
-
-                    <p>
-                      <b>Gender:</b>{" "}
-                      {expert.gender ||
-                        "—"}
-                    </p>
-
-                    <p>
-                      <b>
-                        License number:
-                      </b>{" "}
-                      {expert.licenseNumber ||
-                        "—"}
-                    </p>
-
-                    <p>
-                      <b>
-                        Qualification:
-                      </b>{" "}
-                      {expert.qualification ||
-                        "—"}
-                    </p>
-
-                    <p>
-                      <b>
-                        Specialization:
-                      </b>{" "}
-                      {expert.specialization ||
-                        "—"}
-                    </p>
-
-                    <p>
-                      <b>
-                        Experience:
-                      </b>{" "}
-                      {expert.experienceYears ??
-                        0}{" "}
-                      years
-                    </p>
-                  </div>
-
-                  {/* =======================================
-                      BIO
-                  ======================================= */}
-
-                  {expert.bio && (
-                    <div
-                      className="notice-box"
-                      style={{
-                        marginTop: 15,
-                      }}
-                    >
-                      <b>
-                        Professional bio:
-                      </b>
-
-                      <p>
-                        {expert.bio}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* =======================================
-                      LICENSE IMAGE
-                  ======================================= */}
-
-                  {expert.licenseImageUrl && (
-                    <div
-                      style={{
-                        marginTop: 18,
-                      }}
-                    >
-                      <p>
-                        <b>
-                          Submitted license:
-                        </b>
-                      </p>
-
-                      <img
-                        src={
-                          expert.licenseImageUrl
-                        }
-                        alt="Submitted professional license"
-                        style={{
-                          maxWidth:
-                            "320px",
-                          maxHeight:
-                            "220px",
-                          objectFit:
-                            "contain",
-                          borderRadius:
-                            "12px",
-                          border:
-                            "1px solid #e5e7eb",
-                        }}
-                      />
-
-                      <div
-                        style={{
-                          marginTop: 8,
-                        }}
-                      >
-                        <a
-                          href={
-                            expert.licenseImageUrl
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-link"
-                        >
-                          Open full-size
-                          license →
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* =======================================
-                      ACTION BUTTONS
-                  ======================================= */}
-
-                  <div
-                    className="button-row"
-                    style={{
-                      marginTop: 20,
-                    }}
-                  >
-                    <button
-                      className="primary-button"
-                      type="button"
-                      disabled={
-                        processingId ===
-                        expert.id
-                      }
-                      onClick={() =>
-                        updateExpert(
-                          expert,
-                          "verified"
-                        )
-                      }
-                    >
-                      {processingId ===
-                      expert.id
-                        ? "Processing…"
-                        : "✓ Approve & Verify"}
-                    </button>
-
-                    <button
-                      className="danger-button"
-                      type="button"
-                      disabled={
-                        processingId ===
-                        expert.id
-                      }
-                      onClick={() =>
-                        updateExpert(
-                          expert,
-                          "rejected"
-                        )
-                      }
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </article>
-              )
-            )}
-          </div>
+                <ArrowUpRight
+                  size={18}
+                  aria-hidden="true"
+                />
+              </div>
+            </Link>
+          )
         )}
       </section>
+
+      <aside className="iv-admin-note">
+        <LockKeyhole
+          size={21}
+          style={{
+            flexShrink: 0,
+            color: "#a15d45"
+          }}
+          aria-hidden="true"
+        />
+
+        <span>
+          Report content is readable only after unlocking
+          the designated Admin vault. Review status is
+          administrative metadata, not proof that a report
+          is true or false.
+        </span>
+      </aside>
     </div>
   );
-};
-
-export default AdminDashboard;
+}

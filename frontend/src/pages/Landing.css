@@ -1,0 +1,1544 @@
+
+/* =========================================================
+   INNERVOICE LANDING PAGE
+   Warm cream • Soft peach • Terracotta • Charcoal
+
+   This stylesheet is scoped to .iv-home.
+   It preserves the existing Landing.jsx structure.
+========================================================= */
+
+/* =========================================================
+   1. COLOUR SYSTEM & BASE
+========================================================= */
+
+.iv-home {
+  --iv-ink: #292725;
+  --iv-muted: #706861;
+  --iv-accent: #b87451;
+  --iv-accent-dark: #905337;
+  --iv-cream: #fff8ef;
+  --iv-white: #ffffff;
+  --iv-line: #ecdfd2;
+  --iv-peach: #f7d6bd;
+  --iv-peach-light: #fff0e3;
+  --iv-shadow: 0 20px 50px rgba(105, 68, 44, 0.07);
+
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  overflow-x: clip;
+
+  background: var(--iv-cream);
+  color: var(--iv-ink);
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  -webkit-font-smoothing: antialiased;
+}
+
+.iv-home *,
+.iv-home *::before,
+.iv-home *::after {
+  box-sizing: border-box;
+}
+
+.iv-home a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.iv-home a:focus-visible,
+.iv-home button:focus-visible {
+  outline: 3px solid var(--iv-accent);
+  outline-offset: 4px;
+}
+
+.iv-home-container {
+  width: min(calc(100% - 64px), 1180px);
+  margin-inline: auto;
+}
+
+.iv-home-skip {
+  position: absolute;
+  top: -100px;
+  left: 20px;
+  z-index: 200;
+
+  padding: 12px 18px;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: var(--iv-accent-dark);
+}
+
+.iv-home-skip:focus {
+  top: 15px;
+}
+
+/* =========================================================
+   2. NAVIGATION
+========================================================= */
+
+.iv-home-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  border-bottom: 1px solid var(--iv-line);
+
+  background: rgba(255, 250, 244, 0.96);
+
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.iv-home-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 82px;
+  gap: 24px;
+}
+
+.iv-home-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+
+  flex-shrink: 0;
+}
+
+.iv-home-brand-icon {
+  display: grid;
+  place-items: center;
+
+  width: 43px;
+  height: 43px;
+
+  border-radius: 13px;
+
+  background: #f8ddc8;
+  color: var(--iv-accent-dark);
+
+  font-size: 25px;
+  line-height: 1;
+}
+
+.iv-home-brand-name {
+  color: var(--iv-ink);
+
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.055em;
+}
+
+.iv-home-brand-name span {
+  color: var(--iv-accent);
+}
+
+.iv-home-nav-links,
+.iv-home-nav-actions {
+  display: flex;
+  align-items: center;
+}
+
+.iv-home-nav-links {
+  gap: 29px;
+}
+
+.iv-home-nav-links a {
+  color: #625b55;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  transition: color 0.2s ease;
+}
+
+.iv-home-nav-links a:hover,
+.iv-home-signin:hover {
+  color: var(--iv-accent-dark);
+}
+
+.iv-home-nav-actions {
+  gap: 21px;
+}
+
+.iv-home-signin {
+  color: var(--iv-ink);
+
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.iv-home .iv-home-nav-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+
+  min-height: 44px;
+  padding: 11px 19px;
+
+  border: 1px solid var(--iv-accent);
+  border-radius: 11px;
+
+  background: var(--iv-accent);
+  color: #ffffff;
+
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+
+  box-shadow: 0 7px 17px rgba(184, 116, 81, 0.13);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.iv-home .iv-home-nav-cta:hover {
+  background: var(--iv-accent-dark);
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 11px 22px rgba(184, 116, 81, 0.18);
+}
+
+/* =========================================================
+   3. HERO SECTION
+========================================================= */
+
+.iv-home-hero {
+  position: relative;
+
+  padding: 84px 0 94px;
+
+  background:
+    radial-gradient(
+      ellipse 43% 56% at 94% 30%,
+      rgba(247, 207, 175, 0.39),
+      transparent 76%
+    ),
+    radial-gradient(
+      ellipse 36% 43% at 0% 90%,
+      rgba(242, 220, 200, 0.35),
+      transparent 78%
+    ),
+    #fff8ef;
+}
+
+.iv-home-hero-grid {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 0.96fr);
+
+  align-items: center;
+
+  gap: clamp(42px, 6vw, 100px);
+}
+
+.iv-home-hero-copy {
+  position: relative;
+  z-index: 2;
+}
+
+.iv-home-eyebrow,
+.iv-home-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  color: #955c42;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  line-height: 1.7;
+}
+
+.iv-home-eyebrow-dot {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+  background: var(--iv-accent);
+}
+
+.iv-home-hero h1 {
+  margin: 24px 0 26px;
+
+  color: var(--iv-ink);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: clamp(46px, 5.2vw, 75px);
+  font-weight: 400;
+  line-height: 1.11;
+  letter-spacing: -0.055em;
+}
+
+.iv-home-hero h1 em,
+.iv-home-section h2 em {
+  color: var(--iv-accent);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-weight: 400;
+  font-style: italic;
+}
+
+.iv-home-hero-description {
+  max-width: 510px;
+  margin: 0;
+
+  color: #6d655e;
+
+  font-size: 15px;
+  line-height: 1.95;
+}
+
+.iv-home .iv-home-explore-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+
+  margin-top: 34px;
+
+  color: var(--iv-ink);
+
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.iv-home-explore-icon {
+  display: grid;
+  place-items: center;
+
+  width: 43px;
+  height: 43px;
+
+  border: 1px solid #ebd0bb;
+  border-radius: 50%;
+
+  background: #fff0e3;
+  color: var(--iv-accent-dark);
+
+  font-size: 19px;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.iv-home-explore-link:hover .iv-home-explore-icon {
+  transform: translateY(3px);
+  background: #f8ddc8;
+}
+
+.iv-home-hero-bottom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+
+  margin-top: 44px;
+
+  color: #8b7c70;
+
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+}
+
+.iv-home-hero-divider {
+  width: 29px;
+  height: 1px;
+
+  background: #cdb5a3;
+}
+
+/* =========================================================
+   4. HERO DECORATION
+========================================================= */
+
+.iv-home-hero-art {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 0;
+  min-height: 535px;
+}
+
+.iv-home-art-circle {
+  position: absolute;
+
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.iv-home-art-circle-one {
+  width: 470px;
+  height: 470px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(245, 211, 184, 0.65) 0%,
+      rgba(250, 231, 215, 0.48) 49%,
+      transparent 75%
+    );
+}
+
+.iv-home-art-circle-two {
+  width: 525px;
+  height: 525px;
+
+  border: 1px solid rgba(175, 122, 89, 0.16);
+}
+
+.iv-home-art-leaf {
+  position: absolute;
+  z-index: 2;
+
+  pointer-events: none;
+}
+
+.iv-home-art-leaf-one {
+  top: 29px;
+  right: 47px;
+
+  color: #bf8d6e;
+  font-size: 40px;
+}
+
+.iv-home-art-leaf-two {
+  bottom: 95px;
+  left: 1px;
+
+  color: #d5a27f;
+  font-size: 29px;
+}
+
+/* =========================================================
+   5. ILLUSTRATIVE CHAT PREVIEW
+========================================================= */
+
+.iv-home-preview {
+  position: relative;
+  z-index: 1;
+
+  width: min(100%, 444px);
+
+  overflow: hidden;
+
+  border: 1px solid #eadfd5;
+  border-radius: 23px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 35px 80px rgba(110, 72, 48, 0.12),
+    0 5px 20px rgba(110, 72, 48, 0.035);
+
+  transform: rotate(-2deg);
+}
+
+.iv-home-preview-top {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  padding: 18px 20px;
+
+  border-bottom: 1px solid #f0e7df;
+
+  background: #ffffff;
+}
+
+.iv-home-preview-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+
+  width: 41px;
+  height: 41px;
+
+  border-radius: 13px;
+
+  background: #fff0e3;
+  color: var(--iv-accent);
+
+  font-size: 23px;
+}
+
+.iv-home-preview-identity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+
+  min-width: 0;
+}
+
+.iv-home-preview-identity strong {
+  color: var(--iv-ink);
+  font-size: 12px;
+}
+
+.iv-home-preview-identity small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #8a8078;
+  font-size: 10px;
+}
+
+.iv-home-preview-online {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #a87856;
+}
+
+.iv-home-preview-private {
+  padding: 7px 10px;
+
+  border-radius: 40px;
+
+  background: #fff3e9;
+  color: #956447;
+
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.iv-home-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  min-height: 380px;
+  padding: 25px 21px 19px;
+
+  background: #fffcf8;
+}
+
+.iv-home-preview-caption {
+  margin-bottom: 5px;
+
+  color: #968578;
+
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.iv-home-preview-user {
+  align-self: flex-end;
+
+  max-width: 80%;
+  padding: 15px 18px;
+
+  border-radius: 15px 15px 5px 15px;
+
+  background: var(--iv-accent);
+  color: #ffffff;
+
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.iv-home-preview-response {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.iv-home-preview-response-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+
+  width: 27px;
+  height: 27px;
+
+  border-radius: 9px;
+
+  background: #f9e4d4;
+  color: var(--iv-accent-dark);
+
+  font-size: 16px;
+}
+
+.iv-home-preview-response p {
+  max-width: 85%;
+  margin: 0;
+  padding: 15px 17px;
+
+  border: 1px solid #f0e4da;
+  border-radius: 5px 15px 15px 15px;
+
+  background: #ffffff;
+  color: #5f5751;
+
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.iv-home-preview-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-top: auto;
+  padding: 10px 11px 10px 15px;
+
+  border: 1px solid #eae0d7;
+  border-radius: 11px;
+
+  background: #ffffff;
+  color: #978a80;
+
+  font-size: 11px;
+}
+
+.iv-home-preview-input span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+
+  width: 28px;
+  height: 28px;
+
+  border-radius: 8px;
+
+  background: #fae5d6;
+  color: var(--iv-accent-dark);
+
+  font-size: 17px;
+}
+
+.iv-home-preview-footnote {
+  color: #a49a91;
+
+  font-size: 9px;
+  text-align: center;
+}
+
+/* =========================================================
+   6. FLOATING NOTE
+========================================================= */
+
+.iv-home-floating-card {
+  position: absolute;
+  z-index: 2;
+
+  right: -8px;
+  bottom: 24px;
+
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  padding: 15px 18px;
+
+  border: 1px solid #eedfd2;
+  border-radius: 15px;
+
+  background: #ffffff;
+
+  box-shadow: 0 18px 40px rgba(110, 72, 48, 0.12);
+
+  transform: rotate(3deg);
+}
+
+.iv-home-floating-card > span {
+  display: grid;
+  place-items: center;
+
+  width: 35px;
+  height: 35px;
+
+  border-radius: 11px;
+
+  background: #fbe8d9;
+  color: var(--iv-accent);
+
+  font-size: 21px;
+}
+
+.iv-home-floating-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.iv-home-floating-card strong {
+  color: var(--iv-ink);
+  font-size: 11px;
+}
+
+.iv-home-floating-card small {
+  color: #8b8077;
+  font-size: 10px;
+}
+
+/* =========================================================
+   7. VALUES STRIP
+========================================================= */
+
+.iv-home-values {
+  border-top: 1px solid #ecdccf;
+  border-bottom: 1px solid #ecdccf;
+
+  background: #f9eadc;
+}
+
+.iv-home-values-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 16px 30px;
+  min-height: 73px;
+}
+
+.iv-home-values span {
+  color: #765442;
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* =========================================================
+   8. SHARED SECTIONS
+========================================================= */
+
+.iv-home-section {
+  padding: 100px 0;
+  scroll-margin-top: 84px;
+}
+
+.iv-home-section h2 {
+  margin: 15px 0 0;
+
+  color: var(--iv-ink);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: clamp(37px, 4vw, 54px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+}
+
+/* =========================================================
+   9. OUR APPROACH
+========================================================= */
+
+.iv-home-support {
+  background:
+    radial-gradient(
+      ellipse 38% 47% at 98% 5%,
+      rgba(247, 211, 185, 0.23),
+      transparent 80%
+    ),
+    #fffaf4;
+}
+
+.iv-home-section-heading {
+  position: relative;
+  margin-bottom: 45px;
+}
+
+.iv-home-heading-decoration {
+  display: block;
+
+  width: 77px;
+  height: 1px;
+
+  margin-top: 28px;
+
+  background: #d2ab91;
+}
+
+.iv-home-support-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.iv-home-support-card {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  min-width: 0;
+  min-height: 350px;
+  padding: 30px;
+
+  overflow: hidden;
+
+  border: 1px solid transparent;
+  border-radius: 22px;
+
+  box-shadow: 0 9px 26px rgba(91, 58, 39, 0.035);
+
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.iv-home-support-card:hover {
+  transform: translateY(-4px);
+
+  box-shadow: 0 19px 40px rgba(91, 58, 39, 0.095);
+}
+
+/* Existing JSX class names retained;
+   all three cards now use one warm colour family. */
+
+.iv-home-card-lavender {
+  border-color: #efd5c3;
+
+  background: #fae9dc;
+}
+
+.iv-home-card-sage {
+  border-color: #eadfcf;
+
+  background: #f6eee2;
+}
+
+.iv-home-card-peach {
+  border-color: #edcdb9;
+
+  background: #f8dfce;
+}
+
+.iv-home-support-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.iv-home-support-icon {
+  display: grid;
+  place-items: center;
+
+  width: 51px;
+  height: 51px;
+
+  border-radius: 15px;
+
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--iv-accent-dark);
+
+  font-size: 26px;
+}
+
+.iv-home-card-sage .iv-home-support-icon {
+  color: #916342;
+}
+
+.iv-home-card-peach .iv-home-support-icon {
+  color: #a55e3e;
+}
+
+.iv-home-support-number {
+  color: #967d6b;
+
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.iv-home-support-content {
+  position: relative;
+  z-index: 1;
+}
+
+.iv-home-card-label {
+  display: inline-block;
+
+  margin-top: 32px;
+
+  color: #866047;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.iv-home-support-card h3 {
+  max-width: 290px;
+  margin: 13px 0;
+
+  color: var(--iv-ink);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.iv-home-support-card p {
+  max-width: 305px;
+  margin: 0;
+
+  color: #6c5d52;
+
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.iv-home-card-ornament {
+  position: absolute;
+  right: -8px;
+  bottom: -35px;
+
+  color: rgba(156, 91, 57, 0.09);
+
+  font-size: 125px;
+  line-height: 1;
+
+  pointer-events: none;
+}
+
+.iv-home-card-sage .iv-home-card-ornament {
+  color: rgba(149, 111, 72, 0.09);
+}
+
+.iv-home-card-peach .iv-home-card-ornament {
+  color: rgba(158, 83, 47, 0.1);
+}
+
+/* =========================================================
+   10. HOW IT WORKS
+========================================================= */
+
+.iv-home-how {
+  border-top: 1px solid #ecdfd2;
+  border-bottom: 1px solid #ecdfd2;
+
+  background: #f9eee3;
+}
+
+.iv-home-how-grid {
+  display: grid;
+
+  grid-template-columns: 0.83fr 1.17fr;
+  gap: 85px;
+}
+
+.iv-home-how-intro p {
+  max-width: 340px;
+  margin: 22px 0 0;
+
+  color: var(--iv-muted);
+
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.iv-home-how-decoration {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+
+  margin-top: 37px;
+}
+
+.iv-home-how-decoration > span:first-child {
+  color: var(--iv-accent);
+  font-size: 26px;
+}
+
+.iv-home-how-decoration > span:last-child {
+  width: 95px;
+  height: 1px;
+
+  background: #d5b39a;
+}
+
+.iv-home-steps {
+  border-top: 1px solid #e3cfbf;
+}
+
+.iv-home-step {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 20px;
+
+  padding: 30px 0;
+
+  border-bottom: 1px solid #e3cfbf;
+}
+
+.iv-home-step-number {
+  padding-top: 5px;
+
+  color: var(--iv-accent-dark);
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.iv-home-step h3 {
+  margin: 0 0 10px;
+
+  color: var(--iv-ink);
+
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.iv-home-step p {
+  max-width: 495px;
+  margin: 0;
+
+  color: #6f6259;
+
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+/* =========================================================
+   11. PARENTS & PROFESSIONALS
+========================================================= */
+
+.iv-home-people {
+  padding-bottom: 75px;
+
+  background:
+    radial-gradient(
+      ellipse 35% 42% at 0% 100%,
+      rgba(245, 208, 180, 0.21),
+      transparent 80%
+    ),
+    #fffaf4;
+}
+
+.iv-home-people-heading {
+  margin-bottom: 42px;
+  text-align: center;
+}
+
+.iv-home-people-heading h2 {
+  margin-top: 17px;
+}
+
+.iv-home-people-heading p {
+  max-width: 490px;
+  margin: 18px auto 0;
+
+  color: var(--iv-muted);
+
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.iv-home-people-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 23px;
+}
+
+.iv-home-people-card {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  min-width: 0;
+  min-height: 370px;
+  padding: 40px;
+
+  overflow: hidden;
+
+  border: 1px solid transparent;
+  border-radius: 24px;
+
+  box-shadow: 0 15px 35px rgba(91, 58, 39, 0.045);
+}
+
+.iv-home-people-card::after {
+  content: "";
+
+  position: absolute;
+  right: -95px;
+  top: -105px;
+
+  width: 265px;
+  height: 265px;
+
+  border: 1px solid rgba(152, 96, 61, 0.14);
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+.iv-home-parent {
+  border-color: #ead8c5;
+
+  background:
+    radial-gradient(
+      circle at 95% 5%,
+      rgba(241, 207, 171, 0.54),
+      transparent 55%
+    ),
+    linear-gradient(
+      135deg,
+      #f7ecdf 0%,
+      #fbf1e6 65%,
+      #fff7ee 100%
+    );
+}
+
+.iv-home-expert {
+  border-color: #edcdbb;
+
+  background:
+    radial-gradient(
+      circle at 95% 5%,
+      rgba(241, 180, 145, 0.4),
+      transparent 55%
+    ),
+    linear-gradient(
+      135deg,
+      #f9e1d3 0%,
+      #fbe9dd 65%,
+      #fff2e7 100%
+    );
+}
+
+.iv-home-people-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+.iv-home-people-icon {
+  display: grid;
+  place-items: center;
+
+  width: 52px;
+  height: 52px;
+
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 15px;
+
+  background: rgba(255, 255, 255, 0.88);
+  color: #a56f4b;
+
+  font-size: 25px;
+}
+
+.iv-home-expert .iv-home-people-icon {
+  color: var(--iv-accent-dark);
+}
+
+.iv-home-people-index {
+  position: relative;
+  z-index: 1;
+
+  color: #866a58;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.iv-home-people-card h3 {
+  position: relative;
+  z-index: 1;
+
+  margin: 0 0 17px;
+
+  color: var(--iv-ink);
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 31px;
+  font-weight: 400;
+  line-height: 1.28;
+}
+
+.iv-home-people-card p {
+  position: relative;
+  z-index: 1;
+
+  max-width: 440px;
+  margin: 0 0 29px;
+
+  color: #685a50;
+
+  font-size: 13px;
+  line-height: 1.95;
+}
+
+.iv-home-expert p {
+  color: #705747;
+}
+
+.iv-home-people-note {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  margin-top: auto;
+  padding-top: 19px;
+
+  border-top: 1px solid rgba(147, 101, 70, 0.2);
+
+  color: #80583f;
+
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.iv-home-expert .iv-home-people-note {
+  border-top-color: rgba(147, 88, 53, 0.2);
+  color: #87533b;
+}
+
+/* =========================================================
+   12. COMPACT SAFETY NOTE
+========================================================= */
+
+.iv-home-safety-note {
+  max-width: 780px;
+  margin: 42px auto 0;
+
+  color: #83766b;
+
+  font-size: 11px;
+  line-height: 1.9;
+  text-align: center;
+}
+
+/* =========================================================
+   13. TABLET
+========================================================= */
+
+@media (max-width: 1050px) {
+  .iv-home-nav-links {
+    gap: 17px;
+  }
+
+  .iv-home-hero-grid {
+    gap: 35px;
+  }
+
+  .iv-home-how-grid {
+    gap: 45px;
+  }
+
+  .iv-home-floating-card {
+    right: 0;
+  }
+}
+
+@media (max-width: 850px) {
+  .iv-home-nav-links {
+    display: none;
+  }
+
+  .iv-home-hero {
+    padding: 65px 0 80px;
+  }
+
+  .iv-home-hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .iv-home-hero-copy {
+    max-width: 635px;
+  }
+
+  .iv-home-hero-art {
+    width: min(100%, 600px);
+    min-height: 495px;
+
+    margin-inline: auto;
+  }
+
+  .iv-home-section {
+    padding: 80px 0;
+  }
+
+  .iv-home-support-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .iv-home-how-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .iv-home-how-intro {
+    max-width: 550px;
+  }
+
+  .iv-home-people-card {
+    padding: 30px;
+  }
+
+  .iv-home-people {
+    padding-bottom: 65px;
+  }
+}
+
+/* =========================================================
+   14. MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+  .iv-home-container {
+    width: min(calc(100% - 36px), 1180px);
+  }
+
+  .iv-home-nav {
+    min-height: 73px;
+    gap: 10px;
+  }
+
+  .iv-home-brand-icon {
+    width: 34px;
+    height: 34px;
+
+    font-size: 21px;
+  }
+
+  .iv-home-brand-name {
+    font-size: 19px;
+  }
+
+  .iv-home-nav-actions {
+    gap: 11px;
+  }
+
+  .iv-home-signin {
+    font-size: 11px;
+  }
+
+  .iv-home .iv-home-nav-cta {
+    min-height: 38px;
+    padding: 9px 11px;
+
+    gap: 7px;
+    font-size: 10px;
+  }
+
+  .iv-home-hero {
+    padding: 56px 0 45px;
+  }
+
+  .iv-home-hero h1 {
+    font-size: clamp(42px, 10vw, 58px);
+  }
+
+  .iv-home-hero-description {
+    font-size: 14px;
+    line-height: 1.85;
+  }
+
+  .iv-home-hero-bottom {
+    margin-top: 30px;
+  }
+
+  .iv-home-hero-art {
+    min-height: 420px;
+  }
+
+  .iv-home-art-circle-one {
+    width: 345px;
+    height: 345px;
+  }
+
+  .iv-home-art-circle-two {
+    width: 390px;
+    height: 390px;
+  }
+
+  .iv-home-preview {
+    width: min(95%, 380px);
+    transform: rotate(-1deg);
+  }
+
+  .iv-home-preview-body {
+    min-height: 310px;
+
+    gap: 13px;
+    padding: 19px 15px;
+  }
+
+  .iv-home-preview-user,
+  .iv-home-preview-response p {
+    padding: 12px 13px;
+    font-size: 11px;
+  }
+
+  .iv-home-floating-card {
+    right: 0;
+    bottom: 0;
+
+    padding: 11px 12px;
+  }
+
+  .iv-home-art-leaf-one {
+    top: 0;
+    right: 11px;
+  }
+
+  .iv-home-values-inner {
+    justify-content: center;
+
+    padding-block: 19px;
+    text-align: center;
+  }
+
+  .iv-home-values span {
+    font-size: 11px;
+  }
+
+  .iv-home-section {
+    padding: 70px 0;
+  }
+
+  .iv-home-section h2 {
+    font-size: 39px;
+  }
+
+  .iv-home-section-heading {
+    margin-bottom: 32px;
+  }
+
+  .iv-home-support-grid,
+  .iv-home-people-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .iv-home-support-card {
+    min-height: 320px;
+    padding: 27px;
+  }
+
+  .iv-home-card-label {
+    margin-top: 28px;
+  }
+
+  .iv-home-people-heading {
+    margin-bottom: 31px;
+  }
+
+  .iv-home-people-card {
+    min-height: 335px;
+  }
+
+  .iv-home-step {
+    grid-template-columns: 35px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .iv-home-safety-note {
+    margin-top: 32px;
+  }
+}
+
+@media (max-width: 390px) {
+  .iv-home-nav {
+    gap: 7px;
+  }
+
+  .iv-home-brand-name {
+    font-size: 17px;
+  }
+
+  .iv-home-nav-actions {
+    gap: 7px;
+  }
+
+  .iv-home .iv-home-nav-cta {
+    padding: 8px;
+    font-size: 9px;
+  }
+
+  .iv-home-hero-art {
+    min-height: 380px;
+  }
+
+  .iv-home-art-circle-one {
+    width: 300px;
+    height: 300px;
+  }
+
+  .iv-home-art-circle-two {
+    width: 340px;
+    height: 340px;
+  }
+
+  .iv-home-floating-card {
+    display: none;
+  }
+}
+
+/* =========================================================
+   15. ACCESSIBILITY
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .iv-home *,
+  .iv-home *::before,
+  .iv-home *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .iv-home-support-card:hover {
+    transform: none;
+  }
+}

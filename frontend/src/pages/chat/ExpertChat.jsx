@@ -1,849 +1,848 @@
+
 import {
   useCallback,
   useEffect,
   useRef,
-  useState,
+  useState
 } from "react";
 
 import {
   Link,
   useParams,
-  useSearchParams,
+  useSearchParams
 } from "react-router-dom";
 
-import {
-  useSocket,
-} from "../../context/SocketContext";
+import { useAuth } from "../../context/AuthContext";
+import { useSocket } from "../../context/SocketContext";
 
 import api from "../../services/api";
 
+import StarButton from "../../components/chat/StarButton";
+
 import {
-  auth,
-} from "../../services/firebase";
+  createVault,
+  decryptChat,
+  encryptChat,
+  getChatPeer,
+  getVaultProfile,
+  isVaultUnlocked,
+  lockVault,
+  trustChatPeer,
+  unlockVault
+} from "../../services/privateVault";
 
+const errorText = error =>
+  error?.response?.data?.message ||
+  error?.message ||
+  "Something went wrong.";
 
-const getAuthConfig = async () => {
-  const user = auth.currentUser;
+const asDate = value => {
+  if (!value) return null;
 
-  if (!user) {
-    throw new Error("You must be logged in.");
-  }
+  const seconds =
+    value.seconds ?? value._seconds;
 
-  const token = await user.getIdToken();
+  const date =
+    seconds === undefined
+      ? new Date(value)
+      : new Date(Number(seconds) * 1000);
 
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
-
-
-// Handles Firestore Timestamp objects,
-// normal dates, strings and milliseconds.
-const toDate = (value) => {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value;
-  }
-
-  if (
-    typeof value?.toDate === "function"
-  ) {
-    return value.toDate();
-  }
-
-  if (
-    typeof value === "object"
-  ) {
-    const seconds =
-      value.seconds ??
-      value._seconds;
-
-    const nanoseconds =
-      value.nanoseconds ??
-      value._nanoseconds ??
-      0;
-
-    if (
-      Number.isFinite(
-        Number(seconds)
-      )
-    ) {
-      return new Date(
-        Number(seconds) * 1000 +
-          Math.floor(
-            Number(nanoseconds) / 1000000
-          )
-      );
-    }
-  }
-
-  const date = new Date(value);
-
-  return Number.isNaN(
-    date.getTime()
-  )
+  return Number.isNaN(date.getTime())
     ? null
     : date;
 };
 
+const endOf = session =>
+  asDate(session?.endTime) ||
+  (
+    asDate(session?.startTime) &&
+    Number(session?.duration) > 0
+      ? new Date(
+          asDate(session.startTime).getTime() +
+          Number(session.duration) * 60000
+        )
+      : null
+  );
 
-const formatTime = (value) => {
-  const date = toDate(value);
+const phaseOf = (session, now) => {
+  if (!session) return "loading";
 
-  if (!date) {
-    return "";
+  const start = asDate(session.startTime);
+  const end = endOf(session);
+
+  if (!start || !end) return "invalid";
+
+  if (
+    session.status === "completed" ||
+    now >= end.getTime()
+  ) {
+    return "ended";
   }
 
-  return date.toLocaleTimeString(
-    [],
-    {
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-  );
+  if (session.status !== "scheduled") {
+    return "closed";
+  }
+
+  return now < start.getTime()
+    ? "upcoming"
+    : "active";
 };
 
+const toDataUrl = blob =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () =>
+      reject(
+        new Error(
+          "Could not read voice recording."
+        )
+      );
+
+    reader.onload = () =>
+      resolve(reader.result);
+
+    reader.readAsDataURL(blob);
+  });
+
+function VoiceMessage({ source }) {
+  const valid =
+    typeof source === "string" &&
+    /^data:audio\/[a-z0-9.+-]+(?:;codecs=[a-z0-9.+-]+)?;base64,/i.test(
+      source
+    );
+
+  return valid ? (
+    <audio
+      controls
+      preload="none"
+      src={source}
+      style={{ maxWidth: "100%" }}
+      aria-label="Private voice message"
+    />
+  ) : (
+    <span>
+      Voice message unavailable.
+    </span>
+  );
+}
 
 export default function ExpertChat() {
-  const {
-    sessionId: routeSessionId,
-  } = useParams();
+  const { sessionId: routeId } = useParams();
 
-  const [
-    searchParams,
-  ] = useSearchParams();
+  const [params] = useSearchParams();
 
-  // Supports BOTH:
-  // /session-chat/:sessionId
-  // /expert/messages?sessionId=...
   const sessionId =
-    routeSessionId ||
-    searchParams.get("sessionId");
+    routeId || params.get("sessionId");
 
-  const {
-    socket,
-  } = useSocket();
+  const { user } = useAuth();
 
-  const [
-    session,
-    setSession,
-  ] = useState(null);
+  // Personal stars belong only to the User role.
+  const canUseStars =
+    user?.role === "user";
 
-  const [
-    messages,
-    setMessages,
-  ] = useState([]);
+  const { socket } = useSocket();
 
-  const [
-    message,
-    setMessage,
-  ] = useState("");
+  const [session, setSession] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
-  const [
-    typing,
-    setTyping,
-  ] = useState(false);
+  const [profile, setProfile] =
+    useState(undefined);
 
-  const [
-    recording,
-    setRecording,
-  ] = useState(false);
+  const [unlocked, setUnlocked] =
+    useState(isVaultUnlocked());
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [passphrase, setPassphrase] =
+    useState("");
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+  const [confirmation, setConfirmation] =
+    useState("");
 
-  const recorderRef =
-    useRef(null);
+  const [peer, setPeer] = useState(null);
 
-  const chunksRef =
-    useRef([]);
+  const [rawMessages, setRawMessages] =
+    useState([]);
 
-  const recordingTimerRef =
-    useRef(null);
+  const [messages, setMessages] =
+    useState([]);
 
-  const endRef =
-    useRef(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
 
+  const [recording, setRecording] =
+    useState(false);
 
-  // =========================================================
-  // LOAD SESSION
-  // =========================================================
+  const [joined, setJoined] =
+    useState(false);
 
-  const loadSession =
-    useCallback(
-      async () => {
-        if (!sessionId) {
-          return;
-        }
+  const [typing, setTyping] =
+    useState(false);
 
-        try {
-          const response =
-            await api.get(
-              `/sessions/${sessionId}`,
-              await getAuthConfig()
-            );
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-          setSession(
-            response.data?.session ||
-              null
-          );
-        } catch (err) {
-          console.error(
-            "Load session:",
-            err
-          );
+  const [showRecovery, setShowRecovery] =
+    useState(false);
 
-          setError(
-            err?.response?.data
-              ?.message ||
-              "Could not load this session."
-          );
-        }
-      },
-      [sessionId]
-    );
+  const recorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const timerRef = useRef(null);
 
+  const bottomRef = useRef(null);
+  const peerRef = useRef(null);
+  const activeRef = useRef(false);
+  const joinedRef = useRef(false);
 
-  // =========================================================
-  // LOAD OLD MESSAGES
-  // =========================================================
+  const phase = phaseOf(session, now);
+  const active = phase === "active";
 
-  const loadHistory =
-    useCallback(
-      async () => {
-        if (!sessionId) {
-          return;
-        }
+  const recoveryKey = user?.uid
+    ? `innervoice:recovery-reminder:${user.uid}`
+    : null;
 
-        try {
-          const response =
-            await api.get(
-              `/messages/${sessionId}`,
-              await getAuthConfig()
-            );
-
-          const history =
-            Array.isArray(
-              response.data?.messages
-            )
-              ? response.data.messages
-              : [];
-
-          setMessages(history);
-        } catch (err) {
-          console.error(
-            "Load messages:",
-            err
-          );
-
-          setError(
-            err?.response?.data
-              ?.message ||
-              "Could not load conversation."
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      [sessionId]
-    );
-
-
-  // =========================================================
-  // INITIAL LOAD
-  // =========================================================
+  peerRef.current = peer;
+  activeRef.current = active;
+  joinedRef.current = joined;
 
   useEffect(() => {
-    loadSession();
-    loadHistory();
+    const interval = setInterval(
+      () => setNow(Date.now()),
+      1000
+    );
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadSession = useCallback(async () => {
+    if (!sessionId) return;
+
+    const { data } = await api.get(
+      `/sessions/${encodeURIComponent(sessionId)}`
+    );
+
+    setSession(data.session || null);
+  }, [sessionId]);
+
+  const loadHistory = useCallback(async () => {
+    if (!sessionId) return;
+
+    const { data } = await api.get(
+      `/messages/${encodeURIComponent(sessionId)}`
+    );
+
+    setRawMessages(data.messages || []);
+  }, [sessionId]);
+
+  const initializeKeys = useCallback(async () => {
+    if (!sessionId) return;
+
+    let result = await getChatPeer(
+      sessionId
+    );
+
+    if (!result.verified) {
+      // Remember the first peer key.
+      // Independent fingerprint verification
+      // provides stronger identity assurance.
+      trustChatPeer(
+        result.peerUid,
+        result.fingerprint
+      );
+
+      result = await getChatPeer(
+        sessionId
+      );
+    }
+
+    setPeer(result);
+
+    await loadHistory();
+  }, [sessionId, loadHistory]);
+
+  useEffect(() => {
+    let alive = true;
+
+    setSession(null);
+    setPeer(null);
+    setRawMessages([]);
+    setMessages([]);
+
+    getVaultProfile()
+      .then(value => {
+        if (alive) {
+          setProfile(value);
+
+          if (
+            value &&
+            recoveryKey &&
+            localStorage.getItem(recoveryKey) !==
+              "dismissed"
+          ) {
+            setShowRecovery(true);
+          }
+        }
+      })
+      .catch(cause => {
+        if (alive) {
+          setError(errorText(cause));
+        }
+      });
+
+    loadSession().catch(cause => {
+      if (alive) {
+        setError(errorText(cause));
+      }
+    });
+
+    if (isVaultUnlocked()) {
+      initializeKeys().catch(cause => {
+        if (alive) {
+          setError(errorText(cause));
+        }
+      });
+    }
+
+    return () => {
+      alive = false;
+    };
   }, [
+    sessionId,
     loadSession,
-    loadHistory,
+    initializeKeys,
+    recoveryKey
   ]);
 
+  useEffect(() => {
+    if (!unlocked) return;
 
-  // =========================================================
-  // SOCKET CONNECTION
-  // =========================================================
+    let alive = true;
+
+    Promise.all(
+      rawMessages.map(async item => {
+        if (item.legacy) {
+          return item;
+        }
+
+        try {
+          return await decryptChat(item);
+        } catch {
+          return {
+            ...item,
+            failed: true,
+            message:
+              "Encrypted message unavailable."
+          };
+        }
+      })
+    )
+      .then(items => {
+        if (alive) {
+          setMessages(items);
+        }
+      })
+      .catch(cause => {
+        if (alive) {
+          setError(errorText(cause));
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [rawMessages, unlocked]);
 
   useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth"
+    });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!socket || !sessionId || !active) {
+      return;
+    }
+
+    setJoined(false);
+
+    const join = () => {
+      setJoined(false);
+
+      socket.emit(
+        "join-session",
+        sessionId
+      );
+    };
+
+    const onJoined = data => {
+      if (data?.sessionId === sessionId) {
+        setJoined(true);
+      }
+    };
+
+    const onDisconnect = () => {
+      setJoined(false);
+    };
+
+    const onMessage = data => {
+      if (data?.sessionId === sessionId) {
+        setRawMessages(previous =>
+          previous.some(
+            item => item.id === data.id
+          )
+            ? previous
+            : [...previous, data]
+        );
+      }
+    };
+
+    const onTyping = data => {
+      if (
+        data?.sessionId === sessionId &&
+        data.userId !== user?.uid
+      ) {
+        setTyping(Boolean(data.isTyping));
+      }
+    };
+
+    const onLocked = data => {
+      if (data?.sessionId === sessionId) {
+        setJoined(false);
+
+        setError(
+          data.message || "Session ended."
+        );
+
+        void loadSession();
+      }
+    };
+
+    const onError = data => {
+      setError(
+        data?.message ||
+        "Chat connection error."
+      );
+    };
+
+    socket.on("connect", join);
+    socket.on("disconnect", onDisconnect);
+
+    socket.on("session-joined", onJoined);
+
+    socket.on("chat-message", onMessage);
+    socket.on("voice-message", onMessage);
+
+    socket.on("typing", onTyping);
+    socket.on("session-locked", onLocked);
+    socket.on("socket-error", onError);
+
+    if (socket.connected) {
+      join();
+    }
+
+    return () => {
+      socket.off("connect", join);
+      socket.off("disconnect", onDisconnect);
+
+      socket.off("session-joined", onJoined);
+
+      socket.off("chat-message", onMessage);
+      socket.off("voice-message", onMessage);
+
+      socket.off("typing", onTyping);
+      socket.off("session-locked", onLocked);
+      socket.off("socket-error", onError);
+
+      if (socket.connected) {
+        socket.emit(
+          "leave-session",
+          sessionId
+        );
+      }
+
+      joinedRef.current = false;
+    };
+  }, [
+    socket,
+    sessionId,
+    active,
+    user?.uid,
+    loadSession
+  ]);
+
+  async function openVault(event) {
+    event.preventDefault();
+
+    if (busy) return;
+
+    setBusy(true);
+    setError("");
+
+    try {
+      if (!profile) {
+        if (
+          passphrase.length < 16 ||
+          passphrase !== confirmation
+        ) {
+          throw new Error(
+            "Use a matching vault passphrase of 16+ characters."
+          );
+        }
+
+        await createVault(passphrase);
+
+        setProfile(await getVaultProfile());
+
+        setShowRecovery(true);
+      } else {
+        await unlockVault(passphrase);
+      }
+
+      setPassphrase("");
+      setConfirmation("");
+
+      setUnlocked(true);
+
+      await initializeKeys();
+    } catch (cause) {
+      setError(errorText(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const ready =
+    unlocked &&
+    Boolean(peer?.verified);
+
+  const peerName = peer
+    ? `${
+        peer.peerRole === "expert"
+          ? "Expert"
+          : "User"
+      } ${peer.peerLabel}`
+    : "participant";
+
+  async function send(
+    type,
+    body,
+    mimeType = ""
+  ) {
+    const currentPeer = peerRef.current;
+
     if (
-      !socket ||
-      !sessionId
+      !activeRef.current ||
+      !socket?.connected ||
+      !joinedRef.current ||
+      !currentPeer?.verified
+    ) {
+      throw new Error(
+        "Unlock your vault and connect to the active session first."
+      );
+    }
+
+    const e2ee = await encryptChat({
+      sessionId,
+      senderId: user.uid,
+      receiverId: currentPeer.peerUid,
+      type,
+      body,
+      ownPublicKey: currentPeer.ownPublicKey,
+      peerPublicKey: currentPeer.peerPublicKey
+    });
+
+    await new Promise((resolve, reject) => {
+      socket.timeout(30000).emit(
+        type === "voice"
+          ? "voice-message"
+          : "chat-message",
+
+        {
+          sessionId,
+          e2ee,
+
+          ...(type === "voice"
+            ? { mimeType }
+            : {})
+        },
+
+        (ackError, receipt) => {
+          if (ackError) {
+            reject(
+              new Error(
+                "Save confirmation timed out. Refresh before retrying."
+              )
+            );
+
+            return;
+          }
+
+          if (!receipt?.success) {
+            reject(
+              new Error(
+                receipt?.message ||
+                "Message was not saved."
+              )
+            );
+
+            return;
+          }
+
+          resolve(receipt.id);
+        }
+      );
+    });
+  }
+
+  async function sendText(event) {
+    event.preventDefault();
+
+    const value = text.trim();
+
+    if (
+      !value ||
+      busy ||
+      value.length > 4000
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await send("text", value);
+
+      setText("");
+
+      socket.emit("typing", {
+        sessionId,
+        isTyping: false
+      });
+    } catch (cause) {
+      setError(errorText(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startVoice() {
+    if (
+      !ready ||
+      !active ||
+      !joined ||
+      busy
     ) {
       return;
     }
 
     setError("");
 
-    socket.emit(
-      "join-session",
-      sessionId
-    );
-
-
-    const handleChatMessage =
-      (data) => {
-        if (
-          data?.sessionId !==
-          sessionId
-        ) {
-          return;
-        }
-
-        setMessages(
-          (previous) => {
-            // Avoid duplicate live message.
-            if (
-              data.id &&
-              previous.some(
-                (item) =>
-                  item.id === data.id
-              )
-            ) {
-              return previous;
-            }
-
-            return [
-              ...previous,
-              data,
-            ];
-          }
-        );
-      };
-
-
-    const handleVoiceMessage =
-      (data) => {
-        if (
-          data?.sessionId !==
-          sessionId
-        ) {
-          return;
-        }
-
-        setMessages(
-          (previous) => {
-            if (
-              data.id &&
-              previous.some(
-                (item) =>
-                  item.id === data.id
-              )
-            ) {
-              return previous;
-            }
-
-            return [
-              ...previous,
-              data,
-            ];
-          }
-        );
-      };
-
-
-    const handleTyping =
-      (data) => {
-        setTyping(
-          Boolean(
-            data?.isTyping
-          )
-        );
-      };
-
-
-    const handleSocketError =
-      (data) => {
-        setError(
-          data?.message ||
-            "Session communication error."
-        );
-      };
-
-
-    socket.on(
-      "chat-message",
-      handleChatMessage
-    );
-
-    socket.on(
-      "voice-message",
-      handleVoiceMessage
-    );
-
-    socket.on(
-      "typing",
-      handleTyping
-    );
-
-    socket.on(
-      "socket-error",
-      handleSocketError
-    );
-
-
-    return () => {
-      socket.off(
-        "chat-message",
-        handleChatMessage
-      );
-
-      socket.off(
-        "voice-message",
-        handleVoiceMessage
-      );
-
-      socket.off(
-        "typing",
-        handleTyping
-      );
-
-      socket.off(
-        "socket-error",
-        handleSocketError
-      );
-    };
-  }, [
-    socket,
-    sessionId,
-  ]);
-
-
-  // =========================================================
-  // AUTO SCROLL
-  // =========================================================
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages]);
-
-
-  // =========================================================
-  // SEND TEXT MESSAGE
-  // =========================================================
-
-  const sendMessage =
-    () => {
-      const clean =
-        message.trim();
-
+    try {
       if (
-        !clean ||
-        !socket ||
-        !sessionId
+        !navigator.mediaDevices?.getUserMedia ||
+        !window.MediaRecorder
       ) {
-        return;
-      }
-
-      socket.emit(
-        "chat-message",
-        {
-          sessionId,
-          message: clean,
-        }
-      );
-
-      socket.emit(
-        "typing",
-        {
-          sessionId,
-          isTyping: false,
-        }
-      );
-
-      setMessage("");
-      setTyping(false);
-    };
-
-
-  // =========================================================
-  // TYPING
-  // =========================================================
-
-  const handleTyping =
-    (value) => {
-      setMessage(value);
-
-      if (!socket || !sessionId) {
-        return;
-      }
-
-      socket.emit(
-        "typing",
-        {
-          sessionId,
-          isTyping:
-            Boolean(
-              value.trim()
-            ),
-        }
-      );
-    };
-
-
-  // =========================================================
-  // KEYBOARD
-  // =========================================================
-
-  const handleKeyDown =
-    (event) => {
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
-        event.preventDefault();
-        sendMessage();
-      }
-    };
-
-
-  // =========================================================
-  // START VOICE RECORDING
-  // =========================================================
-
-  const startRecording =
-    async () => {
-      if (
-        recording ||
-        !socket ||
-        !sessionId
-      ) {
-        return;
-      }
-
-      try {
-        setError("");
-
-        if (
-          !navigator.mediaDevices ||
-          !navigator.mediaDevices
-            .getUserMedia
-        ) {
-          throw new Error(
-            "Voice recording is not supported in this browser."
-          );
-        }
-
-        const stream =
-          await navigator.mediaDevices
-            .getUserMedia({
-              audio: true,
-            });
-
-
-        let mimeType =
-          "audio/webm;codecs=opus";
-
-        if (
-          !MediaRecorder.isTypeSupported(
-            mimeType
-          )
-        ) {
-          mimeType = "audio/webm";
-        }
-
-        if (
-          !MediaRecorder.isTypeSupported(
-            mimeType
-          )
-        ) {
-          mimeType = "";
-        }
-
-
-        const recorder =
-          mimeType
-            ? new MediaRecorder(
-                stream,
-                { mimeType }
-              )
-            : new MediaRecorder(
-                stream
-              );
-
-
-        recorderRef.current =
-          recorder;
-
-        chunksRef.current = [];
-
-
-        recorder.ondataavailable =
-          (event) => {
-            if (
-              event.data &&
-              event.data.size > 0
-            ) {
-              chunksRef.current.push(
-                event.data
-              );
-            }
-          };
-
-
-        recorder.onstop =
-          () => {
-            const blob =
-              new Blob(
-                chunksRef.current,
-                {
-                  type:
-                    recorder.mimeType ||
-                    "audio/webm",
-                }
-              );
-
-
-            if (
-              blob.size === 0
-            ) {
-              stream
-                .getTracks()
-                .forEach(
-                  (track) =>
-                    track.stop()
-                );
-
-              return;
-            }
-
-
-            // Backend has a size limit.
-            if (
-              blob.size >
-              1.5 * 1024 * 1024
-            ) {
-              setError(
-                "Voice message is too large. Please record a shorter message."
-              );
-
-              stream
-                .getTracks()
-                .forEach(
-                  (track) =>
-                    track.stop()
-                );
-
-              return;
-            }
-
-
-            const reader =
-              new FileReader();
-
-
-            reader.onloadend =
-              () => {
-                const result =
-                  reader.result;
-
-                if (
-                  typeof result !==
-                  "string"
-                ) {
-                  return;
-                }
-
-                socket.emit(
-                  "voice-message",
-                  {
-                    sessionId,
-                    audio: result,
-                    mimeType:
-                      blob.type ||
-                      "audio/webm",
-                  }
-                );
-              };
-
-
-            reader.readAsDataURL(
-              blob
-            );
-
-
-            stream
-              .getTracks()
-              .forEach(
-                (track) =>
-                  track.stop()
-              );
-          };
-
-
-        recorder.start();
-
-        setRecording(true);
-
-
-        recordingTimerRef.current =
-          window.setTimeout(
-            () => {
-              if (
-                recorder.state ===
-                "recording"
-              ) {
-                recorder.stop();
-              }
-
-              setRecording(false);
-            },
-            30000
-          );
-      } catch (err) {
-        console.error(
-          "Voice recording:",
-          err
+        throw new Error(
+          "Voice messages require HTTPS and microphone access."
         );
+      }
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false
+        });
+
+      streamRef.current = stream;
+
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4"
+      ].find(type =>
+        MediaRecorder.isTypeSupported(type)
+      );
+
+      const recorder = new MediaRecorder(
+        stream,
+        {
+          ...(mimeType ? { mimeType } : {}),
+          audioBitsPerSecond: 24000
+        }
+      );
+
+      recorderRef.current = recorder;
+
+      const chunks = [];
+
+      recorder.ondataavailable = event => {
+        if (event.data?.size) {
+          chunks.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        clearTimeout(timerRef.current);
+
+        stream
+          .getTracks()
+          .forEach(track => track.stop());
+
+        streamRef.current = null;
+        recorderRef.current = null;
 
         setRecording(false);
 
-        setError(
-          err?.message ||
-            "Microphone permission is required."
-        );
-      }
-    };
+        if (!activeRef.current) {
+          return;
+        }
 
+        const blob = new Blob(chunks, {
+          type:
+            recorder.mimeType ||
+            "audio/webm"
+        });
 
-  // =========================================================
-  // STOP RECORDING
-  // =========================================================
+        if (
+          !blob.size ||
+          blob.size > 180000
+        ) {
+          setError(
+            "Voice clip is empty or too large. Please record a shorter clip."
+          );
 
-  const stopRecording =
-    () => {
+          return;
+        }
+
+        setBusy(true);
+
+        try {
+          await send(
+            "voice",
+            await toDataUrl(blob),
+            blob.type
+          );
+
+          setNotice(
+            "Encrypted voice message saved."
+          );
+        } catch (cause) {
+          setError(errorText(cause));
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      recorder.start(250);
+
+      setRecording(true);
+
+      timerRef.current = setTimeout(() => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+        }
+      }, 15000);
+    } catch (cause) {
+      streamRef.current
+        ?.getTracks()
+        .forEach(track => track.stop());
+
+      streamRef.current = null;
+
+      setError(errorText(cause));
+    }
+  }
+
+  function stopVoice() {
+    if (
+      recorderRef.current?.state === "recording"
+    ) {
+      recorderRef.current.stop();
+    }
+  }
+
+  useEffect(
+    () => () => {
+      clearTimeout(timerRef.current);
+
       if (
-        recordingTimerRef.current
+        recorderRef.current?.state === "recording"
       ) {
-        clearTimeout(
-          recordingTimerRef.current
-        );
-
-        recordingTimerRef.current =
-          null;
+        recorderRef.current.onstop = null;
+        recorderRef.current.stop();
       }
 
-
-      const recorder =
-        recorderRef.current;
-
-      if (
-        recorder &&
-        recorder.state ===
-          "recording"
-      ) {
-        recorder.stop();
-      }
-
-      setRecording(false);
-    };
-
-
-  // =========================================================
-  // CLEANUP
-  // =========================================================
-
-  useEffect(() => {
-    return () => {
-      if (
-        recordingTimerRef.current
-      ) {
-        clearTimeout(
-          recordingTimerRef.current
-        );
-      }
-
-      const recorder =
-        recorderRef.current;
-
-      if (
-        recorder &&
-        recorder.state ===
-          "recording"
-      ) {
-        recorder.stop();
-      }
-    };
-  }, []);
-
-
-  // =========================================================
-  // NO SESSION
-  // =========================================================
+      streamRef.current
+        ?.getTracks()
+        .forEach(track => track.stop());
+    },
+    []
+  );
 
   if (!sessionId) {
     return (
       <div className="page-shell">
         <div className="error-box">
-          No session was selected.
-          Please open chat from a
-          confirmed session.
+          Choose a booked session first.
         </div>
       </div>
     );
   }
 
-
-  // =========================================================
-  // UI
-  // =========================================================
-
   return (
     <div className="page-shell">
-
-      <div className="page-header">
+      <header className="page-header">
         <div>
           <span className="eyebrow">
             PRIVATE SESSION
           </span>
 
           <h1>
-            Private Support Chat
+            {peer
+              ? `Private chat with ${peerName}`
+              : "Private support chat"}
           </h1>
 
           <p>
-            {session
-              ? "Your secure session space is ready."
-              : "Loading your private session..."}
+            {phase === "active"
+              ? `Session active until ${
+                  endOf(session)?.toLocaleString()
+                }.`
+              : phase === "upcoming"
+                ? "Session has not started. History is read-only."
+                : "Chat history is read-only outside the booked session."}
           </p>
         </div>
 
-
         <div className="button-row">
+          {canUseStars && (
+            <Link
+              className="secondary-button"
+              to="/starred"
+            >
+              ★ My stars
+            </Link>
+          )}
 
           <Link
             className="secondary-button"
-            to={`/sessions/${sessionId}/call?mode=audio`}
+            to="/vault-recovery"
           >
-            🎧 Audio
+            Recovery Kit
           </Link>
 
-
-          <Link
-            className="primary-button"
-            to={`/sessions/${sessionId}/call?mode=video`}
-          >
-            📹 Video
-          </Link>
-
+          {active && (
+            <Link
+              className="primary-button"
+              to={`/sessions/${encodeURIComponent(
+                sessionId
+              )}/call?mode=audio`}
+            >
+              🎧 Audio call
+            </Link>
+          )}
         </div>
-      </div>
-
+      </header>
 
       {error && (
         <div
@@ -854,192 +853,334 @@ export default function ExpertChat() {
         </div>
       )}
 
+      {notice && (
+        <div
+          className="notice-box"
+          role="status"
+        >
+          {notice}
+        </div>
+      )}
+
+      {!unlocked ? (
+        <form
+          className="feature-card"
+          onSubmit={openVault}
+          style={{
+            maxWidth: 650,
+            display: "grid",
+            gap: 12
+          }}
+        >
+          <h2>
+            {profile === undefined
+              ? "Checking private vault…"
+              : profile
+                ? "Unlock your vault"
+                : "Create your vault"}
+          </h2>
+
+          <p>
+            Use your own vault passphrase,
+            not your account password.
+            Never share it with the other participant.
+          </p>
+
+          <input
+            className="form-input"
+            type="password"
+            autoComplete="off"
+            minLength={16}
+            required
+            value={passphrase}
+            onChange={event =>
+              setPassphrase(event.target.value)
+            }
+            placeholder="Vault passphrase"
+          />
+
+          {profile === null && (
+            <input
+              className="form-input"
+              type="password"
+              autoComplete="off"
+              minLength={16}
+              required
+              value={confirmation}
+              onChange={event =>
+                setConfirmation(event.target.value)
+              }
+              placeholder="Confirm passphrase"
+            />
+          )}
+
+          <button
+            className="primary-button"
+            disabled={busy || profile === undefined}
+          >
+            {busy
+              ? "Working…"
+              : profile
+                ? "Unlock vault"
+                : "Create vault"}
+          </button>
+
+          {profile && (
+            <Link to="/vault-recovery">
+              Forgot passphrase? Open your Recovery Kit
+            </Link>
+          )}
+        </form>
+      ) : (
+        <>
+          {showRecovery && (
+            <section
+              className="feature-card"
+              style={{ marginBottom: 16 }}
+            >
+              <h2>Protect your vault access</h2>
+
+              <p>
+                Create an encrypted Recovery Kit.
+                Save its JSON file and 64-character
+                code separately, then test recovery.
+                Also test your passphrase on another
+                trusted device. Account-password
+                reset cannot unlock old messages.
+              </p>
+
+              <div className="button-row">
+                <Link
+                  className="primary-button"
+                  to="/vault-recovery"
+                >
+                  Create & test Recovery Kit
+                </Link>
+
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => {
+                    if (recoveryKey) {
+                      localStorage.setItem(
+                        recoveryKey,
+                        "dismissed"
+                      );
+                    }
+
+                    setShowRecovery(false);
+                  }}
+                >
+                  Remind me later
+                </button>
+              </div>
+            </section>
+          )}
+
+          <div
+            className="button-row"
+            style={{ marginBottom: 12 }}
+          >
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                lockVault();
+
+                setUnlocked(false);
+                setPeer(null);
+                setMessages([]);
+                setRawMessages([]);
+              }}
+            >
+              Lock vault
+            </button>
+
+            {!peer && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() =>
+                  initializeKeys().catch(cause =>
+                    setError(errorText(cause))
+                  )
+                }
+              >
+                Retry secure connection
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       <section
         className="feature-card"
         style={{
-          maxWidth: 900,
-          margin: "0 auto",
+          maxWidth: 950,
+          margin: "16px auto"
         }}
       >
+        <p>
+          {peer
+            ? `Chat partner: ${peerName}. Verify their encryption fingerprint independently for stronger identity assurance.`
+            : "Both participants need their own vaults before messaging."}
+        </p>
 
         <div
           className="chat-messages"
+          role="log"
           style={{
-            minHeight: 420,
-            maxHeight: "60vh",
+            minHeight: 240,
+            maxHeight: "55vh",
             overflowY: "auto",
+            padding: 12
           }}
         >
-
-          {loading && (
-            <div className="empty-card">
-              Loading conversation...
-            </div>
+          {!messages.length && (
+            <p>No messages yet.</p>
           )}
 
+          {messages.map(item => (
+            <div
+              key={item.id}
+              style={{
+                textAlign:
+                  item.senderId === user?.uid
+                    ? "right"
+                    : "left",
+                marginBottom: 16
+              }}
+            >
+              <small>
+                {item.senderId === user?.uid
+                  ? "You"
+                  : peerName}
 
-          {!loading &&
-            messages.length === 0 && (
-              <div className="empty-card">
-                <h3>
-                  No messages yet
-                </h3>
+                {" · "}
 
-                <p>
-                  Start the conversation
-                  when you are ready.
-                </p>
+                {item.legacy
+                  ? "Older server-encrypted"
+                  : "Vault-encrypted"}
+              </small>
+
+              <div
+                className="chat-bubble"
+                style={{
+                  textAlign: "left",
+                  padding: 12,
+                  borderRadius: 12,
+                  background: "#fff5ed",
+                  overflowWrap: "anywhere",
+                  whiteSpace: "pre-wrap",
+                  maxWidth: "85%",
+                  marginTop: 5
+                }}
+              >
+                {item.type === "voice" ? (
+                  <VoiceMessage source={item.audio} />
+                ) : (
+                  item.message ||
+                  "Message unavailable."
+                )}
               </div>
-            )}
 
-
-          {messages.map(
-            (item, index) => {
-              const mine =
-                item.senderId ===
-                auth.currentUser?.uid;
-
-
-              const key =
-                item.id ||
-                `${item.senderId || "message"}-${item.createdAt || "time"}-${index}`;
-
-
-              return (
-                <div
-                  key={key}
-                  className={`chat-bubble ${
-                    mine
-                      ? "user"
-                      : "assistant"
-                  }`}
-                >
-
-                  {item.type ===
-                      "voice" ||
-                  item.audio ? (
-                    <audio
-                      controls
-                      src={
-                        item.audio
-                      }
+              {canUseStars &&
+                unlocked &&
+                item.id &&
+                !item.failed && (
+                  <div style={{ marginTop: 7 }}>
+                    <StarButton
+                      kind="expert"
+                      containerId={sessionId}
+                      messageId={item.id}
                     />
-                  ) : (
-                    <span>
-                      {item.message}
-                    </span>
-                  )}
+                  </div>
+                )}
+            </div>
+          ))}
 
-
-                  <small>
-                    {formatTime(
-                      item.createdAt
-                    )}
-                  </small>
-
-                </div>
-              );
-            }
-          )}
-
-
-          <div
-            ref={endRef}
-          />
-
+          <div ref={bottomRef} />
         </div>
-
 
         {typing && (
           <small>
-            The other participant is
-            typing…
+            {peerName} is typing…
           </small>
         )}
 
-
-        <div
-          className="chat-compose"
+        <form
+          onSubmit={sendText}
           style={{
-            marginTop: 16,
+            display: "flex",
+            gap: 10,
+            marginTop: 16
           }}
         >
-
           <input
             className="form-input"
-            value={message}
-            onChange={(event) =>
-              handleTyping(
-                event.target.value
-              )
-            }
-            onKeyDown={
-              handleKeyDown
-            }
-            placeholder="Write a message…"
+            style={{
+              flex: 1,
+              minWidth: 0
+            }}
             maxLength={4000}
-            disabled={!socket}
+            value={text}
+            placeholder="Type your encrypted message…"
+            disabled={
+              !ready ||
+              !active ||
+              !joined ||
+              busy
+            }
+            onChange={event => {
+              setText(event.target.value);
+
+              if (joined) {
+                socket?.emit("typing", {
+                  sessionId,
+                  isTyping: Boolean(
+                    event.target.value.trim()
+                  )
+                });
+              }
+            }}
           />
 
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={
+              !ready ||
+              !active ||
+              !joined ||
+              busy ||
+              !text.trim()
+            }
+          >
+            Send
+          </button>
+        </form>
 
-          <div className="button-row">
-
-            <button
-              className="primary-button"
-              type="button"
-              onClick={sendMessage}
-              disabled={
-                !message.trim() ||
-                !socket
-              }
-            >
-              Send
-            </button>
-
-
-            {!recording ? (
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={
-                  startRecording
-                }
-                disabled={!socket}
-              >
-                🎙 Voice message
-              </button>
-            ) : (
-              <button
-                className="danger-button"
-                type="button"
-                onClick={
-                  stopRecording
-                }
-              >
-                Stop recording
-              </button>
-            )}
-
-          </div>
-
-        </div>
-
-
-        <div
-          className="notice-box"
-          style={{
-            marginTop: 16,
-          }}
+        <button
+          type="button"
+          className="secondary-button"
+          style={{ marginTop: 12 }}
+          disabled={
+            !ready ||
+            !active ||
+            !joined ||
+            (busy && !recording)
+          }
+          onClick={
+            recording
+              ? stopVoice
+              : startVoice
+          }
         >
-          Messages are encrypted before
-          being stored. Only participants
-          with access to this session can
-          retrieve them.
-        </div>
-
+          {recording
+            ? "Stop recording"
+            : "🎙 Encrypted voice message (max 15 sec)"}
+        </button>
       </section>
-
     </div>
   );
 }

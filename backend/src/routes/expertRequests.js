@@ -11,26 +11,84 @@ const router = express.Router();
 
 const MIN_DURATION = 20;
 const MAX_DURATION = 45;
+const DURATION_STEP = 5;
+
+/* =========================================================
+   DATE HELPER
+========================================================= */
 
 const toDate = (value) => {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
-  if (typeof value.toDate === "function") {
+  if (
+    typeof value.toDate ===
+    "function"
+  ) {
     return value.toDate();
   }
 
-  const date = new Date(value);
+  if (
+    value instanceof Date
+  ) {
+    return Number.isNaN(
+      value.getTime()
+    )
+      ? null
+      : value;
+  }
 
-  return Number.isNaN(date.getTime())
+  if (
+    typeof value === "object"
+  ) {
+    const seconds =
+      value.seconds ??
+      value._seconds;
+
+    const nanoseconds =
+      value.nanoseconds ??
+      value._nanoseconds ??
+      0;
+
+    if (
+      Number.isFinite(
+        Number(seconds)
+      )
+    ) {
+      return new Date(
+        Number(seconds) *
+          1000 +
+          Number(
+            nanoseconds
+          ) /
+            1000000
+      );
+    }
+  }
+
+  const date =
+    new Date(value);
+
+  return Number.isNaN(
+    date.getTime()
+  )
     ? null
     : date;
 };
 
-const getUser = async (uid) => {
-  const doc = await db
-    .collection("users")
-    .doc(uid)
-    .get();
+/* =========================================================
+   DATA HELPERS
+========================================================= */
+
+const getUser = async (
+  uid
+) => {
+  const doc =
+    await db
+      .collection("users")
+      .doc(uid)
+      .get();
 
   return doc.exists
     ? {
@@ -40,19 +98,81 @@ const getUser = async (uid) => {
     : null;
 };
 
-const getExpert = async (expertId) => {
-  const doc = await db
-    .collection("experts")
-    .doc(expertId)
-    .get();
+const getExpert =
+  async (expertId) => {
+    const doc =
+      await db
+        .collection(
+          "experts"
+        )
+        .doc(expertId)
+        .get();
 
-  return doc.exists
-    ? {
-        id: doc.id,
-        ...doc.data(),
-      }
-    : null;
+    return doc.exists
+      ? {
+          id: doc.id,
+          ...doc.data(),
+        }
+      : null;
+  };
+
+const getExpertByUid =
+  async (uid) => {
+    const snapshot =
+      await db
+        .collection(
+          "experts"
+        )
+        .where(
+          "uid",
+          "==",
+          uid
+        )
+        .limit(1)
+        .get();
+
+    if (
+      snapshot.empty
+    ) {
+      return null;
+    }
+
+    const doc =
+      snapshot.docs[0];
+
+    return {
+      id: doc.id,
+      ...doc.data(),
+    };
+  };
+
+/* =========================================================
+   VALIDATION
+========================================================= */
+
+const isValidDuration = (
+  duration
+) => {
+  const minutes =
+    Number(duration);
+
+  return (
+    Number.isFinite(
+      minutes
+    ) &&
+    minutes >=
+      MIN_DURATION &&
+    minutes <=
+      MAX_DURATION &&
+    minutes %
+      DURATION_STEP ===
+      0
+  );
 };
+
+/* =========================================================
+   CONFLICT HELPERS
+========================================================= */
 
 const rangesOverlap = (
   firstStart,
@@ -60,80 +180,157 @@ const rangesOverlap = (
   secondStart,
   secondEnd
 ) =>
-  firstStart < secondEnd &&
-  firstEnd > secondStart;
+  firstStart <
+    secondEnd &&
+  firstEnd >
+    secondStart;
 
-const getBusyRanges = async (expertId) => {
+/*
+ * IMPORTANT:
+ *
+ * excludeRequestId is the fix for your current bug.
+ *
+ * When expert accepts a pending request,
+ * that same pending request must NOT be treated
+ * as a conflicting busy range.
+ */
+const getBusyRanges = async (
+  expertId,
+  excludeRequestId = null
+) => {
   const [
     sessionSnapshot,
     requestSnapshot,
-  ] = await Promise.all([
-    db
-      .collection("sessions")
-      .where("expertId", "==", expertId)
-      .get(),
+  ] =
+    await Promise.all([
+      db
+        .collection(
+          "sessions"
+        )
+        .where(
+          "expertId",
+          "==",
+          expertId
+        )
+        .get(),
 
-    db
-      .collection("expertRequests")
-      .where("expertId", "==", expertId)
-      .get(),
-  ]);
+      db
+        .collection(
+          "expertRequests"
+        )
+        .where(
+          "expertId",
+          "==",
+          expertId
+        )
+        .get(),
+    ]);
 
   const ranges = [];
 
-  sessionSnapshot.docs.forEach((doc) => {
-    const session = doc.data();
+  /*
+   * Confirmed scheduled sessions
+   */
+  sessionSnapshot.docs.forEach(
+    (doc) => {
+      const session =
+        doc.data();
 
-    if (session.status !== "scheduled") {
-      return;
+      if (
+        session.status !==
+        "scheduled"
+      ) {
+        return;
+      }
+
+      const start =
+        toDate(
+          session.startTime
+        );
+
+      const end =
+        toDate(
+          session.endTime
+        );
+
+      if (
+        start &&
+        end
+      ) {
+        ranges.push({
+          type:
+            "session",
+          id: doc.id,
+          start,
+          end,
+        });
+      }
     }
+  );
 
-    const start = toDate(
-      session.startTime
-    );
+  /*
+   * Pending requests also block availability,
+   * BUT not the request currently being accepted.
+   */
+  requestSnapshot.docs.forEach(
+    (doc) => {
+      if (
+        excludeRequestId &&
+        doc.id ===
+          excludeRequestId
+      ) {
+        return;
+      }
 
-    const end = toDate(
-      session.endTime
-    );
+      const request =
+        doc.data();
 
-    if (start && end) {
-      ranges.push({
-        start,
-        end,
-      });
+      if (
+        request.status !==
+        "pending"
+      ) {
+        return;
+      }
+
+      const start =
+        toDate(
+          request.requestedStartTime
+        );
+
+      const duration =
+        Number(
+          request.requestedDuration ||
+            0
+        );
+
+      const end =
+        toDate(
+          request.requestedEndTime
+        ) ||
+        (start &&
+        duration >
+          0
+          ? new Date(
+              start.getTime() +
+                duration *
+                  60000
+            )
+          : null);
+
+      if (
+        start &&
+        end
+      ) {
+        ranges.push({
+          type:
+            "request",
+          id: doc.id,
+          start,
+          end,
+        });
+      }
     }
-  });
-
-  requestSnapshot.docs.forEach((doc) => {
-    const request = doc.data();
-
-    if (request.status !== "pending") {
-      return;
-    }
-
-    const start = toDate(
-      request.requestedStartTime
-    );
-
-    const end =
-      toDate(request.requestedEndTime) ||
-      (start
-        ? new Date(
-            start.getTime() +
-              Number(
-                request.requestedDuration || 0
-              ) *
-                60000
-          )
-        : null);
-
-    if (start && end) {
-      ranges.push({
-        start,
-        end,
-      });
-    }
-  });
+  );
 
   return ranges;
 };
@@ -141,18 +338,23 @@ const getBusyRanges = async (expertId) => {
 const hasConflict = async (
   expertId,
   start,
-  end
+  end,
+  excludeRequestId = null
 ) => {
   const ranges =
-    await getBusyRanges(expertId);
+    await getBusyRanges(
+      expertId,
+      excludeRequestId
+    );
 
-  return ranges.some((range) =>
-    rangesOverlap(
-      start,
-      end,
-      range.start,
-      range.end
-    )
+  return ranges.some(
+    (range) =>
+      rangesOverlap(
+        start,
+        end,
+        range.start,
+        range.end
+      )
   );
 };
 
@@ -163,9 +365,13 @@ const hasConflict = async (
 router.post(
   "/",
   authenticate,
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
-      const uid = req.user.uid;
+      const uid =
+        req.user.uid;
 
       const {
         expertId,
@@ -175,99 +381,149 @@ router.post(
       } = req.body;
 
       const user =
-        await getUser(uid);
+        await getUser(
+          uid
+        );
 
       if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User account not found.",
-        });
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+
+            message:
+              "User account not found.",
+          });
       }
 
-      if (user.role !== "user") {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Only regular users can book expert sessions.",
-        });
+      if (
+        user.role !==
+        "user"
+      ) {
+        return res
+          .status(403)
+          .json({
+            success:
+              false,
+
+            message:
+              "Only regular users can book expert sessions.",
+          });
       }
 
       if (!expertId) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Expert is required.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "Expert is required.",
+          });
       }
 
       const start =
-        toDate(startTime);
+        toDate(
+          startTime
+        );
 
       const minutes =
-        Number(duration);
+        Number(
+          duration
+        );
 
       if (!start) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "A valid session date and time is required.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "A valid session date and time is required.",
+          });
       }
 
       if (
         start.getTime() <=
         Date.now()
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Session time must be in the future.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "Session time must be in the future.",
+          });
       }
 
       if (
-        !Number.isFinite(minutes) ||
-        minutes < MIN_DURATION ||
-        minutes > MAX_DURATION
+        !isValidDuration(
+          minutes
+        )
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Session duration must be between 20 and 45 minutes. For longer support, please book another session.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "Session duration must be 20, 25, 30, 35, 40 or 45 minutes.",
+          });
       }
 
       const expert =
-        await getExpert(expertId);
+        await getExpert(
+          expertId
+        );
 
       if (!expert) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Expert not found.",
-        });
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+
+            message:
+              "Expert not found.",
+          });
       }
 
       if (
         expert.verificationStatus !==
           "verified" ||
-        expert.verified === false ||
-        expert.available === false
+        expert.verified ===
+          false ||
+        expert.available ===
+          false
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "This expert is not currently available for booking.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "This expert is not currently available for booking.",
+          });
       }
 
       const end =
         new Date(
           start.getTime() +
-            minutes * 60000
+            minutes *
+              60000
         );
 
+      /*
+       * Check genuine conflicts before
+       * creating request.
+       */
       if (
         await hasConflict(
           expertId,
@@ -275,16 +531,19 @@ router.post(
           end
         )
       ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This time is no longer available. Please choose another free slot.",
-        });
+        return res
+          .status(409)
+          .json({
+            success:
+              false,
+
+            message:
+              "This time is no longer available. Please choose another free slot.",
+          });
       }
 
       /*
-       * Prevent the same user from creating
-       * the same pending request twice.
+       * Prevent duplicate request from same user.
        */
       const existing =
         await db
@@ -299,47 +558,58 @@ router.post(
           .get();
 
       const duplicate =
-        existing.docs.some((doc) => {
-          const request =
-            doc.data();
+        existing.docs.some(
+          (doc) => {
+            const request =
+              doc.data();
 
-          const existingStart =
-            toDate(
-              request.requestedStartTime
+            const existingStart =
+              toDate(
+                request.requestedStartTime
+              );
+
+            return (
+              request.expertId ===
+                expertId &&
+              request.status ===
+                "pending" &&
+              existingStart &&
+              Math.abs(
+                existingStart.getTime() -
+                  start.getTime()
+              ) <
+                60000
             );
+          }
+        );
 
-          return (
-            request.expertId ===
-              expertId &&
-            request.status ===
-              "pending" &&
-            existingStart &&
-            Math.abs(
-              existingStart.getTime() -
-                start.getTime()
-            ) < 60000
-          );
-        });
+      if (
+        duplicate
+      ) {
+        return res
+          .status(409)
+          .json({
+            success:
+              false,
 
-      if (duplicate) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "You already have a pending request for this time.",
-        });
+            message:
+              "You already have a pending request for this time.",
+          });
       }
 
       const now =
         new Date();
 
       const request = {
-        userId: uid,
+        userId:
+          uid,
 
         expertId,
 
         anonymousId:
           user.anonymousId ||
-          req.user.anonymousId ||
+          req.user
+            .anonymousId ||
           "Anonymous User",
 
         expertName:
@@ -347,9 +617,15 @@ router.post(
           "Support Professional",
 
         message:
-          String(message || "")
+          String(
+            message ||
+              ""
+          )
             .trim()
-            .slice(0, 2000),
+            .slice(
+              0,
+              2000
+            ),
 
         requestedStartTime:
           start,
@@ -381,43 +657,69 @@ router.post(
           .collection(
             "expertRequests"
           )
-          .add(request);
+          .add(
+            request
+          );
 
       /*
-       * Notify expert immediately.
+       * Notify expert.
        */
-      await notifyNewRequest(
-        expert.uid,
-        request.anonymousId,
-        requestRef.id,
-        {
-          expertId,
-          startTime:
-            start.toISOString(),
-          endTime:
-            end.toISOString(),
-          duration:
-            minutes,
-        }
-      );
-
-      return res.status(201).json({
-        success: true,
-        requestId:
+      try {
+        await notifyNewRequest(
+          expert.uid,
+          request.anonymousId,
           requestRef.id,
-        request,
-      });
+          {
+            expertId,
+
+            startTime:
+              start.toISOString(),
+
+            endTime:
+              end.toISOString(),
+
+            duration:
+              minutes,
+          }
+        );
+      } catch (
+        notificationError
+      ) {
+        console.error(
+          "New request notification error:",
+          notificationError
+        );
+      }
+
+      return res
+        .status(201)
+        .json({
+          success:
+            true,
+
+          requestId:
+            requestRef.id,
+
+          request,
+
+          message:
+            "Session request sent successfully.",
+        });
     } catch (error) {
       console.error(
         "Create expert request error:",
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Could not create session request.",
-      });
+      return res
+        .status(500)
+        .json({
+          success:
+            false,
+
+          message:
+            "Could not create session request.",
+        });
     }
   }
 );
@@ -429,7 +731,10 @@ router.post(
 router.get(
   "/user",
   authenticate,
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const snapshot =
         await db
@@ -446,7 +751,9 @@ router.get(
       const requests =
         snapshot.docs.map(
           (doc) => ({
-            id: doc.id,
+            id:
+              doc.id,
+
             ...doc.data(),
           })
         );
@@ -456,17 +763,21 @@ router.get(
           (
             toDate(
               b.createdAt
-            )?.getTime() || 0
+            )?.getTime() ||
+            0
           ) -
           (
             toDate(
               a.createdAt
-            )?.getTime() || 0
+            )?.getTime() ||
+            0
           )
       );
 
       return res.json({
-        success: true,
+        success:
+          true,
+
         requests,
       });
     } catch (error) {
@@ -475,11 +786,15 @@ router.get(
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Could not load your session requests.",
-      });
+      return res
+        .status(500)
+        .json({
+          success:
+            false,
+
+          message:
+            "Could not load your session requests.",
+        });
     }
   }
 );
@@ -491,44 +806,41 @@ router.get(
 router.get(
   "/expert",
   authenticate,
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
-      const expertSnapshot =
-        await db
-          .collection("experts")
-          .where(
-            "uid",
-            "==",
-            req.user.uid
-          )
-          .limit(1)
-          .get();
+      const expert =
+        await getExpertByUid(
+          req.user.uid
+        );
 
-      if (
-        expertSnapshot.empty
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Expert profile not found.",
-        });
+      if (!expert) {
+        return res
+          .status(403)
+          .json({
+            success:
+              false,
+
+            message:
+              "Expert profile not found.",
+          });
       }
 
-      const expert =
-        expertSnapshot.docs[0];
-
-      const expertData =
-        expert.data();
-
       if (
-        expertData.verificationStatus !==
+        expert.verificationStatus !==
         "verified"
       ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Your expert account is not verified.",
-        });
+        return res
+          .status(403)
+          .json({
+            success:
+              false,
+
+            message:
+              "Your expert account is not verified.",
+          });
       }
 
       const requestSnapshot =
@@ -546,27 +858,58 @@ router.get(
       const requests =
         requestSnapshot.docs.map(
           (doc) => ({
-            id: doc.id,
+            id:
+              doc.id,
+
             ...doc.data(),
           })
         );
 
+      /*
+       * Pending requests first,
+       * then upcoming date order.
+       */
       requests.sort(
-        (a, b) =>
-          (
-            toDate(
-              a.requestedStartTime
-            )?.getTime() || 0
-          ) -
-          (
-            toDate(
-              b.requestedStartTime
-            )?.getTime() || 0
-          )
+        (a, b) => {
+          if (
+            a.status ===
+              "pending" &&
+            b.status !==
+              "pending"
+          ) {
+            return -1;
+          }
+
+          if (
+            b.status ===
+              "pending" &&
+            a.status !==
+              "pending"
+          ) {
+            return 1;
+          }
+
+          return (
+            (
+              toDate(
+                a.requestedStartTime
+              )?.getTime() ||
+              0
+            ) -
+            (
+              toDate(
+                b.requestedStartTime
+              )?.getTime() ||
+              0
+            )
+          );
+        }
       );
 
       return res.json({
-        success: true,
+        success:
+          true,
+
         requests,
       });
     } catch (error) {
@@ -575,11 +918,15 @@ router.get(
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Could not load support requests.",
-      });
+      return res
+        .status(500)
+        .json({
+          success:
+            false,
+
+          message:
+            "Could not load support requests.",
+        });
     }
   }
 );
@@ -591,44 +938,63 @@ router.get(
 router.patch(
   "/:id",
   authenticate,
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const {
         id,
-      } = req.params;
+      } =
+        req.params;
 
       const status =
         String(
-          req.body.status || ""
+          req.body
+            .status ||
+            ""
         ).toLowerCase();
 
       const reason =
         String(
-          req.body.reason || ""
+          req.body
+            .reason ||
+            ""
         ).trim();
 
       if (
         ![
           "accepted",
           "rejected",
-        ].includes(status)
+        ].includes(
+          status
+        )
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Status must be accepted or rejected.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "Status must be accepted or rejected.",
+          });
       }
 
       if (
-        status === "rejected" &&
+        status ===
+          "rejected" &&
         !reason
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "A rejection reason is required.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "A rejection reason is required.",
+          });
       }
 
       const requestRef =
@@ -644,70 +1010,79 @@ router.patch(
       if (
         !requestDoc.exists
       ) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Request not found.",
-        });
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+
+            message:
+              "Request not found.",
+          });
       }
 
       const request =
         requestDoc.data();
 
-      const expertSnapshot =
-        await db
-          .collection("experts")
-          .where(
-            "uid",
-            "==",
-            req.user.uid
-          )
-          .limit(1)
-          .get();
+      const expert =
+        await getExpertByUid(
+          req.user.uid
+        );
 
       if (
-        expertSnapshot.empty ||
-        expertSnapshot.docs[0].id !==
+        !expert ||
+        expert.id !==
           request.expertId
       ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You cannot update this request.",
-        });
-      }
+        return res
+          .status(403)
+          .json({
+            success:
+              false,
 
-      const expert =
-        expertSnapshot
-          .docs[0]
-          .data();
+            message:
+              "You cannot update this request.",
+          });
+      }
 
       if (
         expert.verificationStatus !==
           "verified" ||
-        expert.available === false
+        expert.verified ===
+          false ||
+        expert.available ===
+          false
       ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Your expert account is not available.",
-        });
+        return res
+          .status(403)
+          .json({
+            success:
+              false,
+
+            message:
+              "Your expert account is not available.",
+          });
       }
 
       if (
         request.status !==
         "pending"
       ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            `This request is already ${request.status}.`,
-        });
+        return res
+          .status(409)
+          .json({
+            success:
+              false,
+
+            message:
+              `This request is already ${request.status}.`,
+          });
       }
 
-      /*
-       * REJECT
-       */
+      /* ===================================================
+         REJECT
+      =================================================== */
+
       if (
         status ===
         "rejected"
@@ -715,32 +1090,47 @@ router.patch(
         await requestRef.update({
           status:
             "rejected",
+
           reason,
+
           updatedAt:
             new Date(),
         });
 
-        await notifyRequestDecision(
-          request.userId,
-          "rejected",
-          expert.name,
-          reason,
-          id,
-          null
-        );
+        try {
+          await notifyRequestDecision(
+            request.userId,
+            "rejected",
+            expert.name,
+            reason,
+            id,
+            null
+          );
+        } catch (
+          notificationError
+        ) {
+          console.error(
+            "Reject notification error:",
+            notificationError
+          );
+        }
 
         return res.json({
-          success: true,
+          success:
+            true,
+
           status:
             "rejected",
+
           message:
             "Request rejected and user notified.",
         });
       }
 
-      /*
-       * ACCEPT
-       */
+      /* ===================================================
+         ACCEPT
+      =================================================== */
+
       const start =
         toDate(
           request.requestedStartTime
@@ -753,25 +1143,34 @@ router.patch(
 
       if (
         !start ||
-        !Number.isFinite(minutes) ||
-        minutes < MIN_DURATION ||
-        minutes > MAX_DURATION
+        !isValidDuration(
+          minutes
+        )
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "This request has invalid session timing.",
-        });
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            message:
+              "This request has invalid session timing.",
+          });
       }
 
       if (
-        start <= new Date()
+        start.getTime() <=
+        Date.now()
       ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This requested time has already passed. Ask the user to book another session.",
-        });
+        return res
+          .status(409)
+          .json({
+            success:
+              false,
+
+            message:
+              "This requested time has already passed. Ask the user to book another session.",
+          });
       }
 
       const end =
@@ -780,27 +1179,44 @@ router.patch(
         ) ||
         new Date(
           start.getTime() +
-            minutes * 60000
+            minutes *
+              60000
         );
 
+      /*
+       * CRITICAL FIX:
+       *
+       * Ignore THIS pending request itself
+       * when checking whether the slot is busy.
+       */
       if (
         await hasConflict(
           request.expertId,
           start,
-          end
+          end,
+          id
         )
       ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This time is no longer free. Reject this request and ask the user to choose another slot.",
-        });
+        return res
+          .status(409)
+          .json({
+            success:
+              false,
+
+            message:
+              "Another session or pending request now overlaps this time. Reject this request and ask the user to choose another slot.",
+          });
       }
 
       const sessionRef =
         db
-          .collection("sessions")
+          .collection(
+            "sessions"
+          )
           .doc();
+
+      const now =
+        new Date();
 
       const session = {
         userId:
@@ -834,24 +1250,39 @@ router.patch(
           false,
 
         createdAt:
-          new Date(),
+          now,
 
         updatedAt:
-          new Date(),
+          now,
       };
 
+      /*
+       * Transaction prevents double acceptance
+       * from creating two sessions.
+       */
       await db.runTransaction(
-        async (transaction) => {
+        async (
+          transaction
+        ) => {
           const latest =
             await transaction.get(
               requestRef
             );
 
           if (
-            !latest.exists ||
-            latest.data()
-              .status !==
-              "pending"
+            !latest.exists
+          ) {
+            throw new Error(
+              "REQUEST_NOT_FOUND"
+            );
+          }
+
+          const latestData =
+            latest.data();
+
+          if (
+            latestData.status !==
+            "pending"
           ) {
             throw new Error(
               "REQUEST_ALREADY_PROCESSED"
@@ -879,43 +1310,77 @@ router.patch(
                 end,
 
               updatedAt:
-                new Date(),
+                now,
             }
           );
         }
       );
 
       /*
-       * Notify user that session is confirmed.
+       * Notify user after successful transaction.
        */
-      await notifyRequestDecision(
-        request.userId,
-        "accepted",
-        expert.name,
-        null,
-        id,
-        sessionRef.id
-      );
+      try {
+        await notifyRequestDecision(
+          request.userId,
+          "accepted",
+          expert.name,
+          null,
+          id,
+          sessionRef.id
+        );
+      } catch (
+        notificationError
+      ) {
+        console.error(
+          "Accept notification error:",
+          notificationError
+        );
+      }
 
       return res.json({
-        success: true,
+        success:
+          true,
+
         status:
           "accepted",
+
         sessionId:
           sessionRef.id,
+
+        session,
+
         message:
-          "Session confirmed and user notified.",
+          "Session confirmed successfully.",
       });
     } catch (error) {
       if (
         error.message ===
         "REQUEST_ALREADY_PROCESSED"
       ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This request has already been processed.",
-        });
+        return res
+          .status(409)
+          .json({
+            success:
+              false,
+
+            message:
+              "This request has already been processed.",
+          });
+      }
+
+      if (
+        error.message ===
+        "REQUEST_NOT_FOUND"
+      ) {
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+
+            message:
+              "Request not found.",
+          });
       }
 
       console.error(
@@ -923,13 +1388,18 @@ router.patch(
         error
       );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Could not update the request.",
-      });
+      return res
+        .status(500)
+        .json({
+          success:
+            false,
+
+          message:
+            "Could not update the request.",
+        });
     }
   }
 );
 
-module.exports = router;
+module.exports =
+  router;

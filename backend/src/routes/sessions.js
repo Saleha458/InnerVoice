@@ -6,34 +6,81 @@ const router = express.Router();
 
 const MIN_DURATION = 20;
 const MAX_DURATION = 45;
+const DURATION_STEP = 5;
 
-const DAY_START =
-  9 * 60;
+const DAY_START = 9 * 60; // 09:00
+const DAY_END = 21 * 60; // 21:00
 
-const DAY_END =
-  21 * 60;
+// Slots are generated every 5 minutes.
+const STEP = 5;
 
-const STEP =
-  15;
+/* =========================================================
+   HELPERS
+========================================================= */
 
 const toDate = (value) => {
-  if (!value) return null;
-
-  if (
-    typeof value.toDate ===
-    "function"
-  ) {
-    return value.toDate();
+  if (!value) {
+    return null;
   }
 
-  const date =
-    new Date(value);
+  // Firestore Timestamp
+  if (
+    typeof value.toDate === "function"
+  ) {
+    const date = value.toDate();
 
-  return Number.isNaN(
-    date.getTime()
-  )
+    return Number.isNaN(date.getTime())
+      ? null
+      : date;
+  }
+
+  // Native Date
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime())
+      ? null
+      : value;
+  }
+
+  // Firestore Timestamp serialized object
+  if (typeof value === "object") {
+    const seconds =
+      value.seconds ?? value._seconds;
+
+    const nanoseconds =
+      value.nanoseconds ??
+      value._nanoseconds ??
+      0;
+
+    if (
+      Number.isFinite(Number(seconds))
+    ) {
+      const date = new Date(
+        Number(seconds) * 1000 +
+          Math.floor(
+            Number(nanoseconds) / 1e6
+          )
+      );
+
+      return Number.isNaN(date.getTime())
+        ? null
+        : date;
+    }
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
     ? null
     : date;
+};
+
+const isValidDuration = (duration) => {
+  return (
+    Number.isFinite(duration) &&
+    duration >= MIN_DURATION &&
+    duration <= MAX_DURATION &&
+    duration % DURATION_STEP === 0
+  );
 };
 
 const overlaps = (
@@ -41,10 +88,21 @@ const overlaps = (
   firstEnd,
   secondStart,
   secondEnd
-) =>
-  firstStart < secondEnd &&
-  firstEnd > secondStart;
+) => {
+  return (
+    firstStart < secondEnd &&
+    firstEnd > secondStart
+  );
+};
 
+/*
+ * Converts a user's local date + local minutes
+ * into the correct UTC Date.
+ *
+ * timezoneOffset follows JavaScript's
+ * getTimezoneOffset() convention:
+ * UTC - local time.
+ */
 const buildLocalSlot = (
   date,
   minutes,
@@ -63,130 +121,132 @@ const buildLocalSlot = (
       year,
       month - 1,
       day,
-      Math.floor(
-        minutes / 60
-      ),
+      Math.floor(minutes / 60),
       minutes % 60
     ) +
-      timezoneOffset *
-        60000
+      timezoneOffset * 60000
   );
 };
 
-const getBusyRanges =
-  async (expertId) => {
-    const [
-      sessions,
-      requests,
-    ] =
-      await Promise.all([
-        db
-          .collection(
-            "sessions"
-          )
-          .where(
-            "expertId",
-            "==",
-            expertId
-          )
-          .get(),
+/* =========================================================
+   GET BUSY RANGES
+========================================================= */
 
-        db
-          .collection(
-            "expertRequests"
-          )
-          .where(
-            "expertId",
-            "==",
-            expertId
-          )
-          .get(),
-      ]);
+const getBusyRanges = async (
+  expertId
+) => {
+  const [
+    sessionsSnapshot,
+    requestsSnapshot,
+  ] = await Promise.all([
+    db
+      .collection("sessions")
+      .where(
+        "expertId",
+        "==",
+        expertId
+      )
+      .get(),
 
-    const ranges = [];
+    db
+      .collection("expertRequests")
+      .where(
+        "expertId",
+        "==",
+        expertId
+      )
+      .get(),
+  ]);
 
-    sessions.docs.forEach(
-      (doc) => {
-        const session =
-          doc.data();
+  const ranges = [];
+
+  /* -------------------------------------------------------
+     EXISTING SCHEDULED SESSIONS
+  ------------------------------------------------------- */
+
+  sessionsSnapshot.docs.forEach(
+    (doc) => {
+      const session = doc.data();
+
+      if (
+        session.status !==
+        "scheduled"
+      ) {
+        return;
+      }
+
+      const start = toDate(
+        session.startTime
+      );
+
+      const end = toDate(
+        session.endTime
+      );
+
+      if (start && end) {
+        ranges.push({
+          start,
+          end,
+        });
+      }
+    }
+  );
+
+  /* -------------------------------------------------------
+     PENDING EXPERT REQUESTS
+     
+     Pending requests also block that time so two users
+     cannot request the same expert/time simultaneously.
+  ------------------------------------------------------- */
+
+  requestsSnapshot.docs.forEach(
+    (doc) => {
+      const request = doc.data();
+
+      if (
+        request.status !==
+        "pending"
+      ) {
+        return;
+      }
+
+      const start = toDate(
+        request.requestedStartTime
+      );
+
+      let end = toDate(
+        request.requestedEndTime
+      );
+
+      if (
+        !end &&
+        start
+      ) {
+        const duration = Number(
+          request.requestedDuration || 0
+        );
 
         if (
-          session.status !==
-          "scheduled"
+          duration > 0
         ) {
-          return;
-        }
-
-        const start =
-          toDate(
-            session.startTime
+          end = new Date(
+            start.getTime() +
+              duration * 60000
           );
-
-        const end =
-          toDate(
-            session.endTime
-          );
-
-        if (
-          start &&
-          end
-        ) {
-          ranges.push({
-            start,
-            end,
-          });
         }
       }
-    );
 
-    requests.docs.forEach(
-      (doc) => {
-        const request =
-          doc.data();
-
-        if (
-          request.status !==
-          "pending"
-        ) {
-          return;
-        }
-
-        const start =
-          toDate(
-            request.requestedStartTime
-          );
-
-        const end =
-          toDate(
-            request.requestedEndTime
-          ) ||
-          (
-            start
-              ? new Date(
-                  start.getTime() +
-                    Number(
-                      request.requestedDuration ||
-                        0
-                    ) *
-                      60000
-                )
-              : null
-          );
-
-        if (
-          start &&
-          end
-        ) {
-          ranges.push({
-            start,
-            end,
-          });
-        }
+      if (start && end) {
+        ranges.push({
+          start,
+          end,
+        });
       }
-    );
+    }
+  );
 
-    return ranges;
-  };
+  return ranges;
+};
 
 /* =========================================================
    AVAILABLE SLOTS
@@ -201,23 +261,21 @@ router.get(
         expertId,
       } = req.params;
 
-      const date =
-        String(
-          req.query.date || ""
-        );
+      const date = String(
+        req.query.date || ""
+      );
 
-      const duration =
-        Number(
-          req.query.duration ||
-            30
-        );
+      const duration = Number(
+        req.query.duration || 30
+      );
 
-      const timezoneOffset =
-        Number(
-          req.query
-            .timezoneOffset ??
-            0
-        );
+      const timezoneOffset = Number(
+        req.query.timezoneOffset ?? 0
+      );
+
+      /* ---------------------------------------------------
+         DATE VALIDATION
+      --------------------------------------------------- */
 
       if (
         !/^\d{4}-\d{2}-\d{2}$/.test(
@@ -231,21 +289,42 @@ router.get(
         });
       }
 
+      const parsedDate = new Date(
+        `${date}T00:00:00`
+      );
+
       if (
-        !Number.isFinite(
-          duration
-        ) ||
-        duration <
-          MIN_DURATION ||
-        duration >
-          MAX_DURATION
+        Number.isNaN(
+          parsedDate.getTime()
+        )
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "Session duration must be between 20 and 45 minutes.",
+            "Choose a valid date.",
         });
       }
+
+      /* ---------------------------------------------------
+         DURATION VALIDATION
+         
+         Allowed:
+         20, 25, 30, 35, 40, 45
+      --------------------------------------------------- */
+
+      if (
+        !isValidDuration(duration)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Session duration must be between 20 and 45 minutes in 5-minute increments.",
+        });
+      }
+
+      /* ---------------------------------------------------
+         TIMEZONE VALIDATION
+      --------------------------------------------------- */
 
       if (
         !Number.isFinite(
@@ -262,15 +341,17 @@ router.get(
         });
       }
 
+      /* ---------------------------------------------------
+         EXPERT LOOKUP
+      --------------------------------------------------- */
+
       const expertDoc =
         await db
           .collection("experts")
           .doc(expertId)
           .get();
 
-      if (
-        !expertDoc.exists
-      ) {
+      if (!expertDoc.exists) {
         return res.status(404).json({
           success: false,
           message:
@@ -281,11 +362,14 @@ router.get(
       const expert =
         expertDoc.data();
 
+      /* ---------------------------------------------------
+         EXPERT VERIFICATION / AVAILABILITY
+      --------------------------------------------------- */
+
       if (
         expert.verificationStatus !==
           "verified" ||
-        expert.available ===
-          false
+        expert.available === false
       ) {
         return res.status(400).json({
           success: false,
@@ -294,22 +378,29 @@ router.get(
         });
       }
 
+      /* ---------------------------------------------------
+         GET BUSY RANGES
+      --------------------------------------------------- */
+
       const busyRanges =
         await getBusyRanges(
           expertId
         );
 
-      const now =
-        new Date();
+      const now = new Date();
 
       const slots = [];
 
+      /* ---------------------------------------------------
+         GENERATE SLOTS
+         
+         09:00 -> 21:00
+         Every 5 minutes
+      --------------------------------------------------- */
+
       for (
-        let minute =
-          DAY_START;
-        minute +
-          duration <=
-          DAY_END;
+        let minute = DAY_START;
+        minute + duration <= DAY_END;
         minute += STEP
       ) {
         const start =
@@ -319,18 +410,22 @@ router.get(
             timezoneOffset
           );
 
-        const end =
-          new Date(
-            start.getTime() +
-              duration *
-                60000
-          );
+        const end = new Date(
+          start.getTime() +
+            duration * 60000
+        );
 
-        if (
-          start <= now
-        ) {
+        /* -------------------------------------------------
+           DO NOT SHOW PAST SLOTS
+        ------------------------------------------------- */
+
+        if (start <= now) {
           continue;
         }
+
+        /* -------------------------------------------------
+           CHECK CONFLICTS
+        ------------------------------------------------- */
 
         const busy =
           busyRanges.some(
@@ -360,8 +455,7 @@ router.get(
         success: true,
 
         expert: {
-          id:
-            expertId,
+          id: expertId,
           name:
             expert.name ||
             "Support Professional",
@@ -416,17 +510,19 @@ router.get(
         );
 
       sessions.sort(
-        (a, b) =>
-          (
+        (a, b) => {
+          const first =
             toDate(
               a.startTime
-            )?.getTime() || 0
-          ) -
-          (
+            )?.getTime() || 0;
+
+          const second =
             toDate(
               b.startTime
-            )?.getTime() || 0
-          )
+            )?.getTime() || 0;
+
+          return first - second;
+        }
       );
 
       return res.json({
@@ -479,8 +575,7 @@ router.get(
       }
 
       const expertId =
-        expertSnapshot.docs[0]
-          .id;
+        expertSnapshot.docs[0].id;
 
       const snapshot =
         await db
@@ -501,17 +596,19 @@ router.get(
         );
 
       sessions.sort(
-        (a, b) =>
-          (
+        (a, b) => {
+          const first =
             toDate(
               a.startTime
-            )?.getTime() || 0
-          ) -
-          (
+            )?.getTime() || 0;
+
+          const second =
             toDate(
               b.startTime
-            )?.getTime() || 0
-          )
+            )?.getTime() || 0;
+
+          return first - second;
+        }
       );
 
       return res.json({
@@ -561,6 +658,10 @@ router.get(
       const session =
         doc.data();
 
+      /* ---------------------------------------------------
+         USER ACCESS
+      --------------------------------------------------- */
+
       if (
         session.userId ===
         req.user.uid
@@ -573,6 +674,10 @@ router.get(
           },
         });
       }
+
+      /* ---------------------------------------------------
+         EXPERT ACCESS
+      --------------------------------------------------- */
 
       const expert =
         await db

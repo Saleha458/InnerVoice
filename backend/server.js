@@ -1,145 +1,152 @@
+"use strict";
+
 require("dotenv").config();
 
-require("./src/config/firebase");
+const http = require("node:http");
+const { Server } = require("socket.io");
 
-const http =
-  require("http");
-
-const {
-  Server,
-} = require("socket.io");
-
-const app =
-  require("./src/app");
+const { auth, db } = require("./src/config/firebase");
+const app = require("./src/app");
 
 const {
-  auth,
-} =
-  require("./src/config/firebase");
+  startNotificationScheduler
+} = require("./src/services/notificationScheduler");
 
 const {
-  startNotificationScheduler,
-} =
-  require("./src/services/notificationScheduler");
+  ensureAdminAccount
+} = require("./src/services/adminService");
 
 const {
-  ensureAdminAccount,
-} =
-  require("./src/services/adminService");
+  attachSocketHandlers
+} = require("./src/services/socketService");
 
 const {
-  attachSocketHandlers,
-} =
-  require("./src/services/socketService");
+  attachCallSocketHandlers
+} = require("./src/services/callSocketService");
 
-const PORT =
-  process.env.PORT ||
-  5000;
+const {
+  setNotificationIO
+} = require("./src/services/notificationService");
 
-const server =
-  http.createServer(
-    app
-  );
+const {
+  setAccountSocketIO,
+  startAccountDeletionWorker
+} = require("./src/services/accountLifecycle");
 
-const io =
-  new Server(
-    server,
-    {
-      cors: {
-        origin:
-          process.env.CLIENT_URL ||
-          process.env.FRONTEND_URL ||
-          "http://localhost:5173",
+const port = Number(process.env.PORT || 5000);
 
-        credentials:
-          true,
-      },
+const clientOrigin =
+  process.env.CLIENT_URL ||
+  process.env.FRONTEND_URL ||
+  "http://localhost:5173";
 
-      maxHttpBufferSize:
-        2e6,
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: clientOrigin,
+    credentials: true
+  },
+  maxHttpBufferSize: 2e6
+});
+
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+
+    if (!token) {
+      return next(new Error("Authentication required."));
     }
-  );
 
-/* =========================================================
-   SOCKET AUTH
-========================================================= */
+    const decoded = await auth.verifyIdToken(token, true);
 
-io.use(
-  async (
-    socket,
-    next
-  ) => {
-    try {
-      const token =
-        socket
-          .handshake
-          .auth?.token;
+    const user = await db
+      .collection("users")
+      .doc(decoded.uid)
+      .get();
 
-      if (!token) {
-        return next(
-          new Error(
-            "Authentication required."
-          )
-        );
-      }
-
-      socket.user =
-        await auth.verifyIdToken(
-          token
-        );
-
-      next();
-    } catch (error) {
-      console.error(
-        "Socket authentication:",
-        error.code ||
-          error.message
-      );
-
-      next(
-        new Error(
-          "Invalid authentication token."
-        )
-      );
+    if (!user.exists || user.data().status !== "active") {
+      return next(new Error("Account inactive."));
     }
-  }
-);
 
-/* =========================================================
-   SOCKET FEATURES
-========================================================= */
+    socket.user = {
+      ...decoded,
+      role: user.data().role
+    };
 
-attachSocketHandlers(
-  io
-);
+    // Keep existing account-revocation checks.
+    socket.use(async (_packet, proceed) => {
+      try {
+        const fresh = await db
+          .collection("users")
+          .doc(decoded.uid)
+          .get();
 
-/* =========================================================
-   START
-========================================================= */
+        if (!fresh.exists || fresh.data().status !== "active") {
+          socket.disconnect(true);
 
-const startServer =
-  async () => {
-    try {
-      await ensureAdminAccount();
-
-      startNotificationScheduler();
-
-      server.listen(
-        PORT,
-        () => {
-          console.log(
-            `InnerVoice backend running on port ${PORT}`
+          return proceed(
+            new Error("Account inactive.")
           );
         }
-      );
-    } catch (error) {
-      console.error(
-        "Backend startup failed:",
-        error
+
+        proceed();
+      } catch (error) {
+        proceed(error);
+      }
+    });
+
+    next();
+  } catch (error) {
+    console.error(
+      "Socket auth:",
+      error.code || error.name
+    );
+
+    next(
+      new Error("Invalid session or inactive account.")
+    );
+  }
+});
+
+setNotificationIO(io);
+setAccountSocketIO(io);
+
+// Existing expert chat and notifications
+attachSocketHandlers(io);
+
+// REQUIRED: audio/video signaling
+attachCallSocketHandlers(io);
+
+server.on("error", error => {
+  if (error.code === "EADDRINUSE") {
+    console.error(
+      `Port ${port} is already in use. Stop the previous backend instance.`
+    );
+  } else {
+    console.error("HTTP server error:", error);
+  }
+
+  process.exit(1);
+});
+
+async function startServer() {
+  try {
+    await ensureAdminAccount();
+
+    server.listen(port, () => {
+      console.log(
+        `InnerVoice backend running on port ${port}`
       );
 
-      process.exit(1);
-    }
-  };
+      // Start workers only after this process owns the port.
+      startNotificationScheduler();
+      startAccountDeletionWorker();
+    });
+  } catch (error) {
+    console.error("Backend startup failed:", error);
+    process.exit(1);
+  }
+}
 
 startServer();

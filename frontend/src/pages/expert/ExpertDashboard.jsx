@@ -1,253 +1,314 @@
-import { useEffect, useState } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useState
+} from "react";
+
 import { Link } from "react-router-dom";
+
+import {
+  ArrowRight,
+  ClipboardList,
+  CalendarDays,
+  UserRound
+} from "lucide-react";
 
 import {
   getMyExpert,
   getExpertRequests,
-  updateExpertRequest,
+  updateExpertRequest
 } from "../../services/expertService";
 
-const formatDateTime = (value) => {
+const dateLabel = value => {
   if (!value) return "Not specified";
 
-  try {
-    const date = value?.seconds
-      ? new Date(value.seconds * 1000)
-      : new Date(value);
+  const seconds = value.seconds ?? value._seconds;
 
-    if (Number.isNaN(date.getTime())) {
-      return "Not specified";
-    }
+  const date =
+    seconds === undefined
+      ? new Date(value)
+      : new Date(Number(seconds) * 1000);
 
-    return date.toLocaleString([], {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return "Not specified";
-  }
+  return Number.isNaN(date.getTime())
+    ? "Not specified"
+    : date.toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
 };
 
-const ExpertDashboard = () => {
+export default function ExpertDashboard() {
   const [expert, setExpert] = useState(null);
   const [requests, setRequests] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [requestLoading, setRequestLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState("");
+  const [requestsLoading, setRequestsLoading] = useState(false);
 
+  const [working, setWorking] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const loadExpert = async () => {
+  const loadRequests = useCallback(async () => {
+    setRequestsLoading(true);
+
+    try {
+      const response = await getExpertRequests();
+
+      const items =
+        response?.requests ||
+        response?.data?.requests ||
+        [];
+
+      setRequests(
+        Array.isArray(items) ? items : []
+      );
+    } catch (cause) {
+      setError(
+        cause?.response?.data?.message ||
+        "Could not refresh requests."
+      );
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, []);
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
     try {
       const response = await getMyExpert();
 
-      const expertData =
+      const record =
         response?.expert ||
         response?.data?.expert ||
         response?.data ||
         response;
 
-      setExpert(expertData || null);
+      setExpert(record || null);
 
-      return expertData;
-    } catch (err) {
-      console.error("Expert profile error:", err);
-
+      if (
+        (record?.verificationStatus || record?.status)
+        === "verified"
+      ) {
+        await loadRequests();
+      } else {
+        setRequests([]);
+      }
+    } catch (cause) {
       setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Unable to load expert profile."
+        cause?.response?.data?.message ||
+        cause.message ||
+        "Unable to load expert profile."
       );
-
-      return null;
-    }
-  };
-
-  const loadRequests = async () => {
-    try {
-      setRequestLoading(true);
-
-      const response = await getExpertRequests();
-
-      const requestData =
-        response?.requests ||
-        response?.data?.requests ||
-        response?.data ||
-        response ||
-        [];
-
-      setRequests(
-        Array.isArray(requestData)
-          ? requestData
-          : []
-      );
-    } catch (err) {
-      console.error("Expert requests error:", err);
     } finally {
-      setRequestLoading(false);
+      setLoading(false);
     }
-  };
-
-  const loadDashboard = async () => {
-    setLoading(true);
-    setError("");
-
-    const expertData = await loadExpert();
-
-    const status =
-      expertData?.verificationStatus ||
-      expertData?.status;
-
-    if (status === "verified") {
-      await loadRequests();
-    } else {
-      setRequests([]);
-    }
-
-    setLoading(false);
-  };
+  }, [loadRequests]);
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    void loadDashboard();
+  }, [loadDashboard]);
 
   useEffect(() => {
     if (
-      expert?.verificationStatus !== "verified"
+      (expert?.verificationStatus || expert?.status)
+      !== "verified"
     ) {
-      return;
+      return undefined;
     }
 
     const interval = setInterval(() => {
-      loadRequests();
-    }, 5000);
+      void loadRequests();
+    }, 10000);
 
     return () => clearInterval(interval);
-  }, [expert?.verificationStatus]);
+  }, [
+    expert?.verificationStatus,
+    expert?.status,
+    loadRequests
+  ]);
 
-  const handleRequest = async (
-    requestId,
-    status
-  ) => {
-    try {
-      setActionLoading(requestId);
+  async function decide(request, status) {
+    if (working) return;
 
-      let reason = "";
+    let reason = "";
 
-      if (status === "rejected") {
-        reason =
-          window.prompt(
-            "Please enter a reason for rejecting this request:"
-          ) || "";
+    if (status === "rejected") {
+      const response = window.prompt(
+        "Reason for rejecting this request:"
+      );
 
-        if (!reason.trim()) {
-          return;
-        }
+      if (response === null) return;
+
+      reason = response.trim();
+
+      if (!reason) {
+        setError("A rejection reason is required.");
+        return;
       }
+    }
 
+    setWorking(request.id);
+    setError("");
+    setNotice("");
+
+    try {
       await updateExpertRequest(
-        requestId,
+        request.id,
         status,
         reason
       );
 
-      await loadRequests();
-    } catch (err) {
-      console.error(
-        "Request update error:",
-        err
+      setNotice(
+        status === "accepted"
+          ? "Request accepted."
+          : "Request rejected with a reason."
       );
 
-      alert(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Unable to update request."
+      await loadRequests();
+    } catch (cause) {
+      setError(
+        cause?.response?.data?.message ||
+        cause.message ||
+        "Could not update request."
       );
     } finally {
-      setActionLoading("");
+      setWorking("");
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="page-shell">
-        <div className="page-header">
-          <div>
-            <span className="eyebrow">
-              EXPERT PORTAL
-            </span>
-
-            <h1>Expert Dashboard</h1>
-
-            <p>
-              Loading your dashboard...
-            </p>
-          </div>
-        </div>
-
-        <div className="empty-state">
-          Loading...
-        </div>
-      </div>
-    );
   }
 
-  if (error && !expert) {
-    return (
-      <div className="page-shell">
-        <div className="page-header">
-          <div>
-            <span className="eyebrow">
-              EXPERT PORTAL
-            </span>
+  const status =
+    expert?.verificationStatus ||
+    expert?.status ||
+    "pending";
 
-            <h1>Expert Dashboard</h1>
+  const pending = requests.filter(
+    item => item.status === "pending"
+  );
 
-            <p>
-              We could not load your expert
-              profile.
-            </p>
-          </div>
-        </div>
-
-        <div className="error-state">
-          <p>{error}</p>
-
-          <button
-            className="btn btn-primary"
-            onClick={loadDashboard}
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const verificationStatus =
-    expert?.verificationStatus || "pending";
-
-  const pendingRequests =
-    requests.filter(
-      (request) =>
-        request.status === "pending"
-    );
-
-  const acceptedRequests =
-    requests.filter(
-      (request) =>
-        request.status === "accepted"
-    );
+  const accepted = requests.filter(
+    item => item.status === "accepted"
+  );
 
   return (
-    <div className="page-shell">
-      {/* HEADER */}
+    <div className="page-shell iv-expert-home">
+      <style>{`
+        .iv-expert-home {
+          max-width: 1280px;
+          margin: 0 auto;
+        }
 
-      <div className="page-header">
+        .iv-expert-home .iv-expert-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 18px;
+          margin-bottom: 22px;
+        }
+
+        .iv-expert-home .iv-expert-stats {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          margin: 22px 0 28px;
+        }
+
+        .iv-expert-home .iv-expert-stat {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          color: inherit;
+          text-decoration: none;
+          min-width: 0;
+        }
+
+        .iv-expert-home .iv-expert-stat-icon {
+          display: grid;
+          place-items: center;
+          flex-shrink: 0;
+          width: 44px;
+          height: 44px;
+          border-radius: 13px;
+          background: #fff0e3;
+          color: #a85c40;
+        }
+
+        .iv-expert-home .iv-expert-stat h2 {
+          margin: 6px 0 0;
+          font-size: 25px;
+        }
+
+        .iv-expert-home .iv-expert-stat p {
+          margin: 4px 0 0;
+          color: #736960;
+          font-size: 13px;
+        }
+
+        .iv-expert-home .iv-request-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          flex-wrap: wrap;
+          margin-bottom: 17px;
+        }
+
+        .iv-expert-home .iv-request-heading h2 {
+          font-size: clamp(21px, 2.2vw, 27px);
+          margin: 5px 0;
+        }
+
+        .iv-expert-home .iv-request-heading p {
+          margin: 0;
+          font-size: 14px;
+          color: #736960;
+          line-height: 1.6;
+        }
+
+        .iv-expert-home .iv-request-inbox {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border: 1px solid #e4cfbd;
+          background: #fff;
+          padding: 11px 16px;
+          border-radius: 12px;
+          color: #99573a;
+          text-decoration: none;
+          font-weight: 700;
+        }
+
+        .iv-expert-home .iv-request-inbox:hover {
+          background: #fff4eb;
+        }
+
+        .iv-expert-home .iv-request-list {
+          display: grid;
+          gap: 15px;
+        }
+
+        .iv-expert-home .iv-request-card {
+          padding: 20px;
+          border: 1px solid #eadbcc;
+          border-radius: 18px;
+          background: #fff;
+        }
+
+        @media (max-width: 850px) {
+          .iv-expert-home .iv-expert-stats {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      <header className="page-header iv-expert-header">
         <div>
           <span className="eyebrow">
-            {verificationStatus === "verified"
+            {status === "verified"
               ? "VERIFIED EXPERT"
               : "EXPERT PORTAL"}
           </span>
@@ -255,214 +316,209 @@ const ExpertDashboard = () => {
           <h1>Expert Dashboard</h1>
 
           <p>
-            Manage support requests and
-            scheduled sessions.
+            Manage support requests and scheduled sessions.
           </p>
         </div>
 
-        <div className="page-header-actions">
-          <Link
-            className="btn btn-secondary"
-            to="/profile"
-          >
-            My Profile
-          </Link>
+        <Link
+          className="secondary-button"
+          to="/expert/profile"
+        >
+          My profile
+        </Link>
+      </header>
+
+      {error && (
+        <div className="error-box" role="alert">
+          {error}
         </div>
-      </div>
+      )}
 
-      {/* VERIFICATION */}
-
-      <div className="dashboard-card">
-        <div className="card-header">
-          <div>
-            <span className="eyebrow">
-              ACCOUNT STATUS
-            </span>
-
-            <h2>
-              {expert?.professionalName ||
-                expert?.name ||
-                "Expert"}
-            </h2>
-          </div>
-
-          <span
-            className={`status-badge ${verificationStatus}`}
-          >
-            {verificationStatus === "verified"
-              ? "Verified"
-              : verificationStatus ===
-                "rejected"
-              ? "Rejected"
-              : "Pending"}
-          </span>
+      {notice && (
+        <div className="notice-box" role="status">
+          {notice}
         </div>
+      )}
 
-        {verificationStatus === "verified" && (
-          <div className="success-state">
-            <strong>
-              Expert account verified
-            </strong>
+      {loading ? (
+        <div className="empty-state">
+          Loading your dashboard…
+        </div>
+      ) : !expert ? (
+        <div className="empty-state">
+          <p>Could not load expert profile.</p>
 
-            <p>
-              Your profile is now visible to
-              verified-expert searches and you
-              can receive session requests.
-            </p>
-          </div>
-        )}
-
-        {verificationStatus === "pending" && (
-          <div className="warning-state">
-            <strong>
-              Verification pending
-            </strong>
-
-            <p>
-              Your application is waiting for
-              admin approval. Once approved,
-              users will be able to find your
-              profile and send session requests.
-            </p>
-          </div>
-        )}
-
-        {verificationStatus === "rejected" && (
-          <div className="error-state">
-            <strong>
-              Application rejected
-            </strong>
-
-            <p>
-              {expert?.rejectionReason ||
-                "No rejection reason was provided."}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* VERIFIED CONTENT */}
-
-      {verificationStatus === "verified" && (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={loadDashboard}
+          >
+            Try again
+          </button>
+        </div>
+      ) : (
         <>
-          {/* SUMMARY CARDS */}
-
-          <div className="dashboard-cards">
-            <Link
-              className="dashboard-card"
-              to="/expert/requests"
-            >
-              <span>Requests</span>
-
-              <h2>
-                {pendingRequests.length}
-              </h2>
-
-              <p>
-                Pending session requests
-              </p>
-            </Link>
-
-            <Link
-              className="dashboard-card"
-              to="/expert/sessions"
-            >
-              <span>Sessions</span>
-
-              <h2>
-                {acceptedRequests.length}
-              </h2>
-
-              <p>
-                Accepted requests
-              </p>
-            </Link>
-
-            <Link
-              className="dashboard-card"
-              to="/profile"
-            >
-              <span>Profile</span>
-
-              <h2>View</h2>
-
-              <p>
-                Professional details
-              </p>
-            </Link>
-          </div>
-
-          {/* REQUESTS */}
-
-          <div className="section-block">
-            <div className="section-header">
+          <section className="dashboard-card">
+            <div className="card-header">
               <div>
                 <span className="eyebrow">
-                  SESSION REQUESTS
+                  ACCOUNT STATUS
                 </span>
 
                 <h2>
-                  Requests waiting for you
+                  {expert.professionalName ||
+                    expert.name ||
+                    "Expert"}
                 </h2>
-
-                <p>
-                  Accept a request to confirm
-                  the session or reject it with
-                  a reason.
-                </p>
               </div>
 
-              <Link
-                className="btn btn-secondary"
-                to="/expert/requests"
+              <span
+                className={`status-badge ${status}`}
               >
-                View All
-              </Link>
+                {status === "verified"
+                  ? "Verified"
+                  : status === "rejected"
+                    ? "Rejected"
+                    : "Pending"}
+              </span>
             </div>
 
-            {requestLoading && (
-              <div className="empty-state">
-                Updating requests...
+            {status === "verified" ? (
+              <div className="success-state">
+                <strong>
+                  Expert account verified
+                </strong>
+
+                <p>
+                  Your profile is visible to users and
+                  you can receive session requests.
+                </p>
+              </div>
+            ) : status === "rejected" ? (
+              <div className="error-state">
+                <strong>
+                  Application rejected
+                </strong>
+
+                <p>
+                  {expert.rejectionReason ||
+                    "No reason provided."}
+                </p>
+              </div>
+            ) : (
+              <div className="warning-state">
+                <strong>
+                  Verification pending
+                </strong>
+
+                <p>
+                  Your application is awaiting
+                  administrator review.
+                </p>
               </div>
             )}
+          </section>
 
-            {!requestLoading &&
-              pendingRequests.length === 0 && (
-                <div className="empty-state">
-                  <h3>
-                    No pending requests
-                  </h3>
+          {status === "verified" && (
+            <>
+              <div className="iv-expert-stats">
+                <Link
+                  className="dashboard-card iv-expert-stat"
+                  to="/expert/requests"
+                >
+                  <span className="iv-expert-stat-icon">
+                    <ClipboardList size={21} />
+                  </span>
 
-                  <p>
-                    New user session requests
-                    will automatically appear
-                    here.
-                  </p>
+                  <div>
+                    <span>Requests</span>
+                    <h2>{pending.length}</h2>
+                    <p>Pending session requests</p>
+                  </div>
+                </Link>
+
+                <Link
+                  className="dashboard-card iv-expert-stat"
+                  to="/expert/sessions"
+                >
+                  <span className="iv-expert-stat-icon">
+                    <CalendarDays size={21} />
+                  </span>
+
+                  <div>
+                    <span>Sessions</span>
+                    <h2>{accepted.length}</h2>
+                    <p>Accepted requests</p>
+                  </div>
+                </Link>
+
+                <Link
+                  className="dashboard-card iv-expert-stat"
+                  to="/expert/profile"
+                >
+                  <span className="iv-expert-stat-icon">
+                    <UserRound size={21} />
+                  </span>
+
+                  <div>
+                    <span>Profile</span>
+                    <h2>View</h2>
+                    <p>Professional details</p>
+                  </div>
+                </Link>
+              </div>
+
+              <section className="section-block">
+                <div className="iv-request-heading">
+                  <div>
+                    <span className="eyebrow">
+                      SESSION REQUESTS
+                    </span>
+
+                    <h2>Pending support requests</h2>
+
+                    <p>
+                      Accept a request to confirm a session,
+                      or reject it with a reason.
+                    </p>
+                  </div>
+
+                  <Link
+                    className="iv-request-inbox"
+                    to="/expert/requests"
+                  >
+                    Open request inbox
+
+                    <ArrowRight size={17} />
+                  </Link>
                 </div>
-              )}
 
-            <div className="stack-list">
-              {pendingRequests.map(
-                (request) => {
-                  const isProcessing =
-                    actionLoading ===
-                    request.id;
+                {requestsLoading && (
+                  <p role="status">
+                    Updating requests…
+                  </p>
+                )}
 
-                  return (
-                    <div
-                      className="dashboard-card"
-                      key={request.id}
+                {!requestsLoading &&
+                  pending.length === 0 && (
+                    <div className="empty-state">
+                      <h3>No pending requests</h3>
+
+                      <p>
+                        New session requests will
+                        appear here.
+                      </p>
+                    </div>
+                  )}
+
+                <div className="iv-request-list">
+                  {pending.slice(0, 3).map(item => (
+                    <article
+                      className="iv-request-card"
+                      key={item.id}
                     >
                       <div className="card-header">
-                        <div>
-                          <span className="eyebrow">
-                            NEW REQUEST
-                          </span>
-
-                          <h3>
-                            Anonymous User
-                          </h3>
-                        </div>
+                        <h3>Anonymous user</h3>
 
                         <span className="status-badge pending">
                           Pending
@@ -476,9 +532,9 @@ const ExpertDashboard = () => {
                           </strong>
 
                           <p>
-                            {formatDateTime(
-                              request.requestedStartTime ||
-                                request.startTime
+                            {dateLabel(
+                              item.requestedStartTime ||
+                              item.startTime
                             )}
                           </p>
                         </div>
@@ -489,65 +545,56 @@ const ExpertDashboard = () => {
                           </strong>
 
                           <p>
-                            {request.requestedDuration ||
-                              request.duration ||
-                              20}{" "}
-                            minutes
+                            {item.requestedDuration ||
+                              item.duration ||
+                              20} minutes
                           </p>
                         </div>
                       </div>
 
-                      {request.message && (
+                      {item.message && (
                         <div className="message-box">
                           <strong>
                             User message
                           </strong>
 
-                          <p>
-                            {request.message}
-                          </p>
+                          <p>{item.message}</p>
                         </div>
                       )}
 
                       <div className="card-actions">
                         <button
+                          type="button"
                           className="btn btn-primary"
-                          disabled={isProcessing}
+                          disabled={Boolean(working)}
                           onClick={() =>
-                            handleRequest(
-                              request.id,
-                              "accepted"
-                            )
+                            decide(item, "accepted")
                           }
                         >
-                          {isProcessing
-                            ? "Processing..."
-                            : "Accept Request"}
+                          {working === item.id
+                            ? "Processing…"
+                            : "Accept request"}
                         </button>
 
                         <button
+                          type="button"
                           className="btn btn-secondary"
-                          disabled={isProcessing}
+                          disabled={Boolean(working)}
                           onClick={() =>
-                            handleRequest(
-                              request.id,
-                              "rejected"
-                            )
+                            decide(item, "rejected")
                           }
                         >
                           Reject
                         </button>
                       </div>
-                    </div>
-                  );
-                }
-              )}
-            </div>
-          </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
         </>
       )}
     </div>
   );
-};
-
-export default ExpertDashboard;
+}

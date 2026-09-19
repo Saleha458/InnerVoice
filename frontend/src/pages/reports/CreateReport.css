@@ -1,0 +1,272 @@
+.iv-report-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.iv-report-header {
+  max-width: 940px;
+  margin-bottom: 28px;
+}
+
+.iv-report-header > div {
+  min-width: 0;
+}
+
+.iv-report-header h1 {
+  margin: 10px 0 12px;
+}
+
+.iv-report-header p {
+  max-width: 570px;
+  line-height: 1.7;
+}
+
+.iv-report-back {
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.iv-report-form {
+  width: 100%;
+  max-width: 940px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #ead9ce;
+  border-radius: 24px;
+  box-shadow: 0 16px 42px rgba(85, 50, 32, 0.055);
+}
+
+.iv-report-intro {
+  padding: 30px 34px 26px;
+  background: linear-gradient(120deg, #fff8f1, #fff1e5);
+  border-bottom: 1px solid #f0dfd2;
+}
+
+.iv-report-step {
+  color: #a65d3d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.iv-report-intro h2 {
+  margin: 11px 0 7px;
+  color: #332b27;
+  font-size: clamp(23px, 3vw, 30px);
+  line-height: 1.2;
+}
+
+.iv-report-intro p {
+  margin: 0;
+  max-width: 620px;
+  color: #765d50;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.iv-report-fields {
+  display: grid;
+  gap: 25px;
+  padding: 32px 34px 34px;
+}
+
+.iv-report-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.iv-report-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.iv-report-field label {
+  display: block;
+  color: #352d29;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.iv-report-field select,
+.iv-report-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid #decbbd;
+  border-radius: 12px;
+  background: #fffdfa;
+  color: #302b28;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.iv-report-field select {
+  min-height: 49px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.iv-report-field textarea {
+  min-height: 190px;
+  padding: 15px 16px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.iv-report-field textarea::placeholder {
+  color: #978478;
+}
+
+.iv-report-field select:focus,
+.iv-report-field textarea:focus {
+  border-color: #ae6c4c;
+  box-shadow: 0 0 0 3px rgba(174, 108, 76, 0.13);
+}
+
+.iv-report-field select:disabled,
+.iv-report-field textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.iv-report-field small {
+  color: #826d60;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.iv-report-label-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.iv-report-label-line span {
+  color: #8b776b;
+  font-size: 12px;
+}
+
+.iv-report-privacy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 19px;
+  border: 1px solid #f0d9c8;
+  border-radius: 15px;
+  background: #fff7ef;
+}
+
+.iv-report-privacy-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #fce5d4;
+  color: #a25b3a;
+  font-size: 22px;
+}
+
+.iv-report-privacy-note strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #69432f;
+  font-size: 14px;
+}
+
+.iv-report-privacy-note p {
+  margin: 0;
+  color: #765d4b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.iv-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 13px;
+  padding-top: 7px;
+}
+
+.iv-report-cancel {
+  padding: 12px 19px;
+  border: 1px solid #e5d5c8;
+  border-radius: 11px;
+  color: #715244;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.iv-report-submit {
+  min-height: 46px;
+  padding-inline: 25px;
+}
+
+.iv-report-footnote {
+  max-width: 900px;
+  margin: 20px 0 0;
+  color: #806c5d;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+@media (max-width: 700px) {
+  .iv-report-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .iv-report-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .iv-report-intro {
+    padding: 24px 21px;
+  }
+
+  .iv-report-fields {
+    padding: 24px 19px;
+    gap: 23px;
+  }
+
+  .iv-report-form {
+    border-radius: 18px;
+  }
+
+  .iv-report-actions {
+    align-items: stretch;
+  }
+
+  .iv-report-cancel,
+  .iv-report-submit {
+    flex: 1 1 130px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 375px) {
+  .iv-report-intro {
+    padding: 21px 16px;
+  }
+
+  .iv-report-fields {
+    padding: 20px 15px;
+  }
+
+  .iv-report-privacy-note {
+    padding: 14px;
+  }
+}

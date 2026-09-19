@@ -1,226 +1,174 @@
-import {
-  NavLink,
-  useNavigate,
-} from "react-router-dom";
 
+import { useState } from "react";
+
+import {
+  LayoutDashboard,
+  Sparkles,
+  Stethoscope,
+  CalendarDays,
+  Bell,
+  Smile,
+  BookOpen,
+  Flag,
+  UserRound,
+  ClipboardList,
+  Heart,
+  ShieldAlert,
+  Users,
+  BadgeCheck,
+  LogOut,
+  Star,
+  KeyRound
+} from "lucide-react";
+
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-const userLinks = [
-  {
-    to: "/user/dashboard",
-    label: "Dashboard",
-    icon: "⌂",
-  },
-  {
-    to: "/chat",
-    label: "AI Support",
-    icon: "✦",
-  },
-  {
-    to: "/experts",
-    label: "Find Expert",
-    icon: "♧",
-  },
-  {
-    to: "/bookings",
-    label: "My Sessions",
-    icon: "◷",
-  },
-  {
-    to: "/mood",
-    label: "Mood",
-    icon: "◉",
-  },
-  {
-    to: "/journal",
-    label: "Journal",
-    icon: "▤",
-  },
-  {
-    to: "/reports",
-    label: "Reports",
-    icon: "⚑",
-  },
-];
+const menus = {
+  user: [
+    "YOUR SPACE",
+    [
+      ["/user/dashboard", "Dashboard", LayoutDashboard],
+      ["/chat", "AI Support", Sparkles],
+      ["/experts", "Find Expert", Stethoscope],
+      ["/bookings", "My Sessions", CalendarDays],
+      ["/notifications", "Notifications", Bell],
+      ["/mood", "Mood", Smile],
+      ["/journal", "Journal", BookOpen],
+      ["/reports", "Reports", Flag],
+      ["/starred", "Starred Messages", Star],
+      ["/vault-recovery", "Recovery Kit", KeyRound],
+      ["/profile", "Profile", UserRound]
+    ]
+  ],
 
-const expertLinks = [
-  {
-    to: "/expert/dashboard",
-    label: "Dashboard",
-    icon: "⌂",
-  },
-  {
-    to: "/expert/requests",
-    label: "Requests",
-    icon: "↗",
-  },
-  {
-    to: "/expert/sessions",
-    label: "Sessions",
-    icon: "◷",
-  },
-  {
-    to: "/expert/messages",
-    label: "Messages",
-    icon: "◌",
-  },
-  {
-    to: "/expert/profile",
-    label: "Profile",
-    icon: "◎",
-  },
-];
+  expert: [
+    "PROFESSIONAL SPACE",
+    [
+      ["/expert/dashboard", "Dashboard", LayoutDashboard],
+      ["/expert/requests", "Requests", ClipboardList],
+      ["/expert/sessions", "Sessions", CalendarDays],
+      ["/vault-recovery", "Recovery Kit", KeyRound],
+      ["/notifications", "Notifications", Bell],
+      ["/expert/profile", "Profile", UserRound]
+    ]
+  ],
 
-const parentLinks = [
-  {
-    to: "/parent/dashboard",
-    label: "Dashboard",
-    icon: "⌂",
-  },
-  {
-    to: "/parent/guidelines",
-    label: "Guidelines",
-    icon: "▤",
-  },
-  {
-    to: "/parent/warnings",
-    label: "Warning Signs",
-    icon: "!",
-  },
-  {
-    to: "/parent/profile",
-    label: "Profile",
-    icon: "◎",
-  },
-];
+  parent: [
+    "PARENT HUB",
+    [
+      ["/parent/dashboard", "Dashboard", LayoutDashboard],
+      ["/parent/foundations", "Parenting Foundations", Heart],
+      ["/parent/guidelines", "Guidelines", BookOpen],
+      ["/parent/warnings", "Warning Signs", ShieldAlert],
+      ["/parent/profile", "Profile", UserRound]
+    ]
+  ],
 
-const adminLinks = [
-  {
-    to: "/admin/dashboard",
-    label: "Dashboard",
-    icon: "⌂",
-  },
-  {
-    to: "/admin/experts",
-    label: "Expert Verification",
-    icon: "✓",
-  },
-  {
-    to: "/admin/users",
-    label: "Users",
-    icon: "♙",
-  },
-  {
-    to: "/admin/reports",
-    label: "Reports",
-    icon: "⚑",
-  },
-  {
-    to: "/admin/sessions",
-    label: "Sessions",
-    icon: "◷",
-  },
-];
+  admin: [
+    "ADMINISTRATION",
+    [
+      ["/admin/dashboard", "Dashboard", LayoutDashboard],
+      ["/admin/experts", "Expert Verification", BadgeCheck],
+      ["/admin/users", "Users", Users],
+      ["/admin/reports", "Reports", Flag]
+    ]
+  ]
+};
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  let links = userLinks;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  if (user?.role === "expert") {
-    links = expertLinks;
-  }
+  const [title, links] = menus[user?.role] || menus.user;
 
-  if (user?.role === "parent") {
-    links = parentLinks;
-  }
+  async function signOut() {
+    if (busy) return;
 
-  if (user?.role === "admin") {
-    links = adminLinks;
-  }
+    setBusy(true);
+    setError("");
 
-  const handleLogout = async () => {
     try {
       await logout();
+
+      onClose?.();
+
+      navigate("/login", {
+        replace: true
+      });
+    } catch {
+      setError("Could not sign out. Please try again.");
     } finally {
-      navigate("/login");
+      setBusy(false);
     }
-  };
+  }
 
   return (
-    <aside className="sidebar">
-
-      <div className="sidebar-brand">
-        <div className="sidebar-logo">
-          IV
-        </div>
-
-        <div>
-          <strong>InnerVoice</strong>
-          <small>
-            A safer space to be heard
-          </small>
-        </div>
-      </div>
-
-      <nav className="sidebar-nav">
-
+    <aside
+      className="sidebar"
+      aria-label="Dashboard sidebar"
+    >
+      <nav
+        className="sidebar-nav"
+        aria-label="Dashboard navigation"
+      >
         <div className="sidebar-section-title">
-          {user?.role === "user"
-            ? "Your Space"
-            : user?.role === "expert"
-            ? "Professional Space"
-            : user?.role === "parent"
-            ? "Parent Hub"
-            : "Administration"}
+          {title}
         </div>
 
-        {links.map((item) => (
+        {links.map(([to, label, Icon]) => (
           <NavLink
-            key={item.to}
-            to={item.to}
+            key={to}
+            to={to}
+            end={to.endsWith("/dashboard")}
+            onClick={() => onClose?.()}
             className={({ isActive }) =>
-              `sidebar-link ${
-                isActive
-                  ? "active"
-                  : ""
-              }`
+              `sidebar-link${isActive ? " active" : ""}`
             }
           >
-            <span className="sidebar-icon">
-              {item.icon}
-            </span>
+            <Icon
+              className="sidebar-icon"
+              size={18}
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
 
-            <span>
-              {item.label}
+            <span className="sidebar-link-label">
+              {label}
             </span>
           </NavLink>
         ))}
-
       </nav>
 
       <div className="sidebar-bottom">
-
-        <NavLink
-          to="/profile"
-          className="sidebar-link"
-        >
-          <span className="sidebar-icon">
-            ◎
-          </span>
-          Profile
-        </NavLink>
+        {error && (
+          <p
+            className="sidebar-logout-error"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
 
         <button
           type="button"
           className="sidebar-logout"
-          onClick={handleLogout}
+          disabled={busy}
+          onClick={signOut}
         >
-          <span>↪</span>
-          Logout
-        </button>
+          <LogOut
+            size={18}
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
 
+          <span>
+            {busy ? "Signing out..." : "Log out"}
+          </span>
+        </button>
       </div>
     </aside>
   );

@@ -1,38 +1,36 @@
-const { db } = require("../config/firebase");
+"use strict";
 
-const moodsCollection = db.collection("moods");
+const {
+  createMood: save,
+  getUserMoods: list,
+  deleteMood: remove,
+} = require("../services/moodService");
 
-const createMood = async (userId, data) => {
-  const mood = {
+const createMood = (
+  userId,
+  data
+) =>
+  save({
     userId,
     mood: data.mood,
     note: data.note || "",
-    date: data.date || new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  };
+    intensity: data.intensity,
+  });
 
-  const ref = await moodsCollection.add(mood);
+const getUserMoods = (userId) =>
+  list(userId);
 
-  return {
-    id: ref.id,
-    ...mood,
-  };
-};
+// Do not allow unscoped deletion.
+// The owner ID is mandatory.
 
-const getUserMoods = async (userId) => {
-  const snapshot = await moodsCollection
-    .where("userId", "==", userId)
-    .get();
-
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
-};
-
-const deleteMood = async (moodId) => {
-  await moodsCollection.doc(moodId).delete();
-};
+const deleteMood = (
+  moodId,
+  userId
+) =>
+  remove(
+    moodId,
+    userId
+  );
 
 module.exports = {
   createMood,

@@ -1,76 +1,81 @@
-const crypto = require("crypto");
+"use strict";
+
+const crypto = require("node:crypto");
 
 const ALGORITHM = "aes-256-gcm";
 
-const getMasterKey = () => {
-  const key = process.env.ENCRYPTION_KEY;
+// Preserve the original SHA-256 key derivation
+// and 16-byte IV for existing messages.
 
-  if (!key) {
-    throw new Error(
-      "ENCRYPTION_KEY is missing from .env"
-    );
+function getKey() {
+  const secret = process.env.ENCRYPTION_KEY;
+
+  if (!secret) {
+    throw new Error("ENCRYPTION_KEY is missing");
   }
 
   return crypto
     .createHash("sha256")
-    .update(key)
+    .update(secret, "utf8")
     .digest();
-};
+}
 
-const encrypt = (text) => {
+function encrypt(text, context = "") {
+  if (typeof text !== "string") {
+    throw new TypeError("Expected text string");
+  }
+
   const iv = crypto.randomBytes(16);
-  const key = getMasterKey();
 
   const cipher = crypto.createCipheriv(
     ALGORITHM,
-    key,
+    getKey(),
     iv
   );
 
-  let encrypted = cipher.update(
-    text,
-    "utf8",
-    "hex"
-  );
+  if (context) {
+    cipher.setAAD(Buffer.from(context, "utf8"));
+  }
 
-  encrypted += cipher.final("hex");
-
-  const authTag = cipher.getAuthTag();
+  const encryptedData =
+    cipher.update(text, "utf8", "hex") +
+    cipher.final("hex");
 
   return {
-    encryptedData: encrypted,
+    encryptedData,
     iv: iv.toString("hex"),
-    authTag: authTag.toString("hex"),
+    authTag: cipher.getAuthTag().toString("hex"),
   };
-};
+}
 
-const decrypt = (
+function decrypt(
   encryptedData,
   iv,
-  authTag
-) => {
-  const key = getMasterKey();
-
+  authTag,
+  context = ""
+) {
   const decipher = crypto.createDecipheriv(
     ALGORITHM,
-    key,
+    getKey(),
     Buffer.from(iv, "hex")
   );
+
+  if (context) {
+    decipher.setAAD(Buffer.from(context, "utf8"));
+  }
 
   decipher.setAuthTag(
     Buffer.from(authTag, "hex")
   );
 
-  let decrypted = decipher.update(
-    encryptedData,
-    "hex",
-    "utf8"
+  return (
+    decipher.update(
+      encryptedData,
+      "hex",
+      "utf8"
+    ) + decipher.final("utf8")
   );
-
-  decrypted += decipher.final("utf8");
-
-  return decrypted;
-};
+}
 
 module.exports = {
   encrypt,

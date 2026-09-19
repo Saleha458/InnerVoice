@@ -1,328 +1,226 @@
-import {
-  useState,
-} from "react";
 
+import { useState } from "react";
 import {
   Link,
   useLocation,
   useNavigate,
 } from "react-router-dom";
 
-import useAuth from "../../hooks/useAuth";
+import { useAuth } from "../../context/AuthContext";
+import AuthShell from "./AuthShell";
 
-const Login = () => {
-  const navigate =
-    useNavigate();
+export default function Login() {
+  const { login, restore } = useAuth();
 
-  const location =
-    useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const {
-    login,
-  } = useAuth();
+  const [anonymousId, setAnonymousId] = useState("");
+  const [password, setPassword] = useState("");
+  const [restoreMode, setRestoreMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [
-    anonymousId,
-    setAnonymousId,
-  ] = useState("");
+  /* =========================================================
+     SUBMIT — SIGN IN OR RESTORE
+  ========================================================= */
 
-  const [
-    password,
-    setPassword,
-  ] = useState("");
+  const submit = async (event) => {
+    event.preventDefault();
 
-  const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
+    setError("");
+    setSuccess("");
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+    if (!anonymousId.trim() || !password) {
+      setError("Both fields are required.");
+      return;
+    }
 
-  const [
-    error,
-    setError,
-  ] = useState("");
+    try {
+      setLoading(true);
 
-  // =======================================================
-  // SUBMIT
-  // =======================================================
+      if (restoreMode) {
+        await restore(anonymousId.trim(), password);
 
-  const handleSubmit =
-    async (e) => {
-      e.preventDefault();
+        setRestoreMode(false);
+        setPassword("");
 
-      setError("");
-
-      if (
-        !anonymousId.trim() ||
-        !password
-      ) {
-        setError(
-          "Anonymous ID and password are required."
+        setSuccess(
+          "Account restored. Please sign in. Cancelled bookings remain cancelled."
         );
 
         return;
       }
 
-      try {
-        setLoading(true);
+      const result = await login(
+        anonymousId.trim(),
+        password
+      );
 
-        const result =
-          await login(
-            anonymousId.trim(),
-            password
-          );
+      const role = result?.user?.role || "user";
+      const destination = location.state?.from?.pathname;
 
-        const role =
-          result?.user?.role ||
-          "user";
+      if (
+        destination &&
+        destination !== "/login" &&
+        destination !== "/restore"
+      ) {
+        navigate(destination, {
+          replace: true,
+        });
 
-        // ---------------------------------------------------
-        // RETURN TO ORIGINAL PROTECTED PAGE
-        // ---------------------------------------------------
-
-        const destination =
-          location.state?.from
-            ?.pathname;
-
-        if (
-          destination &&
-          destination !==
-            "/login"
-        ) {
-          navigate(
-            destination,
-            {
-              replace: true,
-            }
-          );
-
-          return;
-        }
-
-        // ---------------------------------------------------
-        // ROLE-BASED REDIRECT
-        // ---------------------------------------------------
-
-        if (
-          role === "admin"
-        ) {
-          navigate(
-            "/admin/dashboard",
-            {
-              replace: true,
-            }
-          );
-
-          return;
-        }
-
-        if (
-          role === "expert"
-        ) {
-          navigate(
-            "/expert/dashboard",
-            {
-              replace: true,
-            }
-          );
-
-          return;
-        }
-
-        if (
-          role === "parent"
-        ) {
-          navigate(
-            "/parent/dashboard",
-            {
-              replace: true,
-            }
-          );
-
-          return;
-        }
-
-        navigate(
-          "/user/dashboard",
-          {
-            replace: true,
-          }
-        );
-      } catch (err) {
-        setError(
-          err?.response?.data
-            ?.message ||
-            err?.message ||
-            "Unable to sign in."
-        );
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
+
+      const routes = {
+        user: "/user/dashboard",
+        expert: "/expert/dashboard",
+        parent: "/parent/dashboard",
+        admin: "/admin/dashboard",
+      };
+
+      navigate(routes[role] || "/user/dashboard", {
+        replace: true,
+      });
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Please try again."
+      );
+
+      if (
+        err?.response?.data?.code ===
+        "ACCOUNT_DEACTIVATED"
+      ) {
+        setRestoreMode(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleRestoreMode = () => {
+    setRestoreMode((current) => !current);
+    setError("");
+    setSuccess("");
+    setPassword("");
+  };
+
+  /* =========================================================
+     UI
+  ========================================================= */
 
   return (
-    <div className="auth-page">
+    <AuthShell variant="login">
       <div className="auth-card">
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
         <div className="auth-header">
-          <span className="eyebrow">
-            INNERVOICE
-          </span>
+          <span className="eyebrow">INNERVOICE</span>
 
           <h1>
-            Welcome back
+            {restoreMode
+              ? "Welcome back to your space."
+              : "Welcome back."}
           </h1>
 
           <p>
-            Sign in using your
-            anonymous identity.
+            {restoreMode
+              ? "Restore your deactivated account within 30 days using your Anonymous ID and password."
+              : "Sign in with your anonymous identity and continue where you left off."}
           </p>
         </div>
 
-        {/* =================================================
-            ERROR
-        ================================================= */}
-
         {error && (
-          <div
-            className="error-box"
-            role="alert"
-          >
+          <div className="error-box" role="alert">
             {error}
           </div>
         )}
 
-        {/* =================================================
-            FORM
-        ================================================= */}
+        {success && (
+          <div className="success-box" role="status">
+            {success}
+          </div>
+        )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="auth-form"
-        >
-          {/* Anonymous ID */}
-
+        <form className="auth-form" onSubmit={submit}>
           <div className="form-group">
-            <label htmlFor="anonymousId">
+            <label htmlFor="login-anonymous-id">
               Anonymous ID
             </label>
 
             <input
-              id="anonymousId"
+              id="login-anonymous-id"
+              className="form-input"
               type="text"
-              value={anonymousId}
-              onChange={(e) =>
-                setAnonymousId(
-                  e.target.value
-                )
-              }
-              placeholder="e.g. quiet_soul"
               autoComplete="username"
+              placeholder="Enter your Anonymous ID"
+              value={anonymousId}
+              onChange={(event) =>
+                setAnonymousId(event.target.value)
+              }
+              required
               disabled={loading}
             />
           </div>
 
-          {/* Password */}
-
           <div className="form-group">
-            <label htmlFor="password">
+            <label htmlFor="login-password">
               Password
             </label>
 
-            <div
-              style={{
-                position:
-                  "relative",
-              }}
-            >
-              <input
-                id="password"
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
-                value={password}
-                onChange={(e) =>
-                  setPassword(
-                    e.target.value
-                  )
-                }
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                disabled={loading}
-                style={{
-                  paddingRight:
-                    "80px",
-                  width: "100%",
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword(
-                    (value) =>
-                      !value
-                  )
-                }
-                disabled={loading}
-                style={{
-                  position:
-                    "absolute",
-                  right: "10px",
-                  top: "50%",
-                  transform:
-                    "translateY(-50%)",
-                  border: "none",
-                  background:
-                    "transparent",
-                  cursor:
-                    "pointer",
-                }}
-              >
-                {showPassword
-                  ? "Hide"
-                  : "Show"}
-              </button>
-            </div>
+            <input
+              id="login-password"
+              className="form-input"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(event) =>
+                setPassword(event.target.value)
+              }
+              required
+              disabled={loading}
+            />
           </div>
 
-          {/* Submit */}
-
           <button
-            type="submit"
             className="primary-button"
+            type="submit"
             disabled={loading}
           >
             {loading
-              ? "Signing in..."
-              : "Sign In"}
+              ? "Please wait..."
+              : restoreMode
+              ? "Restore account"
+              : "Sign in"}
           </button>
         </form>
 
-        {/* =================================================
-            REGISTER
-        ================================================= */}
-
-        <div className="auth-footer">
-          <p>
-            Don't have an account?{" "}
-            <Link to="/register">
-              Create one
-            </Link>
-          </p>
+        <div className="iv-auth-extra-actions">
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={loading}
+            onClick={toggleRestoreMode}
+          >
+            {restoreMode
+              ? "← Back to sign in"
+              : "Restore a deactivated account"}
+          </button>
         </div>
-      </div>
-    </div>
-  );
-};
 
-export default Login;
+        {!restoreMode && (
+          <div className="auth-footer">
+            <p>
+              New here?{" "}
+              <Link to="/register">
+                Create an account
+              </Link>
+            </p>
+          </div>
+        )}
+      </div>
+    </AuthShell>
+  );
+}

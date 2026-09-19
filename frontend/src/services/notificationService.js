@@ -1,56 +1,66 @@
 import api from "./api";
-import { auth } from "./firebase";
 
-const authConfig = async () => {
-  const token =
-    await auth.currentUser?.getIdToken();
+/* =========================================================
+   GET MY NOTIFICATIONS
+========================================================= */
 
-  if (!token) {
-    throw new Error(
-      "Authentication session expired."
-    );
-  }
-
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
-
-export const getNotifications = async (
-  userId
-) => {
-  if (
-    userId &&
-    userId !== auth.currentUser?.uid
-  ) {
-    throw new Error(
-      "You can only access your own notifications."
-    );
-  }
-
-  const config = await authConfig();
-
-  const response = await api.get(
-    `/notifications/${
-      auth.currentUser?.uid
-    }`,
-    config
-  );
-
-  return response.data;
-};
-
-export const markNotificationRead =
-  async (notificationId) => {
-    const config = await authConfig();
-
-    const response = await api.patch(
-      `/notifications/${notificationId}/read`,
-      {},
-      config
-    );
+export const getNotifications =
+  async () => {
+    const response =
+      await api.get(
+        "/notifications/me"
+      );
 
     return response.data;
   };
+
+/* =========================================================
+   MARK ONE READ
+========================================================= */
+
+export const markNotificationRead =
+  async (
+    notificationId
+  ) => {
+    const response =
+      await api.patch(
+        `/notifications/${notificationId}/read`
+      );
+
+    return response.data;
+  };
+
+/* =========================================================
+   MARK ALL READ
+========================================================= */
+
+export const markAllNotificationsRead =
+  async () => {
+    const response =
+      await api.patch(
+        "/notifications/read-all"
+      );
+
+    return response.data;
+  };
+
+/* =========================================================
+   UNREAD COUNT
+========================================================= */
+
+export const getUnreadNotificationCount =
+  async () => {
+    const response =
+      await api.get(
+        "/notifications/status/unread-count"
+      );
+
+    return response.data;
+  };
+
+export default {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  getUnreadNotificationCount,
+};

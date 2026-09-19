@@ -1,262 +1,285 @@
 const express = require("express");
-const router = express.Router();
 
 const {
   db,
 } = require("../config/firebase");
 
-const authenticate =
-  require("../middleware/auth");
+const authenticate = require("../middleware/auth");
 
-const usersCollection =
-  db.collection("users");
+const {
+  deactivateAccount,
+  queueDeletion,
+} = require("../services/accountLifecycle");
 
-/*
-========================================================
-USER HELPERS
-========================================================
-*/
+const router = express.Router();
+const users = db.collection("users");
 
-const createUser = async (userData) => {
-  const now = new Date();
-
-  const docRef =
-    await usersCollection.add({
-      ...userData,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-  return {
-    id: docRef.id,
-    ...userData,
-  };
-};
+/* =========================================================
+   HELPERS
+========================================================= */
 
 const getUserById = async (id) => {
-  const doc =
-    await usersCollection
-      .doc(id)
-      .get();
+  const doc = await users.doc(id).get();
 
-  if (!doc.exists) {
-    return null;
-  }
+  return doc.exists
+    ? {
+        id: doc.id,
+        ...doc.data(),
+      }
+    : null;
+};
+
+const publicUser = (user) => {
+  if (!user) return null;
+
+  const {
+    password,
+    ...safe
+  } = user;
+
+  return safe;
+};
+
+const createUser = async (data) => {
+  const now = new Date();
+
+  const ref = await users.add({
+    ...data,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   return {
-    id: doc.id,
-    ...doc.data(),
+    id: ref.id,
+    ...data,
   };
 };
 
-const updateUser = async (
-  id,
-  data
-) => {
-  await usersCollection
-    .doc(id)
-    .update({
-      ...data,
-      updatedAt: new Date(),
-    });
+const updateUser = async (id, data) => {
+  await users.doc(id).update({
+    ...data,
+    updatedAt: new Date(),
+  });
 
   return getUserById(id);
 };
 
-const deleteUser = async (id) => {
-  await usersCollection
-    .doc(id)
-    .delete();
-
-  return true;
-};
-
-/*
-========================================================
-GET CURRENT USER
-========================================================
-*/
+/* =========================================================
+   GET CURRENT PROFILE
+========================================================= */
 
 router.get(
   "/me",
   authenticate,
   async (req, res) => {
     try {
-      const userId =
-        req.user?.uid;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
-
-      const user =
-        await getUserById(userId);
+      const user = await getUserById(
+        req.user.uid
+      );
 
       if (!user) {
         return res.status(404).json({
           success: false,
-          message:
-            "User not found.",
+          message: "Account not found.",
         });
       }
 
       return res.json({
         success: true,
-        user,
+        user: publicUser(user),
       });
-    } catch (error) {
-      console.error(
-        "GET /users/me error:",
-        error
-      );
+    } catch (err) {
+      console.error("Profile loading:", err);
 
       return res.status(500).json({
         success: false,
-        message:
-          "Failed to get user profile.",
+        message: "Could not load profile.",
       });
     }
   }
 );
 
-/*
-========================================================
-UPDATE CURRENT USER
-========================================================
-*/
+/* =========================================================
+   UPDATE CURRENT PROFILE
+========================================================= */
 
 router.patch(
   "/me",
   authenticate,
   async (req, res) => {
     try {
-      const userId =
-        req.user?.uid;
+      const user = await getUserById(
+        req.user.uid
+      );
 
-      if (!userId) {
-        return res.status(401).json({
+      if (!user) {
+        return res.status(404).json({
           success: false,
-          message:
-            "Authentication required.",
+          message: "Account not found.",
         });
       }
 
-      /*
-       * Do not allow users to change
-       * security-sensitive fields.
-       */
+      const safe = {};
 
-      const allowedFields = [
-        "displayName",
-        "anonymousId",
-        "age",
-        "gender",
-        "quickExitPreferences",
-      ];
+      if (req.body.age !== undefined) {
+        const age = Number(req.body.age);
 
-      const safeData = {};
+        const minimum =
+          user.role === "user" ? 15 : 1;
 
-      allowedFields.forEach(
-        (field) => {
-          if (
-            req.body[field] !==
-            undefined
-          ) {
-            safeData[field] =
-              req.body[field];
-          }
+        if (
+          !Number.isInteger(age) ||
+          age < minimum ||
+          age > 120
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: `Age must be ${minimum}–120.`,
+          });
         }
-      );
 
-      const updatedUser =
-        await updateUser(
-          userId,
-          safeData
-        );
+        safe.age = age;
+      }
+
+      if (req.body.displayName !== undefined) {
+        const name = String(
+          req.body.displayName
+        ).trim();
+
+        if (!name || name.length > 80) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid display name.",
+          });
+        }
+
+        safe.displayName = name;
+      }
+
+      if (req.body.gender !== undefined) {
+        const gender = String(
+          req.body.gender
+        ).trim();
+
+        if (gender.length > 40) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid gender.",
+          });
+        }
+
+        safe.gender = gender;
+      }
+
+      // Security-sensitive fields cannot be changed here.
+
+      const updated = await updateUser(
+        req.user.uid,
+        safe
+      );
 
       return res.json({
         success: true,
-        user: updatedUser,
+        user: publicUser(updated),
       });
-    } catch (error) {
-      console.error(
-        "PATCH /users/me error:",
-        error
-      );
+    } catch (err) {
+      console.error("Profile update:", err);
 
       return res.status(500).json({
         success: false,
-        message:
-          "Failed to update profile.",
+        message: "Could not update profile.",
       });
     }
   }
 );
 
-/*
-========================================================
-DELETE CURRENT USER
-========================================================
-*/
+/* =========================================================
+   DEACTIVATE ACCOUNT
+========================================================= */
+
+router.post(
+  "/me/deactivate",
+  authenticate,
+  async (req, res) => {
+    try {
+      const deleteAfter =
+        await deactivateAccount(
+          req.user.uid,
+          req.body?.password
+        );
+
+      return res.json({
+        success: true,
+
+        message:
+          "Account deactivated. You can restore it within 30 days.",
+
+        deleteAfter: deleteAfter.toISOString(),
+      });
+    } catch (err) {
+      console.error(
+        "Account deactivation:",
+        err
+      );
+
+      return res.status(err.status || 500).json({
+        success: false,
+
+        message: err.status
+          ? err.message
+          : "Could not complete deactivation. Check account status before retrying.",
+      });
+    }
+  }
+);
+
+/* =========================================================
+   REQUEST PERMANENT DELETION
+========================================================= */
 
 router.delete(
   "/me",
   authenticate,
   async (req, res) => {
-    try {
-      const userId =
-        req.user?.uid;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
-
-      await deleteUser(userId);
-
-      return res.json({
-        success: true,
-        message:
-          "User account deleted successfully.",
+    if (req.body?.confirmation !== "DELETE") {
+      return res.status(400).json({
+        success: false,
+        message: "Type DELETE to confirm.",
       });
-    } catch (error) {
-      console.error(
-        "DELETE /users/me error:",
-        error
+    }
+
+    try {
+      await queueDeletion(
+        req.user.uid,
+        req.body?.password
       );
 
-      return res.status(500).json({
-        success: false,
+      return res.status(202).json({
+        success: true,
+        queued: true,
+
         message:
-          "Failed to delete account.",
+          "Account access is closed. Permanent deletion is queued; it may take time to finish.",
+      });
+    } catch (err) {
+      console.error(
+        "Account deletion:",
+        err
+      );
+
+      return res.status(err.status || 500).json({
+        success: false,
+
+        message: err.status
+          ? err.message
+          : "Could not request account deletion.",
       });
     }
   }
 );
 
-/*
-========================================================
-EXPORT
-========================================================
-*/
-
 module.exports = router;
 
-module.exports.createUser =
-  createUser;
-
-module.exports.getUserById =
-  getUserById;
-
-module.exports.updateUser =
-  updateUser;
-
-module.exports.deleteUser =
-  deleteUser;
+module.exports.createUser = createUser;
+module.exports.getUserById = getUserById;
+module.exports.updateUser = updateUser;

@@ -1,0 +1,114 @@
+
+/* InnerVoice responsive & keyboard patch. Import last in src/main.jsx. */
+:root { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { overflow-x: clip; }
+body { min-width: 0; }
+.dashboard-layout { min-width: 0; }
+.dashboard-layout .dashboard-body,
+.dashboard-layout .dashboard-content,
+.dashboard-layout .page-shell,
+.dashboard-layout .feature-card,
+.dashboard-layout .dashboard-grid,
+.dashboard-layout .list-grid { min-width: 0; }
+.dashboard-layout :is(img, video) { max-width: 100%; }
+.dashboard-layout :is(p, h1, h2, h3, dd, .chat-bubble, .iv-ai-bubble) { overflow-wrap: anywhere; }
+.dashboard-layout :is(input, select, textarea) { max-width: 100%; }
+.dashboard-layout :is(button, a, input, select, textarea, [tabindex]):focus-visible,
+.iv-home :is(a, button, input, select, textarea):focus-visible,
+.iv-auth-page :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #8b452b;
+  outline-offset: 3px;
+}
+.dashboard-layout .iv-skip-link { position: fixed; top: -80px; left: 12px; z-index: 2500; padding: 10px 16px; border-radius: 8px; background: #fff; color: #5c2d19; border: 2px solid #8b452b; }
+.dashboard-layout .iv-skip-link:focus { top: 10px; }
+/* Keep long IDs and messages readable without clipping neighboring cards. */
+.dashboard-layout .chat-messages,
+.dashboard-layout .chat-compose,
+.dashboard-layout .iv-ai-messages,
+.dashboard-layout .iv-ai-compose,
+.dashboard-layout .iv-ai-message-body { min-width: 0; }
+.dashboard-layout :is(.chat-bubble, .iv-ai-bubble, .chat-messages p, .iv-ai-messages p) { overflow-wrap: anywhere; white-space: pre-wrap; }
+.dashboard-layout .chat-compose .form-input { flex: 1 1 230px; width: 100%; min-width: 0; }
+.dashboard-layout .chat-compose .button-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.dashboard-layout .chat-compose .button-row > * { max-width: 100%; }
+.dashboard-layout .iv-ai-compose-actions { min-width: 0; }
+.dashboard-layout .mood-page .mood-chart-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.dashboard-layout .mood-page .mood-chart-inner { min-width: 480px; }
+.dashboard-layout .page-shell :is(audio, video) { display: block; max-width: 100%; }
+.dashboard-layout .page-shell audio { width: min(100%, 360px); }
+/* Ensure responsive navigation behaves like a dialog, above the sticky navbar. */
+.dashboard-layout .mobile-drawer-wrapper { z-index: 2000; }
+.dashboard-layout .mobile-drawer { overflow-y: auto; overscroll-behavior: contain; }
+.dashboard-layout .iv-mobile-close {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  display: grid; place-items: center; width: 44px; height: 44px;
+  border: 1px solid #ddcfc3; border-radius: 10px;
+  background: white; color: #3e322c; font-size: 23px; cursor: pointer;
+}
+.dashboard-layout .mobile-drawer .sidebar-nav { padding-top: 56px; }
+/* Admin UI, if the newer Admin.css has been installed. */
+.dashboard-layout .iv-admin :is(.iv-admin-metric, .iv-admin-tool, .iv-admin-panel) { min-width: 0; }
+@media (max-width: 1050px) {
+  .dashboard-layout .dashboard-content { padding-inline: clamp(16px, 2.2vw, 26px); }
+  .dashboard-layout .page-shell .list-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .dashboard-layout .dashboard-body { display: block; }
+  .dashboard-layout .desktop-sidebar { display: none; }
+  .dashboard-layout .navbar-menu-button { display: inline-flex; }
+  .dashboard-layout .dashboard-content { width: 100%; padding: 24px 20px 44px; }
+  .dashboard-layout .mobile-drawer-wrapper { position: fixed; inset: 0; display: block; }
+  .dashboard-layout .mobile-drawer-overlay { position: absolute; inset: 0; background: rgba(24,20,17,.6); }
+  .dashboard-layout .mobile-drawer { position: relative; width: min(315px, calc(100vw - 32px)); height: 100dvh; background: #fff; }
+  .dashboard-layout .mobile-drawer .sidebar { width: 100%; height: 100%; position: static; overflow-y: auto; }
+  .dashboard-layout .dashboard-hero { flex-wrap: wrap; }
+  .dashboard-layout .quick-exit-area { flex: 1 1 210px; max-width: 300px; }
+}
+@media (max-width: 700px) {
+  .dashboard-layout .dashboard-content { padding: 20px 15px 36px; }
+  .dashboard-layout .dashboard-grid,
+  .dashboard-layout .page-shell .list-grid,
+  .dashboard-layout .dashboard-cards,
+  .dashboard-layout .iv-admin .iv-admin-tools,
+  .dashboard-layout .iv-admin .iv-admin-application-grid,
+  .dashboard-layout .iv-admin .iv-admin-account-grid,
+  .dashboard-layout .iv-admin .iv-admin-session-grid,
+  .dashboard-layout .iv-admin .iv-admin-report-grid { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-layout .dashboard-hero { flex-direction: column; align-items: stretch; padding: 22px 19px; gap: 15px; }
+  .dashboard-layout .quick-exit-area { width: 100%; max-width: none; flex: 0 1 auto; }
+  .dashboard-layout .page-header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .dashboard-layout .page-header h1 { font-size: clamp(27px, 7.8vw, 37px); }
+  .dashboard-layout .page-shell :is(.feature-card, .empty-card) { padding: 19px; }
+  .dashboard-layout .page-shell :is(.button-row, .expert-actions) { display: flex; flex-wrap: wrap; gap: 10px; }
+  .dashboard-layout .page-shell .button-row > :is(button,a) { flex: 1 1 135px; min-width: 0; }
+  .dashboard-layout .page-shell .form-input { width: 100%; min-width: 0; }
+  .dashboard-layout .iv-ai-page .iv-ai-messages { min-height: 220px; height: min(52dvh, 520px); }
+  .dashboard-layout .iv-ai-page .iv-ai-compose { padding: 14px 12px; }
+  .dashboard-layout .iv-ai-page .iv-ai-compose-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+  .dashboard-layout .iv-ai-page .iv-ai-compose-actions > button { flex: 1 1 120px; }
+  .dashboard-layout .mood-page .mood-heading-with-tabs { flex-wrap: wrap; gap: 14px; }
+  .dashboard-layout .mood-page .mood-period-tabs { max-width: 100%; }
+  .dashboard-layout .mood-page .mood-chart-inner { min-width: 430px; }
+  /* CallRoom has a two-camera grid defined inline; single column avoids 280px min overflow. */
+  .dashboard-layout .page-shell div[style*="grid-template-columns"][style*="280px"] { grid-template-columns: minmax(0, 1fr) !important; }
+  .dashboard-layout .page-shell div[style*="grid-template-columns"][style*="300px"] { grid-template-columns: minmax(0, 1fr) !important; }
+  .dashboard-layout .page-shell video { width: 100%; height: auto; }
+  .dashboard-layout .ivp-page .ivp-identity { align-items: flex-start; }
+}
+@media (max-width: 420px) {
+  .dashboard-layout .top-navbar { padding-inline: 12px; }
+  .dashboard-layout .navbar-left, .dashboard-layout .navbar-right { gap: 6px; }
+  .dashboard-layout .navbar-brand { font-size: 17px; gap: 5px; }
+  .dashboard-layout .navbar-brand-symbol { width: 31px; height: 31px; font-size: 20px; }
+  .dashboard-layout .navbar-profile-name { display: none; }
+  .dashboard-layout .page-shell .feature-card { padding: 16px; }
+  .dashboard-layout .dashboard-feature-card { padding: 19px; min-height: 0; }
+  .dashboard-layout .iv-ai-message-body { max-width: 88%; }
+  .dashboard-layout .mood-page .mood-chart-inner { min-width: 400px; }
+  .dashboard-layout .iv-admin .iv-admin-metrics { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .dashboard-layout *, .dashboard-layout *::before, .dashboard-layout *::after,
+  .iv-home *, .iv-home *::before, .iv-home *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

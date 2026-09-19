@@ -1,4 +1,97 @@
-const express=require("express");const router=express.Router();const authenticate=require("../middleware/auth");const {createEntry,listEntries,deleteEntry}=require("../services/journalService");
-router.get("/",authenticate,async(req,res)=>{try{res.json({success:true,entries:await listEntries(req.user.uid)})}catch(e){res.status(500).json({success:false,message:"Could not load journal."})}});
-router.post("/",authenticate,async(req,res)=>{try{if(!req.body.content||String(req.body.content).trim().length<3)return res.status(400).json({success:false,message:"Journal content is required."});res.status(201).json({success:true,entry:await createEntry(req.user.uid,req.body)})}catch(e){res.status(500).json({success:false,message:"Could not save journal entry."})}});
-router.delete("/:id",authenticate,async(req,res)=>{try{await deleteEntry(req.user.uid,req.params.id);res.json({success:true})}catch(e){res.status(404).json({success:false,message:e.message})}});module.exports=router;
+"use strict";
+
+const express = require("express");
+const router = express.Router();
+
+const authenticate = require("../middleware/auth");
+
+const {
+  createEntry,
+  listEntries,
+  migrateEntry,
+  deleteEntry
+} = require("../services/journalService");
+
+router.use(authenticate);
+
+const failure = (res, error, message) =>
+  res.status(error.status || 500).json({
+    success: false,
+    message: error.status
+      ? error.message
+      : message
+  });
+
+router.get("/", async (req, res) => {
+  try {
+    return res.json({
+      success: true,
+      entries: await listEntries(req.user.uid)
+    });
+  } catch (error) {
+    return failure(
+      res,
+      error,
+      "Could not load journal."
+    );
+  }
+});
+
+router.post("/", async (req, res) => {
+  try {
+    return res.status(201).json({
+      success: true,
+      entry: await createEntry(
+        req.user.uid,
+        req.body
+      )
+    });
+  } catch (error) {
+    return failure(
+      res,
+      error,
+      "Could not save encrypted journal entry."
+    );
+  }
+});
+
+router.post("/:id/migrate", async (req, res) => {
+  try {
+    await migrateEntry(
+      req.user.uid,
+      req.params.id,
+      req.body?.e2ee
+    );
+
+    return res.json({
+      success: true
+    });
+  } catch (error) {
+    return failure(
+      res,
+      error,
+      "Could not migrate journal entry."
+    );
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    await deleteEntry(
+      req.user.uid,
+      req.params.id
+    );
+
+    return res.json({
+      success: true
+    });
+  } catch (error) {
+    return failure(
+      res,
+      error,
+      "Could not delete journal entry."
+    );
+  }
+});
+
+module.exports = router;

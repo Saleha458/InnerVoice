@@ -1,59 +1,57 @@
 import axios from "axios";
 import { auth } from "../config/firebase";
 
-const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_URL ||
-    "http://localhost:5000/api",
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  (
+    import.meta.env.DEV
+      ? "http://localhost:5000/api"
+      : ""
+  );
 
-  withCredentials: true,
+if (!baseURL) {
+  throw new Error(
+    "Missing VITE_API_URL. Configure the deployed backend HTTPS URL before building."
+  );
+}
+
+const api = axios.create({
+  baseURL,
+  withCredentials: true
 });
 
 api.interceptors.request.use(
-  async (config) => {
-    try {
-      const user = auth.currentUser;
+  async config => {
+    const user = auth.currentUser;
 
-      if (user) {
-        const token = await user.getIdToken();
-
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-
-      // FormData ke liye Content-Type manually set NAHI karna
-      if (config.data instanceof FormData) {
-        delete config.headers["Content-Type"];
-      } else {
-        config.headers["Content-Type"] = "application/json";
-      }
-
-      return config;
-    } catch (error) {
-      console.error(
-        "Authentication error:",
-        error
-      );
-
-      return Promise.reject(error);
+    if (user) {
+      config.headers.Authorization =
+        `Bearer ${await user.getIdToken()}`;
     }
-  },
-  (error) => {
-    return Promise.reject(error);
+
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    } else {
+      config.headers["Content-Type"] =
+        "application/json";
+    }
+
+    return config;
   }
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  response => response,
 
-  (error) => {
-    console.error(
-      "API Error:",
-      error.response?.status,
-      error.response?.data || error.message
-    );
-
-    if (error.response?.status === 401) {
-      console.warn("Authentication required.");
+  error => {
+    // Do not log decrypted messages or full response bodies.
+    if (import.meta.env.DEV) {
+      console.warn(
+        "API request failed:",
+        error.response?.status ||
+          error.code ||
+          error.name
+      );
     }
 
     return Promise.reject(error);

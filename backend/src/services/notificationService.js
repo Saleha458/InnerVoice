@@ -1,179 +1,147 @@
+"use strict";
+
 const { db } = require("../config/firebase");
 
-const createNotification = async ({
+const {
+  sanitizeNotification
+} = require("./notificationPolicy");
+
+let notificationIO = null;
+
+function setNotificationIO(io) {
+  notificationIO = io;
+}
+
+async function createNotification({
   userId,
   type,
   title,
   message,
-  data = {},
-}) => {
-  if (!userId) {
+  data
+} = {}) {
+  if (
+    typeof userId !== "string" ||
+    !/^[A-Za-z0-9_-]{1,128}$/.test(userId)
+  ) {
     return null;
   }
 
-  const ref =
-    await db
-      .collection(
-        "notifications"
-      )
-      .add({
-        userId,
-        type,
-        title,
-        message,
-        data,
-        read: false,
-        createdAt:
-          new Date(),
-      });
+  const safe = sanitizeNotification({
+    type,
+    title,
+    message,
+    data
+  });
+
+  const now = new Date();
+
+  const payload = {
+    userId,
+    ...safe,
+    read: false,
+    createdAt: now,
+    privacyVersion: 2
+  };
+
+  const ref = await db
+    .collection("notifications")
+    .add(payload);
+
+  notificationIO
+    ?.to(`user:${userId}`)
+    .emit("notification:new", {
+      id: ref.id,
+      ...payload,
+      createdAt: now.toISOString()
+    });
 
   return ref.id;
-};
+}
 
-const notifyNewRequest = (
+function notifyNewRequest(
   expertUid,
-  anonymousId,
+  _anonymousId,
   requestId,
   sessionInfo = {}
-) =>
-  createNotification({
-    userId:
-      expertUid,
-
-    type:
-      "expert_request",
-
-    title:
-      "New session request",
-
-    message:
-      `${
-        anonymousId ||
-        "An anonymous user"
-      } requested a support session with you.`,
-
+) {
+  return createNotification({
+    userId: expertUid,
+    type: "expert_request",
     data: {
       requestId,
-      ...sessionInfo,
-    },
+      sessionId: sessionInfo.sessionId
+    }
   });
+}
 
-const notifyRequestDecision = (
+function notifyRequestDecision(
   userId,
   status,
-  expertName,
-  reason = null,
-  requestId = null,
-  sessionId = null
-) => {
-  const accepted =
-    status ===
-    "accepted";
-
+  _expertName,
+  _reason,
+  requestId,
+  sessionId
+) {
   return createNotification({
     userId,
-
     type:
-      accepted
+      status === "accepted"
         ? "request_accepted"
         : "request_rejected",
-
-    title:
-      accepted
-        ? "Session confirmed"
-        : "Session request rejected",
-
-    message:
-      accepted
-        ? `${
-            expertName ||
-            "Your expert"
-          } accepted your request. Your session is confirmed.`
-        : `${
-            expertName ||
-            "The expert"
-          } rejected your request. Reason: ${
-            reason ||
-            "No reason provided."
-          }`,
-
     data: {
-      status,
-      reason,
       requestId,
-      sessionId,
-    },
+      sessionId
+    }
   });
-};
+}
 
-const notifySessionStarting = (
+function notifyExpertMessage(
   userId,
-  sessionId
-) =>
-  createNotification({
+  sessionId,
+  messageId,
+  _messageType = "text"
+) {
+  return createNotification({
     userId,
-
-    type:
-      "session_starting",
-
-    title:
-      "Session starts in 5 minutes",
-
-    message:
-      "Your InnerVoice support session will begin in about 5 minutes.",
-
+    type: "expert_message",
     data: {
       sessionId,
-    },
+      messageId
+    }
   });
+}
 
-const notifySessionEnding = (
-  userId,
-  sessionId
-) =>
-  createNotification({
+function notifySessionStarting(userId, sessionId) {
+  return createNotification({
     userId,
-
-    type:
-      "session_ending",
-
-    title:
-      "Session ends in 5 minutes",
-
-    message:
-      "Your InnerVoice support session will end in about 5 minutes.",
-
-    data: {
-      sessionId,
-    },
+    type: "session_starting",
+    data: { sessionId }
   });
+}
 
-const notifySessionCompleted = (
-  userId,
-  sessionId
-) =>
-  createNotification({
+function notifySessionEnding(userId, sessionId) {
+  return createNotification({
     userId,
-
-    type:
-      "session_completed",
-
-    title:
-      "Session completed",
-
-    message:
-      "Your InnerVoice support session has ended. You can book another session if you need continued support.",
-
-    data: {
-      sessionId,
-    },
+    type: "session_ending",
+    data: { sessionId }
   });
+}
+
+function notifySessionCompleted(userId, sessionId) {
+  return createNotification({
+    userId,
+    type: "session_completed",
+    data: { sessionId }
+  });
+}
 
 module.exports = {
+  setNotificationIO,
   createNotification,
   notifyNewRequest,
   notifyRequestDecision,
+  notifyExpertMessage,
   notifySessionStarting,
   notifySessionEnding,
-  notifySessionCompleted,
+  notifySessionCompleted
 };
