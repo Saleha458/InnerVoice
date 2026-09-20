@@ -1,3 +1,4 @@
+
 "use strict";
 
 const express = require("express");
@@ -149,11 +150,22 @@ app.use(
 app.use("/api/reports", require("./routes/reports"));
 
 /*
- * Keep existing protected expert-document routes.
+ * Protected expert-document routes run FIRST.
+ * The approval guard verifies authenticated
+ * Cloudinary delivery and then calls next().
  */
 app.use(
   "/api/admin/experts",
   require("./routes/expertDocuments")
+);
+
+/*
+ * This router handles the actual decision.
+ * It must be mounted AFTER expertDocuments.
+ */
+app.use(
+  "/api/admin/experts",
+  require("./routes/expertDecision")
 );
 
 /*

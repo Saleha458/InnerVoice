@@ -1,112 +1,78 @@
+
+"use strict";
+
 const express = require("express");
 const multer = require("multer");
 const bcrypt = require("bcryptjs");
 
-const {
-  auth,
-  db,
-} = require("../config/firebase");
-
+const { auth, db } = require("../config/firebase");
 const cloudinary = require("../config/cloudinary");
 
 const {
   isValidAnonymousId,
   isValidPassword,
   isValidAgeForRole,
-  isValidEmail,
+  isValidEmail
 } = require("../utils/validators");
 
 const router = express.Router();
-
-/* =========================================================
-   MULTER
-========================================================= */
 
 const upload = multer({
   storage: multer.memoryStorage(),
 
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 5 * 1024 * 1024
   },
 
-  fileFilter: (req, file, cb) => {
-    if (
-      file.mimetype &&
-      file.mimetype.startsWith("image/")
-    ) {
-      cb(null, true);
+  fileFilter: (_req, file, done) => {
+    if (file.mimetype?.startsWith("image/")) {
+      done(null, true);
     } else {
-      cb(
-        new Error(
-          "Only image files are allowed."
-        )
+      done(
+        new Error("Only image files are allowed.")
       );
     }
-  },
+  }
 });
 
-/* =========================================================
-   CLOUDINARY
-========================================================= */
-
-const uploadToCloudinary = (buffer) =>
-  new Promise((resolve, reject) => {
-    const stream =
-      cloudinary.uploader.upload_stream(
-        {
-          folder:
-            "innervoice/expert-verifications",
-
-          resource_type: "image",
-        },
-
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        }
-      );
+function uploadToCloudinary(buffer) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "innervoice/expert-verifications",
+        resource_type: "image",
+        type: "authenticated"
+      },
+      (error, result) =>
+        error ? reject(error) : resolve(result)
+    );
 
     stream.end(buffer);
   });
+}
 
-/* =========================================================
-   DELETE CLOUDINARY IMAGE
-========================================================= */
-
-const deleteCloudinaryImage = async (
-  publicId
-) => {
+async function deleteCloudinaryImage(publicId) {
   if (!publicId) return;
 
   try {
-    await cloudinary.uploader.destroy(
-      publicId,
-      {
-        resource_type: "image",
-      }
-    );
+    await cloudinary.uploader.destroy(publicId, {
+      resource_type: "image",
+      type: "authenticated",
+      invalidate: true
+    });
   } catch (error) {
     console.error(
       "Cloudinary cleanup error:",
-      error.message
+      error?.code || error?.name
     );
   }
-};
-
-/* =========================================================
-   REGISTER EXPERT ACCOUNT + PROFILE
-========================================================= */
+}
 
 router.post(
   "/",
   upload.single("licenseImage"),
-
   async (req, res) => {
     let createdFirebaseUid = null;
-    let createdNewFirebaseUser = false;
     let createdExpertId = null;
     let uploadedPublicId = null;
 
@@ -116,67 +82,43 @@ router.post(
         password,
         confirmPassword,
         age,
-
         professionalName,
         professionalEmail,
         gender,
-
         licenseNumber,
         qualification,
         specialization,
-
         experienceYears,
-        bio,
+        bio
       } = req.body;
 
-      /* ---------------------------------------------------
-         CLEAN VALUES
-      --------------------------------------------------- */
-
       const cleanAnonymousId =
-        String(
-          anonymousId || ""
-        ).trim();
+        String(anonymousId || "").trim();
 
       const cleanName =
-        String(
-          professionalName || ""
-        ).trim();
+        String(professionalName || "").trim();
 
       const cleanEmail =
-        String(
-          professionalEmail || ""
-        )
+        String(professionalEmail || "")
           .trim()
           .toLowerCase();
 
       const cleanGender =
-        String(
-          gender || ""
-        ).trim();
+        String(gender || "").trim();
 
       const cleanLicense =
-        String(
-          licenseNumber || ""
-        ).trim();
+        String(licenseNumber || "").trim();
 
       const cleanQualification =
-        String(
-          qualification || ""
-        ).trim();
+        String(qualification || "").trim();
 
       const cleanSpecialization =
-        String(
-          specialization || ""
-        ).trim();
+        String(specialization || "").trim();
 
       const cleanBio =
-        String(
-          bio || ""
-        ).trim();
+        String(bio || "").trim();
 
-      const numericAge =
-        Number(age);
+      const numericAge = Number(age);
 
       const numericExperience =
         experienceYears === "" ||
@@ -184,274 +126,214 @@ router.post(
           ? 0
           : Number(experienceYears);
 
-      /* ---------------------------------------------------
-         BASIC VALIDATION
-      --------------------------------------------------- */
-
-      if (
-        !isValidAnonymousId(
-          cleanAnonymousId
-        )
-      ) {
-        return res.status(400).json({
+      const invalid = message =>
+        res.status(400).json({
           success: false,
-          message:
-            "Anonymous ID must be 3-30 characters and may contain only letters, numbers and underscores.",
+          message
         });
+
+      if (!isValidAnonymousId(cleanAnonymousId)) {
+        return invalid(
+          "Anonymous ID must be 3–30 letters, numbers or underscores."
+        );
+      }
+
+      if (!isValidPassword(password)) {
+        return invalid(
+          "Password needs 8+ characters, uppercase, lowercase, number and special character."
+        );
+      }
+
+      if (password !== confirmPassword) {
+        return invalid("Passwords do not match.");
       }
 
       if (
-        !isValidPassword(
-          password
-        )
+        !isValidAgeForRole(numericAge, "expert")
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-        });
-      }
-
-      if (
-        password !==
-        confirmPassword
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Passwords do not match.",
-        });
-      }
-
-      if (
-        !isValidAgeForRole(
-          numericAge,
-          "expert"
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Please enter a valid age.",
-        });
+        return invalid("Please enter a valid age.");
       }
 
       if (!cleanName) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Professional name is required.",
-        });
+        return invalid(
+          "Professional name is required."
+        );
       }
 
-      if (
-        !isValidEmail(
-          cleanEmail
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Please enter a valid professional email.",
-        });
+      if (!isValidEmail(cleanEmail)) {
+        return invalid(
+          "Please enter a valid professional email."
+        );
       }
 
       if (!cleanGender) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Gender is required.",
-        });
+        return invalid("Gender is required.");
       }
 
       if (!cleanLicense) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "License number is required.",
-        });
+        return invalid(
+          "License number is required."
+        );
       }
 
       if (!cleanQualification) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Qualification is required.",
-        });
+        return invalid(
+          "Qualification is required."
+        );
       }
 
       if (!cleanSpecialization) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Specialization is required.",
-        });
+        return invalid(
+          "Specialization is required."
+        );
       }
 
       if (
-        !Number.isFinite(
-          numericExperience
-        ) ||
+        !Number.isFinite(numericExperience) ||
         numericExperience < 0 ||
         numericExperience > 80
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Years of experience must be between 0 and 80.",
-        });
+        return invalid(
+          "Years of experience must be between 0 and 80."
+        );
       }
 
-      /* ---------------------------------------------------
-         LICENSE IMAGE
-      --------------------------------------------------- */
-
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Please upload your license / verification image.",
-        });
+      if (cleanBio.length > 2000) {
+        return invalid(
+          "Professional bio must be 2000 characters or fewer."
+        );
       }
 
       if (
-        !req.file.mimetype ||
-        !req.file.mimetype.startsWith(
-          "image/"
+        !req.file ||
+        !req.file.mimetype?.startsWith("image/") ||
+        req.file.size > 5 * 1024 * 1024
+      ) {
+        return invalid(
+          "Upload a license image of 5 MB or smaller."
+        );
+      }
+
+      const users = await db
+        .collection("users")
+        .where(
+          "anonymousId",
+          "==",
+          cleanAnonymousId
         )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "License file must be an image.",
-        });
-      }
+        .limit(1)
+        .get();
 
-      if (
-        req.file.size >
-        5 * 1024 * 1024
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "License image must be 5 MB or smaller.",
-        });
-      }
-
-      /* ---------------------------------------------------
-         CHECK ANONYMOUS ID
-         
-         This also handles an incomplete expert account
-         left behind by the old registration flow.
-      --------------------------------------------------- */
-
-      const existingUserSnapshot =
-        await db
-          .collection("users")
-          .where(
-            "anonymousId",
-            "==",
-            cleanAnonymousId
-          )
-          .limit(1)
-          .get();
-
-      let firebaseUser = null;
+      let firebaseUser;
       let existingUser = null;
 
-      if (
-        !existingUserSnapshot.empty
-      ) {
-        const existingDoc =
-          existingUserSnapshot.docs[0];
+      if (!users.empty) {
+        const existingDoc = users.docs[0];
 
         existingUser = {
           id: existingDoc.id,
-          ...existingDoc.data(),
+          ...existingDoc.data()
         };
 
-        if (
-          existingUser.role !==
-          "expert"
-        ) {
+        if (existingUser.role !== "expert") {
           return res.status(409).json({
             success: false,
             message:
-              "This Anonymous ID is already taken. Please choose another one.",
+              "This Anonymous ID is already taken."
           });
         }
-
-        /*
-         * If the old flow already created the
-         * expert account, verify its password
-         * from our bcrypt hash and continue.
-         */
 
         const passwordMatches =
           await bcrypt.compare(
             String(password),
-            existingUser.password ||
-              ""
+            existingUser.password || ""
           );
 
         if (!passwordMatches) {
           return res.status(409).json({
             success: false,
             message:
-              "An expert account with this Anonymous ID already exists. Please use its original password or choose another Anonymous ID.",
+              "An expert account with this ID already exists. Use its original password or another ID."
           });
         }
 
-        const existingExpert =
-          await db
-            .collection("experts")
-            .where(
-              "uid",
-              "==",
-              existingUser.uid ||
-                existingUser.id
-            )
-            .limit(1)
-            .get();
+        const existingExpert = await db
+          .collection("experts")
+          .where(
+            "uid",
+            "==",
+            existingUser.uid || existingUser.id
+          )
+          .limit(1)
+          .get();
 
-        if (
-          !existingExpert.empty
-        ) {
+        if (!existingExpert.empty) {
           return res.status(409).json({
             success: false,
             message:
-              "An expert application already exists for this Anonymous ID.",
+              "An expert application already exists for this ID."
           });
         }
 
         firebaseUser = {
           uid:
             existingUser.uid ||
-            existingUser.id,
+            existingUser.id
         };
-      } else {
-        /* -------------------------------------------------
-           CREATE NEW FIREBASE USER
-        ------------------------------------------------- */
+      }
 
+      /*
+       * Check before creating a new Firebase
+       * account to avoid leaving a partial user
+       * behind for a duplicate license.
+       */
+
+      const existingLicense = await db
+        .collection("experts")
+        .where(
+          "licenseNumber",
+          "==",
+          cleanLicense
+        )
+        .limit(1)
+        .get();
+
+      if (!existingLicense.empty) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "This license number is already registered."
+        });
+      }
+
+      const uploadedImage =
+        await uploadToCloudinary(
+          req.file.buffer
+        );
+
+      uploadedPublicId =
+        uploadedImage?.public_id || null;
+
+      if (
+        uploadedImage?.type !== "authenticated" ||
+        !uploadedPublicId
+      ) {
+        throw new Error(
+          "License upload must use authenticated delivery."
+        );
+      }
+
+      const now = new Date();
+
+      if (!firebaseUser) {
         firebaseUser =
           await auth.createUser({
-            password:
-              String(password),
-
-            displayName:
-              cleanAnonymousId,
+            password: String(password),
+            displayName: cleanAnonymousId
           });
 
         createdFirebaseUid =
           firebaseUser.uid;
-
-        createdNewFirebaseUser =
-          true;
-
-        /* -------------------------------------------------
-           CREATE USER DOCUMENT
-        ------------------------------------------------- */
 
         const hashedPassword =
           await bcrypt.hash(
@@ -459,211 +341,75 @@ router.post(
             12
           );
 
-        const now =
-          new Date();
-
         await db
           .collection("users")
           .doc(firebaseUser.uid)
           .set({
-            uid:
-              firebaseUser.uid,
-
-            anonymousId:
-              cleanAnonymousId,
-
-            password:
-              hashedPassword,
-
-            role:
-              "expert",
-
-            age:
-              numericAge,
-
-            ageVerified:
-              true,
-
-            status:
-              "active",
-
-            verificationStatus:
-              "pending",
-
-            createdAt:
-              now,
-
-            updatedAt:
-              now,
+            uid: firebaseUser.uid,
+            anonymousId: cleanAnonymousId,
+            password: hashedPassword,
+            role: "expert",
+            age: numericAge,
+            ageVerified: true,
+            status: "active",
+            verificationStatus: "pending",
+            createdAt: now,
+            updatedAt: now
           });
       }
 
-      /* ---------------------------------------------------
-         DUPLICATE LICENSE
-      --------------------------------------------------- */
-
-      const existingLicense =
-        await db
-          .collection("experts")
-          .where(
-            "licenseNumber",
-            "==",
-            cleanLicense
-          )
-          .limit(1)
-          .get();
-
-      if (
-        !existingLicense.empty
-      ) {
-        return res.status(409).json({
-          success: false,
-          message:
-            "This license number is already registered.",
-        });
-      }
-
-      /* ---------------------------------------------------
-         CLOUDINARY
-      --------------------------------------------------- */
-
-      let uploadedImage;
-
-      try {
-        uploadedImage =
-          await uploadToCloudinary(
-            req.file.buffer
-          );
-
-        uploadedPublicId =
-          uploadedImage.public_id;
-      } catch (uploadError) {
-        console.error(
-          "Cloudinary upload error:",
-          uploadError
-        );
-
-        throw new Error(
-          "License image upload failed. Check your Cloudinary configuration."
-        );
-      }
-
-      /* ---------------------------------------------------
-         EXPERT PROFILE
-      --------------------------------------------------- */
-
-      const now =
-        new Date();
-
       const expertData = {
-        uid:
-          firebaseUser.uid,
+        uid: firebaseUser.uid,
+        anonymousId: cleanAnonymousId,
+        name: cleanName,
+        email: cleanEmail,
+        gender: cleanGender,
+        age: numericAge,
+        licenseNumber: cleanLicense,
 
-        anonymousId:
-          cleanAnonymousId,
+        // No reusable document URL in Firestore.
+        licenseImageType: "authenticated",
+        licenseImagePublicId: uploadedPublicId,
 
-        name:
-          cleanName,
+        qualification: cleanQualification,
+        specialization: cleanSpecialization,
+        experienceYears: numericExperience,
+        bio: cleanBio,
 
-        email:
-          cleanEmail,
+        verificationStatus: "pending",
+        verified: false,
+        available: false,
+        rejectionReason: "",
 
-        gender:
-          cleanGender,
-
-        age:
-          numericAge,
-
-        licenseNumber:
-          cleanLicense,
-
-        licenseImageUrl:
-          uploadedImage.secure_url,
-
-        licenseImagePublicId:
-          uploadedImage.public_id,
-
-        qualification:
-          cleanQualification,
-
-        specialization:
-          cleanSpecialization,
-
-        experienceYears:
-          numericExperience,
-
-        bio:
-          cleanBio,
-
-        verificationStatus:
-          "pending",
-
-        verified:
-          false,
-
-        available:
-          false,
-
-        rejectionReason:
-          "",
-
-        createdAt:
-          now,
-
-        updatedAt:
-          now,
+        createdAt: now,
+        updatedAt: now
       };
 
-      const expertRef =
-        await db
-          .collection("experts")
-          .add(expertData);
+      const expertRef = await db
+        .collection("experts")
+        .add(expertData);
 
-      createdExpertId =
-        expertRef.id;
-
-      /* ---------------------------------------------------
-         UPDATE USER
-      --------------------------------------------------- */
+      createdExpertId = expertRef.id;
 
       await db
         .collection("users")
         .doc(firebaseUser.uid)
         .update({
-          expertId:
-            expertRef.id,
-
-          verificationStatus:
-            "pending",
-
-          updatedAt:
-            new Date(),
+          expertId: expertRef.id,
+          verificationStatus: "pending",
+          updatedAt: new Date()
         });
-
-      /* ---------------------------------------------------
-         CREATE CUSTOM TOKEN
-      --------------------------------------------------- */
 
       const token =
         await auth.createCustomToken(
           firebaseUser.uid,
           {
             role: "expert",
-
-            anonymousId:
-              cleanAnonymousId,
-
-            age:
-              numericAge,
-
-            verificationStatus:
-              "pending",
+            anonymousId: cleanAnonymousId,
+            age: numericAge,
+            verificationStatus: "pending"
           }
         );
-
-      /* ---------------------------------------------------
-         SUCCESS
-      --------------------------------------------------- */
 
       return res.status(201).json({
         success: true,
@@ -674,48 +420,26 @@ router.post(
         token,
 
         user: {
-          uid:
-            firebaseUser.uid,
-
-          anonymousId:
-            cleanAnonymousId,
-
-          role:
-            "expert",
-
-          age:
-            numericAge,
-
-          verificationStatus:
-            "pending",
+          uid: firebaseUser.uid,
+          anonymousId: cleanAnonymousId,
+          role: "expert",
+          age: numericAge,
+          verificationStatus: "pending"
         },
 
         expert: {
-          id:
-            expertRef.id,
-
-          name:
-            cleanName,
-
-          verificationStatus:
-            "pending",
-
-          verified:
-            false,
-
-          available:
-            false,
-        },
+          id: expertRef.id,
+          name: cleanName,
+          verificationStatus: "pending",
+          verified: false,
+          available: false
+        }
       });
     } catch (error) {
       console.error(
         "Complete expert registration error:",
-        error
+        error?.code || error?.name
       );
-
-      /* ---------------------------------------------------
-         CLEANUP EXPERT DOCUMENT
-      --------------------------------------------------- */
 
       if (createdExpertId) {
         try {
@@ -725,30 +449,18 @@ router.post(
             .delete();
         } catch (cleanupError) {
           console.error(
-            "Expert document cleanup error:",
-            cleanupError.message
+            "Expert cleanup error:",
+            cleanupError?.code ||
+              cleanupError?.name
           );
         }
       }
 
-      /* ---------------------------------------------------
-         CLEANUP CLOUDINARY
-      --------------------------------------------------- */
+      await deleteCloudinaryImage(
+        uploadedPublicId
+      );
 
-      if (uploadedPublicId) {
-        await deleteCloudinaryImage(
-          uploadedPublicId
-        );
-      }
-
-      /* ---------------------------------------------------
-         CLEANUP NEW FIREBASE USER
-      --------------------------------------------------- */
-
-      if (
-        createdNewFirebaseUser &&
-        createdFirebaseUid
-      ) {
+      if (createdFirebaseUid) {
         try {
           await db
             .collection("users")
@@ -756,8 +468,9 @@ router.post(
             .delete();
         } catch (cleanupError) {
           console.error(
-            "Firestore user cleanup error:",
-            cleanupError.message
+            "User cleanup error:",
+            cleanupError?.code ||
+              cleanupError?.name
           );
         }
 
@@ -767,24 +480,17 @@ router.post(
           );
         } catch (cleanupError) {
           console.error(
-            "Firebase user cleanup error:",
-            cleanupError.message
+            "Firebase cleanup error:",
+            cleanupError?.code ||
+              cleanupError?.name
           );
         }
       }
 
       return res.status(500).json({
         success: false,
-
         message:
-          error.message ||
-          "Expert registration failed.",
-
-        error:
-          process.env.NODE_ENV ===
-          "development"
-            ? error.message
-            : undefined,
+          "Expert registration failed. Please retry or contact support."
       });
     }
   }

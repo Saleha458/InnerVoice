@@ -1,14 +1,6 @@
 
-import {
-  useEffect,
-  useRef,
-  useState
-} from "react";
-
-import {
-  Link,
-  useSearchParams
-} from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 import { auth } from "../../services/firebase";
@@ -25,7 +17,6 @@ import {
 } from "../../services/privateVault";
 
 import StarButton from "../../components/chat/StarButton";
-
 import "./AIChat.css";
 
 const getError = error =>
@@ -57,11 +48,9 @@ function uniqueMessages(items) {
 
 export default function AIChat() {
   const { user } = useAuth();
-
   const [params, setParams] = useSearchParams();
 
   const [profile, setProfile] = useState(undefined);
-
   const [unlocked, setUnlocked] = useState(
     isVaultUnlocked()
   );
@@ -69,7 +58,8 @@ export default function AIChat() {
   const [passphrase, setPassphrase] = useState("");
   const [confirmation, setConfirmation] = useState("");
 
-  const [conversationId, setConversationId] = useState(null);
+  const [conversationId, setConversationId] =
+    useState(null);
   const [messages, setMessages] = useState([]);
 
   const [text, setText] = useState("");
@@ -125,7 +115,6 @@ export default function AIChat() {
 
     setMessages(uniqueMessages(entries));
     setConversationId(id);
-
     conversationRef.current = id;
 
     if (storageKey) {
@@ -230,9 +219,7 @@ export default function AIChat() {
         }
 
         await createVault(passphrase);
-
         setProfile(await getVaultProfile());
-
         setShowRecoveryStep(true);
       } else {
         await unlockVault(passphrase);
@@ -240,7 +227,6 @@ export default function AIChat() {
 
       setPassphrase("");
       setConfirmation("");
-
       setUnlocked(true);
     } catch (cause) {
       setError(getError(cause));
@@ -641,7 +627,6 @@ export default function AIChat() {
                 disabled={busy}
                 onClick={() => {
                   lockVault();
-
                   setUnlocked(false);
                   setMessages([]);
                   setText("");
@@ -682,11 +667,15 @@ export default function AIChat() {
                       : "bot"
                   }`}
                 >
-                  <span className="iv-ai-message-avatar">
-                    {message.role === "user"
-                      ? "Y"
-                      : "✦"}
-                  </span>
+                  {/* No extra Y avatar beside a user message. */}
+                  {message.role !== "user" && (
+                    <span
+                      className="iv-ai-message-avatar"
+                      aria-hidden="true"
+                    >
+                      ✦
+                    </span>
+                  )}
 
                   <div className="iv-ai-message-body">
                     <div className="iv-ai-sender">

@@ -12,7 +12,6 @@ const initialForm = {
   confirmPassword: "",
   role: "user",
   age: "",
-
   professionalName: "",
   professionalEmail: "",
   gender: "",
@@ -21,7 +20,7 @@ const initialForm = {
   qualification: "",
   specialization: "",
   experienceYears: "",
-  bio: "",
+  bio: ""
 };
 
 export default function Register() {
@@ -29,59 +28,74 @@ export default function Register() {
   const { register } = useAuth();
 
   const [form, setForm] = useState(initialForm);
-
   const [showPassword, setShowPassword] = useState(false);
-  const [
-    showConfirmPassword,
-    setShowConfirmPassword,
-  ] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  /* =========================================================
-     FORM CHANGES
-  ========================================================= */
-
-  const handleChange = (event) => {
+  const handleChange = event => {
     const { name, value, files } = event.target;
 
     if (name === "licenseImage") {
-      setForm((previous) => ({
+      setForm(previous => ({
         ...previous,
-        licenseImage: files?.[0] || null,
+        licenseImage: files?.[0] || null
       }));
-
       return;
     }
 
-    setForm((previous) => ({
+    setForm(previous => ({
       ...previous,
-      [name]: value,
+      [name]: value
     }));
   };
-
-  /* =========================================================
-     PASSWORD REQUIREMENTS
-  ========================================================= */
 
   const passwordRules = {
     length: form.password.length >= 8,
     uppercase: /[A-Z]/.test(form.password),
     lowercase: /[a-z]/.test(form.password),
     number: /\d/.test(form.password),
-    special: /[^A-Za-z0-9]/.test(form.password),
+    special: /[^A-Za-z0-9]/.test(form.password)
   };
 
   const passwordValid =
     Object.values(passwordRules).every(Boolean);
 
-  /* =========================================================
-     SUBMIT
-  ========================================================= */
+  const passwordScore = Object.values(passwordRules)
+    .filter(Boolean).length;
 
-  const handleSubmit = async (event) => {
+  const passwordsMatch =
+    form.confirmPassword.length > 0 &&
+    form.password === form.confirmPassword;
+
+  const strength = !form.password
+    ? "Not entered"
+    : passwordScore <= 2
+      ? "Weak"
+      : !passwordValid
+        ? "Needs improvement"
+        : form.password.length >= 14
+          ? "Strong"
+          : "Good";
+
+  const strengthColor = passwordValid
+    ? "#287c58"
+    : passwordScore <= 2
+      ? "#ae493a"
+      : "#b47b32";
+
+  const strengthWidth = !form.password
+    ? "0%"
+    : passwordValid
+      ? form.password.length >= 14
+        ? "100%"
+        : "80%"
+      : `${Math.max(10, passwordScore * 12)}%`;
+
+  const handleSubmit = async event => {
     event.preventDefault();
 
     setError("");
@@ -89,17 +103,12 @@ export default function Register() {
 
     const anonymousId = form.anonymousId.trim();
 
-    /* Anonymous ID */
-
     if (!/^[A-Za-z0-9_]{3,30}$/.test(anonymousId)) {
       setError(
         "Anonymous ID must be 3–30 characters and may contain only letters, numbers and underscores."
       );
-
       return;
     }
-
-    /* Age */
 
     if (form.age === "") {
       setError("Age is required.");
@@ -122,13 +131,10 @@ export default function Register() {
       return;
     }
 
-    /* Password */
-
     if (!passwordValid) {
       setError(
         "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number and one special character."
       );
-
       return;
     }
 
@@ -136,8 +142,6 @@ export default function Register() {
       setError("Passwords do not match.");
       return;
     }
-
-    /* Expert validation */
 
     if (form.role === "expert") {
       if (!form.professionalName.trim()) {
@@ -188,14 +192,19 @@ export default function Register() {
         return;
       }
 
-      if (!form.licenseImage.type.startsWith("image/")) {
+      if (
+        !form.licenseImage.type.startsWith("image/")
+      ) {
         setError(
           "License / verification file must be an image."
         );
         return;
       }
 
-      if (form.licenseImage.size > 5 * 1024 * 1024) {
+      if (
+        form.licenseImage.size >
+        5 * 1024 * 1024
+      ) {
         setError("License image must be 5 MB or smaller.");
         return;
       }
@@ -216,14 +225,8 @@ export default function Register() {
       }
     }
 
-    /* =======================================================
-       SEND REGISTRATION REQUEST
-    ======================================================= */
-
     try {
       setLoading(true);
-
-      /* Expert registration */
 
       if (form.role === "expert") {
         const data = new FormData();
@@ -280,28 +283,26 @@ export default function Register() {
 
         setSuccess(
           response?.data?.message ||
-            "Expert account created successfully. Your application is pending admin verification."
+          "Expert account created successfully. Your application is pending admin verification."
         );
 
         setForm(initialForm);
 
         window.setTimeout(() => {
           navigate("/login", {
-            replace: true,
+            replace: true
           });
         }, 2500);
 
         return;
       }
 
-      /* User / Parent registration */
-
       await register({
         anonymousId,
         password: form.password,
         confirmPassword: form.confirmPassword,
         role: form.role,
-        age: numericAge,
+        age: numericAge
       });
 
       setSuccess(
@@ -312,7 +313,7 @@ export default function Register() {
 
       window.setTimeout(() => {
         navigate("/login", {
-          replace: true,
+          replace: true
         });
       }, 1800);
     } catch (err) {
@@ -320,23 +321,21 @@ export default function Register() {
 
       setError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Registration failed. Please try again."
+        err?.message ||
+        "Registration failed. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  /* =========================================================
-     UI
-  ========================================================= */
-
   return (
     <AuthShell variant="register">
       <div className="auth-card">
         <div className="auth-header">
-          <span className="eyebrow">INNERVOICE</span>
+          <span className="eyebrow">
+            INNERVOICE
+          </span>
 
           <h1>Create your account.</h1>
 
@@ -362,10 +361,6 @@ export default function Register() {
           className="auth-form"
           onSubmit={handleSubmit}
         >
-          {/* =============================================
-              BASIC ACCOUNT
-          ============================================= */}
-
           <div className="form-group">
             <label htmlFor="anonymousId">
               Anonymous ID
@@ -431,14 +426,12 @@ export default function Register() {
             )}
           </div>
 
-          {/* =============================================
-              EXPERT VERIFICATION
-          ============================================= */}
-
           {form.role === "expert" && (
             <>
               <div className="notice-box">
-                <strong>Expert verification</strong>
+                <strong>
+                  Expert verification
+                </strong>
 
                 <p>
                   Complete your professional details
@@ -482,7 +475,9 @@ export default function Register() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="gender">Gender</label>
+                  <label htmlFor="gender">
+                    Gender
+                  </label>
 
                   <select
                     id="gender"
@@ -492,10 +487,18 @@ export default function Register() {
                     disabled={loading}
                     required
                   >
-                    <option value="">Select gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                    <option value="">
+                      Select gender
+                    </option>
+                    <option value="male">
+                      Male
+                    </option>
+                    <option value="female">
+                      Female
+                    </option>
+                    <option value="other">
+                      Other
+                    </option>
                   </select>
                 </div>
 
@@ -611,12 +614,10 @@ export default function Register() {
             </>
           )}
 
-          {/* =============================================
-              PASSWORD
-          ============================================= */}
-
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">
+              Password
+            </label>
 
             <div className="iv-auth-password-field">
               <input
@@ -630,14 +631,14 @@ export default function Register() {
                 required
                 style={{
                   paddingRight: 80,
-                  width: "100%",
+                  width: "100%"
                 }}
               />
 
               <button
                 type="button"
                 onClick={() =>
-                  setShowPassword((value) => !value)
+                  setShowPassword(value => !value)
                 }
                 disabled={loading}
                 aria-label={
@@ -652,7 +653,7 @@ export default function Register() {
                   transform: "translateY(-50%)",
                   border: "none",
                   background: "transparent",
-                  cursor: "pointer",
+                  cursor: "pointer"
                 }}
               >
                 {showPassword ? "Hide" : "Show"}
@@ -685,11 +686,52 @@ export default function Register() {
                 One special character
               </div>
             </div>
-          </div>
 
-          {/* =============================================
-              CONFIRM PASSWORD
-          ============================================= */}
+            <div
+              aria-live="polite"
+              style={{ marginTop: 12 }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  fontSize: 12
+                }}
+              >
+                <span>Password strength</span>
+
+                <strong
+                  style={{
+                    color: strengthColor
+                  }}
+                >
+                  {strength}
+                </strong>
+              </div>
+
+              <div
+                aria-hidden="true"
+                style={{
+                  height: 7,
+                  marginTop: 7,
+                  borderRadius: 999,
+                  background: "#ebe6e0",
+                  overflow: "hidden"
+                }}
+              >
+                <div
+                  style={{
+                    width: strengthWidth,
+                    height: "100%",
+                    background: strengthColor,
+                    borderRadius: "inherit",
+                    transition: "width 0.2s ease"
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="form-group">
             <label htmlFor="confirmPassword">
@@ -712,7 +754,7 @@ export default function Register() {
                 required
                 style={{
                   paddingRight: 80,
-                  width: "100%",
+                  width: "100%"
                 }}
               />
 
@@ -720,7 +762,7 @@ export default function Register() {
                 type="button"
                 onClick={() =>
                   setShowConfirmPassword(
-                    (value) => !value
+                    value => !value
                   )
                 }
                 disabled={loading}
@@ -736,12 +778,30 @@ export default function Register() {
                   transform: "translateY(-50%)",
                   border: "none",
                   background: "transparent",
-                  cursor: "pointer",
+                  cursor: "pointer"
                 }}
               >
                 {showConfirmPassword ? "Hide" : "Show"}
               </button>
             </div>
+
+            {form.confirmPassword.length > 0 && (
+              <p
+                role="status"
+                style={{
+                  margin: "8px 0 0",
+                  fontSize: 12,
+                  fontWeight: 650,
+                  color: passwordsMatch
+                    ? "#287c58"
+                    : "#ae493a"
+                }}
+              >
+                {passwordsMatch
+                  ? "✓ Passwords match"
+                  : "✕ Passwords do not match"}
+              </p>
+            )}
           </div>
 
           {form.role === "expert" && (
@@ -770,15 +830,17 @@ export default function Register() {
                 ? "Creating expert application..."
                 : "Creating account..."
               : form.role === "expert"
-              ? "Create Expert Account"
-              : "Create Account"}
+                ? "Create Expert Account"
+                : "Create Account"}
           </button>
         </form>
 
         <div className="auth-footer">
           <p>
             Already have an account?{" "}
-            <Link to="/login">Sign in</Link>
+            <Link to="/login">
+              Sign in
+            </Link>
           </p>
         </div>
       </div>
