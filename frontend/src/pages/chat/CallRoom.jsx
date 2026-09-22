@@ -4,37 +4,36 @@ import { Link, useParams } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import api from "../../services/api";
 
-const asDate = value => {
+const toDate = value => {
   if (!value) return null;
 
   const seconds = value.seconds ?? value._seconds;
 
-  const date = seconds === undefined
-    ? new Date(value)
-    : new Date(Number(seconds) * 1000);
+  const date =
+    seconds == null
+      ? new Date(value)
+      : new Date(Number(seconds) * 1000);
 
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const getEnd = session => {
-  const end = asDate(session?.endTime);
-  const start = asDate(session?.startTime);
-
-  return end || (
-    start && Number(session?.duration) > 0
+const endOf = session =>
+  toDate(session?.endTime) ||
+  (
+    toDate(session?.startTime) &&
+    Number(session?.duration) > 0
       ? new Date(
-          start.getTime() +
-          Number(session.duration) * 60000
+          toDate(session.startTime).getTime() +
+            Number(session.duration) * 60000
         )
       : null
   );
-};
 
 const phaseOf = (session, now) => {
   if (!session) return "loading";
 
-  const start = asDate(session.startTime);
-  const end = getEnd(session);
+  const start = toDate(session.startTime);
+  const end = endOf(session);
 
   if (!start || !end) return "invalid";
 
@@ -45,53 +44,53 @@ const phaseOf = (session, now) => {
     return "ended";
   }
 
-  if (session.status !== "scheduled") return "closed";
+  if (session.status !== "scheduled") {
+    return "closed";
+  }
 
   return now < start.getTime()
     ? "upcoming"
     : "active";
 };
 
-const errorText = error =>
+const messageOf = error =>
   error?.response?.data?.message ||
   error?.message ||
   "Audio call failed.";
 
-const hasVideo = description =>
-  typeof description?.sdp === "string" &&
+const containsVideo = description =>
   /(?:^|\r?\n)m=video(?:\s|$)/i.test(
-    description.sdp
+    description?.sdp || ""
   );
 
-async function getRtcConfiguration(sessionId) {
+const isTurn = value =>
+  /^turns?:/i.test(value || "");
+
+async function rtcSettings(sessionId) {
   const { data } = await api.get(
     `/ice-servers/${encodeURIComponent(sessionId)}`
   );
 
   const servers = data?.iceServers;
 
-  const hasAuthenticatedTurn =
+  const authenticatedTurn =
     Array.isArray(servers) &&
-    servers.some(server =>
-      Boolean(
+    servers.some(
+      server =>
         server.username &&
-        server.credential
-      ) &&
-      (
-        Array.isArray(server.urls)
-          ? server.urls
-          : [server.urls]
-      ).some(url =>
-        typeof url === "string" &&
-        /^turns?:/i.test(url)
-      )
+        server.credential &&
+        (
+          Array.isArray(server.urls)
+            ? server.urls
+            : [server.urls]
+        ).some(isTurn)
     );
 
   if (
     !data?.success ||
     !Array.isArray(servers) ||
     (
-      !hasAuthenticatedTurn &&
+      !authenticatedTurn &&
       !(
         import.meta.env.DEV &&
         data.developmentOnly
@@ -99,56 +98,52 @@ async function getRtcConfiguration(sessionId) {
     )
   ) {
     throw new Error(
-      "Audio relay is unavailable. Check the TURN provider and Railway settings."
+      "Authenticated TURN relay is unavailable. Check Railway TURN configuration."
     );
   }
 
-  // Keep production audio relay-only.
-  // Do not expose a direct peer IP as a fallback.
   return {
     iceServers: servers,
-    iceTransportPolicy: hasAuthenticatedTurn
+    iceTransportPolicy: authenticatedTurn
       ? "relay"
       : "all"
   };
 }
 
-/*
- * This test asks the browser to gather a TURN
- * relay candidate without connecting to a peer.
- *
- * It does not display credentials or IP addresses.
- * A successful allocation does not, by itself,
- * guarantee that an entire call will connect.
- */
-async function probeRelay(config) {
+// Tests TURN allocation without placing a call.
+// Never display candidate addresses or credentials.
+async function checkRelay(config) {
   const peer = new RTCPeerConnection({
     ...config,
     iceTransportPolicy: "relay"
   });
 
-  const errors = new Set();
+  const codes = new Set();
 
   try {
-    peer.createDataChannel("turn-diagnostic");
+    peer.createDataChannel("relay-check");
 
-    const allocated = await new Promise(
-      async (resolve, reject) => {
-        let finished = false;
-        let timer;
+    const success = await new Promise(
+      (resolve, reject) => {
+        let settled = false;
 
-        const finish = (result, cause) => {
-          if (finished) return;
+        const finish = (value, error) => {
+          if (settled) return;
 
-          finished = true;
+          settled = true;
           clearTimeout(timer);
 
-          if (cause) {
-            reject(cause);
+          if (error) {
+            reject(error);
           } else {
-            resolve(result);
+            resolve(value);
           }
         };
+
+        const timer = setTimeout(
+          () => finish(false),
+          15000
+        );
 
         peer.onicecandidate = event => {
           if (
@@ -161,10 +156,8 @@ async function probeRelay(config) {
         };
 
         peer.onicecandidateerror = event => {
-          if (
-            Number.isInteger(event.errorCode)
-          ) {
-            errors.add(event.errorCode);
+          if (Number.isInteger(event.errorCode)) {
+            codes.add(event.errorCode);
           }
         };
 
@@ -176,41 +169,29 @@ async function probeRelay(config) {
           }
         };
 
-        timer = setTimeout(
-          () => finish(false),
-          15000
-        );
-
-        try {
-          const offer = await peer.createOffer();
-
-          await peer.setLocalDescription(
-            offer
+        peer
+          .createOffer()
+          .then(offer =>
+            peer.setLocalDescription(offer)
+          )
+          .catch(error =>
+            finish(false, error)
           );
-        } catch (cause) {
-          finish(false, cause);
-        }
       }
     );
 
-    if (allocated) {
-      return (
-        "TURN relay allocation passed on this device. " +
-        "Retry the call on both devices."
-      );
-    }
-
-    return (
-      "No TURN relay candidate gathered. " +
-      "Check TURN access and credentials." +
-      (
-        errors.size
-          ? ` ICE error code(s): ${[
-              ...errors
-            ].join(", ")}.`
-          : ""
-      )
-    );
+    return success
+      ? "TURN relay allocated successfully on this device. Test on the other device too."
+      : (
+          "No TURN relay candidate. Check TURN server reachability and credentials." +
+          (
+            codes.size
+              ? ` ICE error code(s): ${[
+                  ...codes
+                ].join(", ")}.`
+              : ""
+          )
+        );
   } finally {
     peer.close();
   }
@@ -221,63 +202,45 @@ export default function CallRoom() {
 
   const { socket, connected } = useSocket();
 
-  const [session, setSession] =
-    useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
 
-  const [loading, setLoading] =
-    useState(true);
+  const [error, setError] = useState("");
+  const [status, setStatus] = useState(
+    "Checking your session…"
+  );
 
-  const [now, setNow] =
-    useState(Date.now());
+  const [count, setCount] = useState(0);
+  const [incoming, setIncoming] = useState(null);
 
-  const [error, setError] =
-    useState("");
-
-  const [status, setStatus] =
-    useState("Checking your session…");
-
-  const [count, setCount] =
-    useState(0);
-
-  const [incoming, setIncoming] =
-    useState(null);
-
-  const [started, setStarted] =
-    useState(false);
-
+  const [started, setStarted] = useState(false);
   const [mediaConnected, setMediaConnected] =
     useState(false);
+  const [muted, setMuted] = useState(false);
 
-  const [muted, setMuted] =
-    useState(false);
-
-  const [testingRelay, setTestingRelay] =
-    useState(false);
-
-  const [relayReport, setRelayReport] =
-    useState("");
+  const [testing, setTesting] = useState(false);
+  const [relayResult, setRelayResult] = useState("");
 
   const remoteAudio = useRef(null);
-
-  const pcRef = useRef(null);
+  const peerRef = useRef(null);
   const streamRef = useRef(null);
-  const iceRef = useRef([]);
 
+  const pendingIce = useRef([]);
   const incomingRef = useRef(null);
   const busyRef = useRef(false);
 
-  const socketRef = useRef(null);
-  const sessionRef = useRef(null);
+  const peerCandidateCount = useRef(0);
+  const answerReceived = useRef(false);
+  const timeoutRef = useRef(null);
 
-  const callTimeout = useRef(null);
-
-  const remoteCandidateCount = useRef(0);
+  const socketRef = useRef(socket);
+  const sessionRef = useRef(session);
 
   socketRef.current = socket;
   sessionRef.current = session;
 
   const phase = phaseOf(session, now);
-
   const active = phase === "active";
 
   useEffect(() => {
@@ -289,52 +252,52 @@ export default function CallRoom() {
     return () => clearInterval(timer);
   }, []);
 
-  const loadSession = useCallback(async () => {
-    if (!sessionId) {
-      setLoading(false);
-      return;
-    }
+  const loadSession = useCallback(
+    async () => {
+      if (!sessionId) {
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const { data } = await api.get(
-        `/sessions/${encodeURIComponent(sessionId)}`
-      );
+      try {
+        const { data } = await api.get(
+          `/sessions/${encodeURIComponent(sessionId)}`
+        );
 
-      setSession(data.session || null);
-    } catch (cause) {
-      setError(errorText(cause));
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
+        setSession(data.session || null);
+      } catch (cause) {
+        setError(messageOf(cause));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionId]
+  );
 
   useEffect(() => {
     void loadSession();
   }, [loadSession]);
 
-  const closeCall = useCallback(
-    (preserveEarlyCandidates = false) => {
-      if (callTimeout.current) {
-        clearTimeout(callTimeout.current);
+  const cleanup = useCallback(
+    (keepPendingIce = false) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
 
-      callTimeout.current = null;
+      timeoutRef.current = null;
 
-      const pc = pcRef.current;
-      pcRef.current = null;
+      const peer = peerRef.current;
+      peerRef.current = null;
 
-      if (pc) {
-        pc.ontrack = null;
-        pc.onicecandidate = null;
-        pc.onicecandidateerror = null;
+      if (peer) {
+        peer.ontrack = null;
+        peer.onicecandidate = null;
+        peer.onicecandidateerror = null;
+        peer.onconnectionstatechange = null;
+        peer.oniceconnectionstatechange = null;
 
-        pc.oniceconnectionstatechange = null;
-        pc.onconnectionstatechange = null;
-
-        if (
-          pc.signalingState !== "closed"
-        ) {
-          pc.close();
+        if (peer.signalingState !== "closed") {
+          peer.close();
         }
       }
 
@@ -348,84 +311,77 @@ export default function CallRoom() {
         remoteAudio.current.srcObject = null;
       }
 
-      if (!preserveEarlyCandidates) {
-        iceRef.current = [];
-        remoteCandidateCount.current = 0;
+      if (!keepPendingIce) {
+        pendingIce.current = [];
       }
 
       incomingRef.current = null;
       busyRef.current = false;
 
+      peerCandidateCount.current = keepPendingIce
+        ? pendingIce.current.length
+        : 0;
+
+      answerReceived.current = false;
+
       setIncoming(null);
       setStarted(false);
-      setMuted(false);
       setMediaConnected(false);
+      setMuted(false);
     },
     []
   );
 
-  const startTimeout = useCallback(pc => {
-    if (callTimeout.current) {
-      clearTimeout(callTimeout.current);
+  const flushIce = useCallback(async () => {
+    const peer = peerRef.current;
+
+    if (!peer?.remoteDescription) return;
+
+    for (
+      const candidate of pendingIce.current.splice(0)
+    ) {
+      try {
+        await peer.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
+      } catch {
+        setStatus(
+          "A remote network candidate was rejected. Check both devices' TURN test."
+        );
+      }
+    }
+  }, []);
+
+  const armTimeout = useCallback(peer => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
 
-    callTimeout.current = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       if (
-        pcRef.current !== pc ||
-        pc.connectionState === "connected"
+        peerRef.current !== peer ||
+        peer.connectionState === "connected"
       ) {
         return;
       }
 
-      const received =
-        remoteCandidateCount.current;
+      const issue = !answerReceived.current
+        ? "No call answer received. Ensure the other participant accepts the call and Socket.IO stays connected."
+        : peerCandidateCount.current === 0
+          ? "Answer received but no remote ICE candidates arrived. Check TURN allocation and signaling."
+          : "Answer and ICE arrived, but secure audio did not connect. Test TURN on both devices and check their networks.";
 
-      setError(
-        received === 0
-          ? (
-              "No remote ICE candidates arrived. " +
-              "Check signaling on both devices " +
-              "and TURN relay allocation."
-            )
-          : (
-              "Audio could not connect within 25 seconds. " +
-              "Test the TURN relay on BOTH devices; " +
-              "check network/firewall or TURN quota."
-            )
-      );
+      setError(issue);
 
       setStatus(
-        "Audio connection timed out. " +
-        "End the call, then retry."
+        "Audio connection timed out. End call and retry."
       );
     }, 25000);
   }, []);
 
-  const flushIce = useCallback(async () => {
-    const pc = pcRef.current;
-
-    if (!pc?.remoteDescription) {
-      return;
-    }
-
-    const candidates =
-      iceRef.current.splice(0);
-
-    for (const candidate of candidates) {
-      try {
-        await pc.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
-      } catch {
-        // A candidate may belong to an older call.
-        // Do not log network addresses.
-      }
-    }
-  }, []);
-
   const makePeer = useCallback(
-    async (preserveEarlyCandidates = false) => {
-      closeCall(preserveEarlyCandidates);
+    async keepPendingIce => {
+      cleanup(keepPendingIce);
 
       busyRef.current = true;
 
@@ -434,12 +390,12 @@ export default function CallRoom() {
         !navigator.mediaDevices?.getUserMedia
       ) {
         throw new Error(
-          "Audio calls need HTTPS and a microphone-enabled browser."
+          "Use HTTPS and enable microphone access for this website."
         );
       }
 
-      const config =
-        await getRtcConfiguration(sessionId);
+      const configuration =
+        await rtcSettings(sessionId);
 
       const stream =
         await navigator.mediaDevices.getUserMedia({
@@ -452,29 +408,18 @@ export default function CallRoom() {
 
       streamRef.current = stream;
 
-      let pc;
+      const peer =
+        new RTCPeerConnection(configuration);
 
-      try {
-        pc = new RTCPeerConnection(config);
-      } catch (cause) {
-        stream
-          .getTracks()
-          .forEach(track => track.stop());
-
-        streamRef.current = null;
-
-        throw cause;
-      }
-
-      pcRef.current = pc;
+      peerRef.current = peer;
 
       stream
         .getAudioTracks()
         .forEach(track =>
-          pc.addTrack(track, stream)
+          peer.addTrack(track, stream)
         );
 
-      pc.onicecandidate = event => {
+      peer.onicecandidate = event => {
         if (
           event.candidate &&
           socketRef.current?.connected
@@ -490,91 +435,79 @@ export default function CallRoom() {
         }
       };
 
-      pc.onicecandidateerror = event => {
+      peer.onicecandidateerror = event => {
         if (
-          [701, 401, 438].includes(
-            event.errorCode
-          )
+          [401, 438, 701].includes(event.errorCode)
         ) {
           setStatus(
-            `TURN/ICE error ${event.errorCode}. ` +
-            "Check relay on both devices."
+            `TURN/ICE error ${event.errorCode}. Test the relay on both devices.`
           );
         }
       };
 
-      pc.ontrack = event => {
-        if (event.track.kind !== "audio") {
+      peer.ontrack = event => {
+        if (
+          event.track.kind !== "audio" ||
+          !remoteAudio.current
+        ) {
           return;
         }
 
-        const audio = remoteAudio.current;
-
-        if (!audio) return;
-
-        audio.srcObject =
+        remoteAudio.current.srcObject =
           event.streams?.[0] ||
           new MediaStream([event.track]);
 
-        audio.play().catch(() => {
-          setStatus(
-            "Connected, but audio playback " +
-            "needs a tap on the player."
-          );
-        });
+        remoteAudio.current
+          .play()
+          .catch(() => {
+            setStatus(
+              "Audio connected; tap the player to allow playback."
+            );
+          });
       };
 
-      pc.oniceconnectionstatechange = () => {
-        if (pcRef.current !== pc) {
-          return;
-        }
-
+      peer.oniceconnectionstatechange = () => {
         if (
-          pc.iceConnectionState === "failed"
+          peerRef.current === peer &&
+          peer.iceConnectionState === "failed"
         ) {
           setMediaConnected(false);
-
           setError(
-            "ICE connection failed. " +
-            "Run Test TURN relay on both devices."
+            "ICE failed. Test the TURN relay on both devices."
           );
         }
       };
 
-      pc.onconnectionstatechange = () => {
-        if (pcRef.current !== pc) {
-          return;
-        }
+      peer.onconnectionstatechange = () => {
+        if (peerRef.current !== peer) return;
 
         if (
-          pc.connectionState === "connected"
+          peer.connectionState === "connected"
         ) {
-          if (callTimeout.current) {
-            clearTimeout(callTimeout.current);
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
           }
 
-          callTimeout.current = null;
+          timeoutRef.current = null;
 
           setMediaConnected(true);
           setError("");
           setStatus("Audio call connected");
         } else if (
           ["failed", "disconnected"].includes(
-            pc.connectionState
+            peer.connectionState
           )
         ) {
           setMediaConnected(false);
-
           setStatus(
-            "Connection interrupted. " +
-            "End and retry if needed."
+            "Audio connection interrupted. End and retry if needed."
           );
         }
       };
 
-      return pc;
+      return peer;
     },
-    [closeCall, sessionId]
+    [cleanup, sessionId]
   );
 
   useEffect(() => {
@@ -584,6 +517,14 @@ export default function CallRoom() {
       !active ||
       !sessionId
     ) {
+      if (!connected && peerRef.current) {
+        cleanup();
+        setCount(0);
+        setStatus(
+          "Connection to server lost. Reconnecting; start a new call after both participants return."
+        );
+      }
+
       return;
     }
 
@@ -595,7 +536,7 @@ export default function CallRoom() {
       }
     };
 
-    const onOffer = async data => {
+    const onOffer = data => {
       if (
         data?.sessionId !== sessionId ||
         !data.offer
@@ -605,60 +546,15 @@ export default function CallRoom() {
 
       if (
         data.mode !== "audio" ||
-        hasVideo(data.offer)
+        containsVideo(data.offer)
       ) {
         socket.emit("webrtc:decline", {
           sessionId
         });
 
         setError(
-          "Video is disabled. Only audio is supported."
+          "Only audio calls are supported."
         );
-
-        return;
-      }
-
-      if (
-        data.renegotiate &&
-        pcRef.current &&
-        busyRef.current
-      ) {
-        try {
-          const pc = pcRef.current;
-
-          if (
-            pc.signalingState !== "stable"
-          ) {
-            return;
-          }
-
-          pc.setConfiguration(
-            await getRtcConfiguration(sessionId)
-          );
-
-          await pc.setRemoteDescription(
-            new RTCSessionDescription(
-              data.offer
-            )
-          );
-
-          await pc.setLocalDescription(
-            await pc.createAnswer()
-          );
-
-          socket.emit(
-            "webrtc:answer",
-            {
-              sessionId,
-              answer:
-                pc.localDescription.toJSON()
-            }
-          );
-
-          await flushIce();
-        } catch (cause) {
-          setError(errorText(cause));
-        }
 
         return;
       }
@@ -686,40 +582,47 @@ export default function CallRoom() {
     const onAnswer = async data => {
       if (
         data?.sessionId !== sessionId ||
-        !pcRef.current ||
+        !peerRef.current ||
         !data.answer
       ) {
         return;
       }
 
-      if (hasVideo(data.answer)) {
-        setError("Video was rejected.");
-        closeCall();
+      if (containsVideo(data.answer)) {
+        cleanup();
+
+        setError(
+          "Video answers are not supported."
+        );
+
         return;
       }
 
       try {
-        const pc = pcRef.current;
+        const peer = peerRef.current;
 
         if (
-          pc.signalingState ===
+          peer.signalingState !==
           "have-local-offer"
         ) {
-          await pc.setRemoteDescription(
-            new RTCSessionDescription(
-              data.answer
-            )
-          );
-
-          setStatus(
-            "Answer received. " +
-            "Checking the secure audio path…"
-          );
-
-          await flushIce();
+          return;
         }
+
+        await peer.setRemoteDescription(
+          new RTCSessionDescription(
+            data.answer
+          )
+        );
+
+        answerReceived.current = true;
+
+        setStatus(
+          "Call answered. Connecting encrypted audio…"
+        );
+
+        await flushIce();
       } catch (cause) {
-        setError(errorText(cause));
+        setError(messageOf(cause));
       }
     };
 
@@ -731,12 +634,10 @@ export default function CallRoom() {
         return;
       }
 
-      remoteCandidateCount.current += 1;
+      peerCandidateCount.current += 1;
 
-      if (
-        !pcRef.current?.remoteDescription
-      ) {
-        iceRef.current.push(
+      if (!peerRef.current?.remoteDescription) {
+        pendingIce.current.push(
           data.candidate
         );
 
@@ -744,23 +645,16 @@ export default function CallRoom() {
       }
 
       try {
-        await pcRef.current.addIceCandidate(
+        await peerRef.current.addIceCandidate(
           new RTCIceCandidate(
             data.candidate
           )
         );
       } catch {
-        // Ignore stale candidates.
+        setStatus(
+          "Remote ICE candidate rejected; inspect TURN connectivity."
+        );
       }
-    };
-
-    const onDeclined = data => {
-      if (data?.sessionId !== sessionId) {
-        return;
-      }
-
-      closeCall();
-      setStatus("Call declined.");
     };
 
     const onEnded = data => {
@@ -768,10 +662,22 @@ export default function CallRoom() {
         return;
       }
 
-      closeCall();
+      cleanup();
 
       setStatus(
-        "Other participant ended the call."
+        "The other participant ended the call."
+      );
+    };
+
+    const onDeclined = data => {
+      if (data?.sessionId !== sessionId) {
+        return;
+      }
+
+      cleanup();
+
+      setStatus(
+        "The other participant declined the call."
       );
     };
 
@@ -780,7 +686,7 @@ export default function CallRoom() {
         return;
       }
 
-      closeCall();
+      cleanup();
       setCount(0);
 
       setError(
@@ -790,29 +696,30 @@ export default function CallRoom() {
       void loadSession();
     };
 
-    const onCallError = data => {
+    const onCallError = data =>
       setError(
         data?.message ||
-        "Call signaling error."
+        "Call signaling failed."
       );
-    };
 
-    const listeners = [
+    const events = [
       ["call:joined", onPresence],
       ["call:presence", onPresence],
       ["webrtc:offer", onOffer],
       ["webrtc:answer", onAnswer],
       ["webrtc:ice", onIce],
-      ["webrtc:declined", onDeclined],
       ["webrtc:ended", onEnded],
+      ["webrtc:declined", onDeclined],
       ["call:locked", onLocked],
       ["call:error", onCallError]
     ];
 
-    listeners.forEach(
-      ([event, listener]) =>
-        socket.on(event, listener)
+    events.forEach(
+      ([name, listener]) =>
+        socket.on(name, listener)
     );
+
+    setCount(0);
 
     socket.emit(
       "call:join",
@@ -820,14 +727,16 @@ export default function CallRoom() {
     );
 
     return () => {
-      socket.emit(
-        "call:leave",
-        sessionId
-      );
+      if (socket.connected) {
+        socket.emit(
+          "call:leave",
+          sessionId
+        );
+      }
 
-      listeners.forEach(
-        ([event, listener]) =>
-          socket.off(event, listener)
+      events.forEach(
+        ([name, listener]) =>
+          socket.off(name, listener)
       );
     };
   }, [
@@ -835,7 +744,7 @@ export default function CallRoom() {
     connected,
     active,
     sessionId,
-    closeCall,
+    cleanup,
     flushIce,
     loadSession
   ]);
@@ -846,38 +755,40 @@ export default function CallRoom() {
         phase
       ) &&
       (
-        pcRef.current ||
+        peerRef.current ||
         incomingRef.current
       )
     ) {
-      socketRef.current?.emit(
-        "webrtc:end",
-        {
-          sessionId,
-          reason: "session-ended"
-        }
-      );
+      if (socketRef.current?.connected) {
+        socketRef.current.emit(
+          "webrtc:end",
+          { sessionId }
+        );
+      }
 
-      closeCall();
+      cleanup();
     }
-  }, [phase, sessionId, closeCall]);
+  }, [phase, sessionId, cleanup]);
 
-  useEffect(() => () => {
-    if (callTimeout.current) {
-      clearTimeout(callTimeout.current);
-    }
+  useEffect(
+    () => () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    pcRef.current?.close();
+      peerRef.current?.close();
 
-    streamRef.current
-      ?.getTracks()
-      .forEach(track => track.stop());
-  }, []);
+      streamRef.current
+        ?.getTracks()
+        .forEach(track => track.stop());
+    },
+    []
+  );
 
   async function startCall() {
     if (
       !active ||
-      !connected ||
+      !socket?.connected ||
       count !== 2 ||
       busyRef.current ||
       incomingRef.current
@@ -888,33 +799,40 @@ export default function CallRoom() {
     busyRef.current = true;
 
     setError("");
-    setStatus("Requesting microphone…");
+    setStatus(
+      "Checking microphone and relay…"
+    );
 
     try {
-      const pc = await makePeer();
+      const peer =
+        await makePeer(false);
 
       if (
         phaseOf(
           sessionRef.current,
           Date.now()
-        ) !== "active"
+        ) !== "active" ||
+        !socketRef.current?.connected
       ) {
-        throw new Error("Session ended.");
+        throw new Error(
+          "Session or server connection ended."
+        );
       }
 
-      await pc.setLocalDescription(
-        await pc.createOffer()
+      await peer.setLocalDescription(
+        await peer.createOffer()
       );
 
       setStarted(true);
-      startTimeout(pc);
+
+      armTimeout(peer);
 
       socket.emit(
         "webrtc:offer",
         {
           sessionId,
           offer:
-            pc.localDescription.toJSON(),
+            peer.localDescription.toJSON(),
           mode: "audio"
         }
       );
@@ -923,8 +841,8 @@ export default function CallRoom() {
         "Calling the other participant…"
       );
     } catch (cause) {
-      setError(errorText(cause));
-      closeCall();
+      cleanup();
+      setError(messageOf(cause));
     }
   }
 
@@ -935,7 +853,6 @@ export default function CallRoom() {
       !offer ||
       !active ||
       !socket?.connected ||
-      hasVideo(offer.offer) ||
       busyRef.current
     ) {
       return;
@@ -944,21 +861,27 @@ export default function CallRoom() {
     busyRef.current = true;
 
     setError("");
-    setStatus("Requesting microphone…");
+    setStatus(
+      "Checking microphone and relay…"
+    );
 
     try {
-      const pc = await makePeer(true);
+      const peer =
+        await makePeer(true);
 
       if (
         phaseOf(
           sessionRef.current,
           Date.now()
-        ) !== "active"
+        ) !== "active" ||
+        !socketRef.current?.connected
       ) {
-        throw new Error("Session ended.");
+        throw new Error(
+          "Session or server connection ended."
+        );
       }
 
-      await pc.setRemoteDescription(
+      await peer.setRemoteDescription(
         new RTCSessionDescription(
           offer.offer
         )
@@ -966,8 +889,8 @@ export default function CallRoom() {
 
       await flushIce();
 
-      await pc.setLocalDescription(
-        await pc.createAnswer()
+      await peer.setLocalDescription(
+        await peer.createAnswer()
       );
 
       socket.emit(
@@ -975,55 +898,60 @@ export default function CallRoom() {
         {
           sessionId,
           answer:
-            pc.localDescription.toJSON()
+            peer.localDescription.toJSON()
         }
       );
 
+      answerReceived.current = true;
+
       setStarted(true);
-      startTimeout(pc);
+
+      armTimeout(peer);
 
       setStatus(
-        "Answer sent. " +
-        "Checking the secure audio path…"
+        "Answer sent. Connecting encrypted audio…"
       );
     } catch (cause) {
-      socket.emit(
-        "webrtc:decline",
-        { sessionId }
-      );
+      if (socket.connected) {
+        socket.emit(
+          "webrtc:decline",
+          { sessionId }
+        );
+      }
 
-      setError(errorText(cause));
-      closeCall();
+      cleanup();
+      setError(messageOf(cause));
     }
   }
 
   async function testRelay() {
-    if (!active || testingRelay) {
+    if (
+      !active ||
+      testing ||
+      started ||
+      incoming
+    ) {
       return;
     }
 
-    setTestingRelay(true);
+    setTesting(true);
 
-    setRelayReport(
-      "Checking TURN allocation " +
-      "without starting a call…"
+    setRelayResult(
+      "Testing TURN allocation without starting a call…"
     );
 
     try {
-      const config =
-        await getRtcConfiguration(
-          sessionId
-        );
-
-      setRelayReport(
-        await probeRelay(config)
+      setRelayResult(
+        await checkRelay(
+          await rtcSettings(sessionId)
+        )
       );
     } catch (cause) {
-      setRelayReport(
-        `TURN check failed: ${errorText(cause)}`
+      setRelayResult(
+        `TURN check failed: ${messageOf(cause)}`
       );
     } finally {
-      setTestingRelay(false);
+      setTesting(false);
     }
   }
 
@@ -1033,10 +961,8 @@ export default function CallRoom() {
       { sessionId }
     );
 
-    incomingRef.current = null;
-    iceRef.current = [];
+    cleanup();
 
-    setIncoming(null);
     setStatus("Call declined.");
   }
 
@@ -1049,7 +975,8 @@ export default function CallRoom() {
       }
     );
 
-    closeCall();
+    cleanup();
+
     setStatus("Call ended.");
   }
 
@@ -1093,9 +1020,13 @@ export default function CallRoom() {
             PRIVATE BOOKED SESSION
           </span>
 
-          <h1>🎧 Audio support call</h1>
+          <h1>
+            🎧 Audio support call
+          </h1>
 
-          <p role="status">{status}</p>
+          <p role="status">
+            {status}
+          </p>
         </div>
 
         <Link
@@ -1125,20 +1056,14 @@ export default function CallRoom() {
         }
       >
         {active
-          ? `Audio is available until ${
-              getEnd(session)?.toLocaleString()
-            }.`
+          ? `Audio is available until ${endOf(
+              session
+            )?.toLocaleString()}.`
           : phase === "upcoming"
-            ? `Your session starts ${
-                asDate(
-                  session.startTime
-                )?.toLocaleString()
-              }.`
-            : (
-                "Calling is unavailable outside " +
-                "your booked session. " +
-                "Book another session to continue."
-              )}
+            ? `Your session starts ${toDate(
+                session.startTime
+              )?.toLocaleString()}.`
+            : "Calling is unavailable outside your booked session. Book another session to continue."}
       </div>
 
       <section
@@ -1177,7 +1102,7 @@ export default function CallRoom() {
                 disabled={
                   !connected ||
                   count !== 2 ||
-                  testingRelay
+                  testing
                 }
                 onClick={startCall}
               >
@@ -1190,8 +1115,8 @@ export default function CallRoom() {
               <button
                 type="button"
                 className="primary-button"
+                disabled={testing}
                 onClick={acceptCall}
-                disabled={testingRelay}
               >
                 Accept audio call
               </button>
@@ -1228,30 +1153,29 @@ export default function CallRoom() {
             </>
           )}
 
-          {active && (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={testRelay}
-              disabled={
-                testingRelay ||
-                started ||
-                Boolean(incoming)
-              }
-            >
-              {testingRelay
-                ? "Testing relay…"
-                : "Test TURN relay"}
-            </button>
-          )}
+          {active &&
+            !started &&
+            !incoming && (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={testing}
+                onClick={testRelay}
+              >
+                {testing
+                  ? "Testing relay…"
+                  : "Test TURN relay"}
+              </button>
+            )}
         </div>
 
-        {relayReport && (
+        {relayResult && (
           <p
             className="notice-box"
             role="status"
+            style={{ marginTop: 16 }}
           >
-            {relayReport}
+            {relayResult}
           </p>
         )}
 
