@@ -25,7 +25,7 @@ Protected expert document verification,
 User, Expert, Parent, and Admin roles,
 Permanent account deletion workflow,
 Responsive desktop and mobile interface,
-Backend safety and privacy testing,
+Backend safety and privacy testing
 
 ## Tech Stack
 
