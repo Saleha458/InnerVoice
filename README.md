@@ -6,26 +6,26 @@ InnerVoice is a **privacy-focused full-stack support platform** designed for use
 
 ## Features
 
-Privacy-focused anonymous user experience
-AI support powered by Google Gemini
-Safety-aware handling of sensitive conversations
-Private encrypted vault for sensitive data
-Vault passphrase and Recovery Kit
-Encrypted AI conversation history
-Mood tracking
-Private journaling
-Starred messages
-Verified expert profiles
-Expert session booking and request management
-Private real-time User–Expert chat
-Encrypted voice messages
-Notifications and session reminders
-Private reporting workflow
-Protected expert document verification
-User, Expert, Parent, and Admin roles
-Permanent account deletion workflow
-Responsive desktop and mobile interface
-Backend safety and privacy testing
+Privacy-focused anonymous user experience,
+AI support powered by Google Gemini,
+Safety-aware handling of sensitive conversations,
+Private encrypted vault for sensitive data,
+Vault passphrase and Recovery Kit,
+Encrypted AI conversation history,
+Mood tracking,
+Private journaling,
+Starred messages,
+Verified expert profiles,
+Expert session booking and request management,
+Private real-time User–Expert chat,
+Encrypted voice messages,
+Notifications and session reminders,
+Private reporting workflow,
+Protected expert document verification,
+User, Expert, Parent, and Admin roles,
+Permanent account deletion workflow,
+Responsive desktop and mobile interface,
+Backend safety and privacy testing,
 
 ## Tech Stack
 
