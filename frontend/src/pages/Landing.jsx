@@ -1,6 +1,21 @@
-
 import { Link } from "react-router-dom";
+import { Asterisk } from "lucide-react";
 import "./Landing.css";
+
+const SparkMark = () => (
+  <Asterisk
+    aria-hidden="true"
+    focusable="false"
+    strokeWidth={1.8}
+    style={{
+      width: "1em",
+      height: "1em",
+      display: "inline-block",
+      verticalAlign: "-0.14em",
+      flex: "0 0 auto",
+    }}
+  />
+);
 
 const supportOptions = [
   {
@@ -60,10 +75,6 @@ export default function Landing() {
         Skip to content
       </a>
 
-      {/* =========================================
-          NAVIGATION
-      ========================================= */}
-
       <header className="iv-home-header">
         <div className="iv-home-container iv-home-nav">
           <Link
@@ -71,8 +82,11 @@ export default function Landing() {
             className="iv-home-brand"
             aria-label="InnerVoice home"
           >
-            <span className="iv-home-brand-icon" aria-hidden="true">
-              ✳
+            <span
+              className="iv-home-brand-icon"
+              aria-hidden="true"
+            >
+              <SparkMark />
             </span>
 
             <span className="iv-home-brand-name">
@@ -90,11 +104,17 @@ export default function Landing() {
           </nav>
 
           <div className="iv-home-nav-actions">
-            <Link to="/login" className="iv-home-signin">
+            <Link
+              to="/login"
+              className="iv-home-signin"
+            >
               Sign in
             </Link>
 
-            <Link to="/register" className="iv-home-nav-cta">
+            <Link
+              to="/register"
+              className="iv-home-nav-cta"
+            >
               Create your space
               <span aria-hidden="true">↗</span>
             </Link>
@@ -103,10 +123,6 @@ export default function Landing() {
       </header>
 
       <main id="main-content">
-        {/* =========================================
-            HERO
-        ========================================= */}
-
         <section className="iv-home-hero">
           <div className="iv-home-container iv-home-hero-grid">
             <div className="iv-home-hero-copy">
@@ -131,7 +147,10 @@ export default function Landing() {
                 can begin in the way that feels right for you.
               </p>
 
-              <a className="iv-home-explore-link" href="#support">
+              <a
+                className="iv-home-explore-link"
+                href="#support"
+              >
                 <span
                   className="iv-home-explore-icon"
                   aria-hidden="true"
@@ -143,18 +162,20 @@ export default function Landing() {
               </a>
 
               <div className="iv-home-hero-bottom">
-                <span>ANONYMOUS USER IDENTITY</span>
+                <span>
+                  ANONYMOUS USER IDENTITY
+                </span>
 
                 <span
                   className="iv-home-hero-divider"
                   aria-hidden="true"
                 />
 
-                <span>YOUR PACE, YOUR SPACE</span>
+                <span>
+                  YOUR PACE, YOUR SPACE
+                </span>
               </div>
             </div>
-
-            {/* Illustrative preview, not an actual chat */}
 
             <div className="iv-home-hero-art">
               <div
@@ -171,7 +192,7 @@ export default function Landing() {
                 className="iv-home-art-leaf iv-home-art-leaf-one"
                 aria-hidden="true"
               >
-                ✳
+                <SparkMark />
               </span>
 
               <span
@@ -188,7 +209,9 @@ export default function Landing() {
                   </span>
 
                   <div className="iv-home-preview-identity">
-                    <strong>InnerVoice AI</strong>
+                    <strong>
+                      InnerVoice AI
+                    </strong>
 
                     <small>
                       <span className="iv-home-preview-online" />
@@ -228,7 +251,9 @@ export default function Landing() {
                   <div className="iv-home-preview-input">
                     Your thoughts, in your own words…
 
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      ↗
+                    </span>
                   </div>
 
                   <small className="iv-home-preview-footnote">
@@ -238,32 +263,45 @@ export default function Landing() {
               </div>
 
               <div className="iv-home-floating-card">
-                <span aria-hidden="true">♡</span>
+                <span aria-hidden="true">
+                  ♡
+                </span>
 
                 <div>
-                  <strong>One step at a time</strong>
-                  <small>There's no perfect way to begin.</small>
+                  <strong>
+                    One step at a time
+                  </strong>
+
+                  <small>
+                    There's no perfect way to begin.
+                  </small>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* =========================================
-            FEATURES STRIP
-        ========================================= */}
-
         <div className="iv-home-values">
           <div className="iv-home-container iv-home-values-inner">
-            <span>✳ Anonymous user accounts</span>
-            <span>✳ Personal reflection</span>
-            <span>✳ Verified expert profiles</span>
+            <span>
+              <SparkMark />
+              {" "}
+              Anonymous user accounts
+            </span>
+
+            <span>
+              <SparkMark />
+              {" "}
+              Personal reflection
+            </span>
+
+            <span>
+              <SparkMark />
+              {" "}
+              Verified expert profiles
+            </span>
           </div>
         </div>
-
-        {/* =========================================
-            OUR APPROACH
-        ========================================= */}
 
         <section
           id="support"
@@ -278,7 +316,9 @@ export default function Landing() {
               <h2>
                 Support can begin
                 <br />
-                <em>in different ways.</em>
+                <em>
+                  in different ways.
+                </em>
               </h2>
 
               <span
@@ -311,26 +351,26 @@ export default function Landing() {
                       {option.category}
                     </span>
 
-                    <h3>{option.title}</h3>
+                    <h3>
+                      {option.title}
+                    </h3>
 
-                    <p>{option.description}</p>
+                    <p>
+                      {option.description}
+                    </p>
                   </div>
 
                   <span
                     className="iv-home-card-ornament"
                     aria-hidden="true"
                   >
-                    ✳
+                    <SparkMark />
                   </span>
                 </article>
               ))}
             </div>
           </div>
         </section>
-
-        {/* =========================================
-            HOW IT WORKS
-        ========================================= */}
 
         <section
           id="how-it-works"
@@ -345,7 +385,9 @@ export default function Landing() {
               <h2>
                 Start simply.
                 <br />
-                <em>Stay in control.</em>
+                <em>
+                  Stay in control.
+                </em>
               </h2>
 
               <p>
@@ -357,31 +399,38 @@ export default function Landing() {
                 className="iv-home-how-decoration"
                 aria-hidden="true"
               >
-                <span>✳</span>
+                <span>
+                  <SparkMark />
+                </span>
+
                 <span />
               </div>
             </div>
 
             <div className="iv-home-steps">
               {steps.map((step) => (
-                <article className="iv-home-step" key={step.number}>
+                <article
+                  className="iv-home-step"
+                  key={step.number}
+                >
                   <span className="iv-home-step-number">
                     {step.number}
                   </span>
 
                   <div>
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
+                    <h3>
+                      {step.title}
+                    </h3>
+
+                    <p>
+                      {step.description}
+                    </p>
                   </div>
                 </article>
               ))}
             </div>
           </div>
         </section>
-
-        {/* =========================================
-            PARENTS AND EXPERTS
-        ========================================= */}
 
         <section
           id="for-everyone"
@@ -396,7 +445,9 @@ export default function Landing() {
               <h2>
                 Understanding grows
                 <br />
-                <em>when we grow together.</em>
+                <em>
+                  when we grow together.
+                </em>
               </h2>
 
               <p>
@@ -444,7 +495,7 @@ export default function Landing() {
                     className="iv-home-people-icon"
                     aria-hidden="true"
                   >
-                    ✳
+                    <SparkMark />
                   </span>
 
                   <span className="iv-home-people-index">
@@ -470,9 +521,6 @@ export default function Landing() {
                 </span>
               </article>
             </div>
-
-            {/* Compact safety information instead of
-                a large footer or closing banner. */}
 
             <p className="iv-home-safety-note">
               InnerVoice offers emotional support and
