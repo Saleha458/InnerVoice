@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getExpertRequests, updateExpertRequest } from "../../services/expertService";
@@ -81,8 +80,7 @@ export default function ExpertRequests() {
         {request.status === "accepted" && <div className="notice-box"><strong>✓ Session confirmed</strong>
           <p>This booking is reserved and appears in your sessions.</p>
           {request.sessionId && <div className="button-row">
-            <Link className="primary-button" to={`/session-chat/${encodeURIComponent(request.sessionId)}`}>💬 Chat / voice message</Link>
-            <Link className="secondary-button" to={`/sessions/${encodeURIComponent(request.sessionId)}/call?mode=audio`}>🎧 Audio call</Link>
+            <Link className="primary-button" to={`/session-chat/${encodeURIComponent(request.sessionId)}`}>💬 Open private chat</Link>
           </div>}
         </div>}
         {request.status === "rejected" && <div className="error-box"><strong>Request rejected</strong>

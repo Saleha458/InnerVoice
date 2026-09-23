@@ -70,12 +70,6 @@ if (
   );
 }
 
-if (!process.env.TURN_URLS) {
-  console.log(
-    "REVIEW: TURN_URLS missing; real mobile-data calls may fail."
-  );
-}
-
 const has = (object, key) =>
   Object.prototype.hasOwnProperty.call(
     object,

@@ -1,4 +1,3 @@
-
 import {
   Routes,
   Route,
@@ -23,7 +22,6 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 
 import AIChat from "../pages/chat/AIChat";
 import ExpertChat from "../pages/chat/ExpertChat";
-import CallRoom from "../pages/chat/CallRoom";
 
 import MoodTracker from "../pages/mood/MoodTracker";
 import Journal from "../pages/journal/Journal";
@@ -174,10 +172,6 @@ export default function AppRoutes() {
               element={<ExpertChat />}
             />
 
-            <Route
-              path="/sessions/:sessionId/call"
-              element={<CallRoom />}
-            />
           </Route>
 
           {/* EXPERT ONLY */}

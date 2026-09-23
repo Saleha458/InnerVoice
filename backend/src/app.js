@@ -1,4 +1,3 @@
-
 "use strict";
 
 const express = require("express");
@@ -111,11 +110,6 @@ app.use(
 );
 
 app.use("/api/sessions", require("./routes/sessions"));
-
-app.use(
-  "/api/ice-servers",
-  require("./routes/iceServers")
-);
 
 app.use(
   "/api/notifications",

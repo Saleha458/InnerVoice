@@ -47,16 +47,9 @@ const BookingCard = ({ booking, expertName = "Support Expert" }) => {
         <div className="button-row">
           <Link
             to={`/session-chat/${booking.id}`}
-            className="secondary-button"
-          >
-            Open chat
-          </Link>
-
-          <Link
-            to={`/sessions/${booking.id}/call`}
             className="primary-button"
           >
-            Join call
+            Open private chat
           </Link>
         </div>
       )}

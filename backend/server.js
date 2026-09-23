@@ -21,10 +21,6 @@ const {
 } = require("./src/services/socketService");
 
 const {
-  attachCallSocketHandlers
-} = require("./src/services/callSocketService");
-
-const {
   setNotificationIO
 } = require("./src/services/notificationService");
 
@@ -112,11 +108,8 @@ io.use(async (socket, next) => {
 setNotificationIO(io);
 setAccountSocketIO(io);
 
-// Existing expert chat and notifications
+// Expert text chat, voice messages and notifications.
 attachSocketHandlers(io);
-
-// REQUIRED: audio/video signaling
-attachCallSocketHandlers(io);
 
 server.on("error", error => {
   if (error.code === "EADDRINUSE") {

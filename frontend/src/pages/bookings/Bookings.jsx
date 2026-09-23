@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyBookings, getMyBookingRequests } from "../../services/bookingService";
@@ -62,8 +61,7 @@ export default function Bookings() {
           {accepted && <>
             <div className="notice-box"><strong>✓ Session confirmed</strong><p>Your expert accepted the request.</p></div>
             {request.sessionId ? <div className="button-row">
-              <Link className="primary-button" to={`/session-chat/${encodeURIComponent(request.sessionId)}`}>💬 Chat / voice message</Link>
-              <Link className="secondary-button" to={`/sessions/${encodeURIComponent(request.sessionId)}/call?mode=audio`}>🎧 Audio call</Link>
+              <Link className="primary-button" to={`/session-chat/${encodeURIComponent(request.sessionId)}`}>💬 Open private chat</Link>
             </div> : <div className="notice-box">Preparing session access…</div>}
           </>}
           {request.status === "rejected" && <div className="error-box"><strong>Request not accepted</strong>

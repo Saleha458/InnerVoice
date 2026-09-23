@@ -1,4 +1,3 @@
-
 import {
   useCallback,
   useEffect,
@@ -274,7 +273,7 @@ export default function AdminDashboard() {
           <p>
             Manage expert verification, anonymous accounts
             and private report workflows. User–Expert
-            conversations and booked calls are not part
+            conversations and booked sessions are not part
             of Admin access.
           </p>
         </div>

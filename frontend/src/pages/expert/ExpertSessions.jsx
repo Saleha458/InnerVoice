@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
@@ -40,10 +39,9 @@ export default function ExpertSessions() {
           <span className="status active">{session.status || "Scheduled"}</span></div>
         <div className="expert-meta"><span>Start: {formatDate(session.startTime)}</span>
           <span>End: {formatDate(session.endTime)}</span></div>
-        <div className="notice-box">Private chat, voice messages and audio calls are available during your booked session.</div>
+        <div className="notice-box">Private chat and voice messages are available during your booked session.</div>
         <div className="button-row">
-          <Link className="secondary-button" to={`/session-chat/${encodeURIComponent(session.id)}`}>💬 Chat / voice message</Link>
-          <Link className="primary-button" to={`/sessions/${encodeURIComponent(session.id)}/call?mode=audio`}>🎧 Audio call</Link>
+          <Link className="primary-button" to={`/session-chat/${encodeURIComponent(session.id)}`}>💬 Open private chat</Link>
         </div>
       </article>)}</div>}
   </div>;

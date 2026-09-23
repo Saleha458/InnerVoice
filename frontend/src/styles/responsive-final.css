@@ -1,4 +1,3 @@
-
 /* InnerVoice responsive & keyboard patch. Import last in src/main.jsx. */
 :root { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html { overflow-x: clip; }
@@ -10,7 +9,7 @@ body { min-width: 0; }
 .dashboard-layout .feature-card,
 .dashboard-layout .dashboard-grid,
 .dashboard-layout .list-grid { min-width: 0; }
-.dashboard-layout :is(img, video) { max-width: 100%; }
+.dashboard-layout img { max-width: 100%; }
 .dashboard-layout :is(p, h1, h2, h3, dd, .chat-bubble, .iv-ai-bubble) { overflow-wrap: anywhere; }
 .dashboard-layout :is(input, select, textarea) { max-width: 100%; }
 .dashboard-layout :is(button, a, input, select, textarea, [tabindex]):focus-visible,
@@ -34,7 +33,7 @@ body { min-width: 0; }
 .dashboard-layout .iv-ai-compose-actions { min-width: 0; }
 .dashboard-layout .mood-page .mood-chart-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
 .dashboard-layout .mood-page .mood-chart-inner { min-width: 480px; }
-.dashboard-layout .page-shell :is(audio, video) { display: block; max-width: 100%; }
+.dashboard-layout .page-shell audio { display: block; max-width: 100%; }
 .dashboard-layout .page-shell audio { width: min(100%, 360px); }
 /* Ensure responsive navigation behaves like a dialog, above the sticky navbar. */
 .dashboard-layout .mobile-drawer-wrapper { z-index: 2000; }
@@ -89,10 +88,6 @@ body { min-width: 0; }
   .dashboard-layout .mood-page .mood-heading-with-tabs { flex-wrap: wrap; gap: 14px; }
   .dashboard-layout .mood-page .mood-period-tabs { max-width: 100%; }
   .dashboard-layout .mood-page .mood-chart-inner { min-width: 430px; }
-  /* CallRoom has a two-camera grid defined inline; single column avoids 280px min overflow. */
-  .dashboard-layout .page-shell div[style*="grid-template-columns"][style*="280px"] { grid-template-columns: minmax(0, 1fr) !important; }
-  .dashboard-layout .page-shell div[style*="grid-template-columns"][style*="300px"] { grid-template-columns: minmax(0, 1fr) !important; }
-  .dashboard-layout .page-shell video { width: 100%; height: auto; }
   .dashboard-layout .ivp-page .ivp-identity { align-items: flex-start; }
 }
 @media (max-width: 420px) {

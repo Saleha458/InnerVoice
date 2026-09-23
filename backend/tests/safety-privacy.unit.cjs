@@ -2,13 +2,11 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
 const { detectRisk } = require("../src/services/riskDetectionService");
-const { createIceConfiguration } = require("../src/services/turnService");
 const { encrypt, decrypt } = require("../src/services/encryptionService");
 
 const examples = [
@@ -43,58 +41,6 @@ for (const [index, row] of examples.entries()) {
     assert.equal(detectRisk(message).riskLevel, expected);
   });
 }
-
-test("coturn credential format and HMAC match", () => {
-  const env = {
-    TURN_SHARED_SECRET: "test-shared-secret-not-for-production",
-    TURN_URLS:
-      "turn:turn.example.org:3478?transport=udp," +
-      "turns:turn.example.org:5349?transport=tcp"
-  };
-
-  const config = createIceConfiguration(
-    "uid-1",
-    "session-1",
-    env,
-    1735689600000
-  );
-
-  const entry = config.iceServers.at(-1);
-
-  assert.equal(
-    entry.username.split(":")[0],
-    String(config.expiresAt)
-  );
-
-  assert.equal(
-    entry.credential,
-    crypto
-      .createHmac("sha1", env.TURN_SHARED_SECRET)
-      .update(entry.username)
-      .digest("base64")
-  );
-
-  assert.equal(entry.urls.length, 2);
-});
-
-test("TURN fails closed with missing shared secret", () => {
-  assert.throws(
-    () => createIceConfiguration("u", "s", {
-      TURN_URLS: "turn:turn.example.org:3478"
-    }),
-    /not configured/
-  );
-});
-
-test("TURN rejects malformed provider URL", () => {
-  assert.throws(
-    () => createIceConfiguration("u", "s", {
-      TURN_SHARED_SECRET: "x",
-      TURN_URLS: "https://evil.example"
-    }),
-    /Invalid TURN_URLS/
-  );
-});
 
 test("AES-GCM backward-compatible content and tamper rejection", () => {
   const old = process.env.ENCRYPTION_KEY;
@@ -246,25 +192,3 @@ for (const [text, riskLevel] of [
     assert.equal(detectRisk(text).riskLevel, riskLevel);
   });
 }
-
-test("STUN-only fallback is for development only", () => {
-  const dev = createIceConfiguration("u", "s", {
-    NODE_ENV: "development",
-    ALLOW_STUN_ONLY_DEV: "true"
-  });
-
-  assert.equal(dev.developmentOnly, true);
-  assert.ok(
-    dev.iceServers.every(entry =>
-      entry.urls.startsWith("stun:")
-    )
-  );
-
-  assert.throws(
-    () => createIceConfiguration("u", "s", {
-      NODE_ENV: "production",
-      ALLOW_STUN_ONLY_DEV: "true"
-    }),
-    /not configured/
-  );
-});

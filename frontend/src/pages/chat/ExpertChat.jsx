@@ -1,4 +1,3 @@
-
 import {
   useCallback,
   useEffect,
@@ -831,16 +830,6 @@ export default function ExpertChat() {
             Recovery Kit
           </Link>
 
-          {active && (
-            <Link
-              className="primary-button"
-              to={`/sessions/${encodeURIComponent(
-                sessionId
-              )}/call?mode=audio`}
-            >
-              🎧 Audio call
-            </Link>
-          )}
         </div>
       </header>
 
