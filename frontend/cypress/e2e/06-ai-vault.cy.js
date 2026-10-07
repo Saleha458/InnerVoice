@@ -1,7 +1,7 @@
-describe("InnerVoice — AI Support & Private Vault", () => {
+﻿describe("InnerVoice â€” AI Support & Private Vault", () => {
   it("tests vault unlock, AI consent, AI response and vault lock", () => {
     /* =========================================
-       LOGIN — ONLY ONCE
+       LOGIN â€” ONLY ONCE
     ========================================= */
 
     cy.loginAsUser();
@@ -56,7 +56,7 @@ describe("InnerVoice — AI Support & Private Vault", () => {
       );
 
     /* =========================================
-       GET VAULT PASSPHRASE — CYPRESS 16
+       GET VAULT PASSPHRASE â€” CYPRESS 16
     ========================================= */
 
     cy.env([
@@ -72,7 +72,7 @@ describe("InnerVoice — AI Support & Private Vault", () => {
 
         expect(
           VAULT_PASSPHRASE.length
-        ).to.be.gte(16);
+        ).to.be.gte(8);
 
         /* =====================================
            UNLOCK VAULT
@@ -394,7 +394,7 @@ describe("InnerVoice — AI Support & Private Vault", () => {
         );
 
         /* =====================================
-           RECOVERY KIT PAGE — SAFE CHECK ONLY
+           RECOVERY KIT PAGE â€” SAFE CHECK ONLY
         ===================================== */
 
         cy.visit(

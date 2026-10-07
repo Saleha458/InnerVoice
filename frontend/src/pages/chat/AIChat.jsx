@@ -1,4 +1,4 @@
-
+﻿
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -210,11 +210,11 @@ export default function AIChat() {
     try {
       if (!profile) {
         if (
-          passphrase.length < 16 ||
+          passphrase.length < 8 ||
           passphrase !== confirmation
         ) {
           throw new Error(
-            "Use a matching passphrase of at least 16 characters."
+            "Use a matching passphrase of at least 8 characters."
           );
         }
 
@@ -444,7 +444,7 @@ export default function AIChat() {
           disabled={!unlocked || busy}
           onClick={startNewConversation}
         >
-          ＋ New chat
+          ï¼‹ New chat
         </button>
       </header>
 
@@ -478,7 +478,7 @@ export default function AIChat() {
         >
           <h2>
             {profile === undefined
-              ? "Checking private vault…"
+              ? "Checking private vaultâ€¦"
               : profile
                 ? "Unlock AI history"
                 : "Create private vault"}
@@ -493,7 +493,7 @@ export default function AIChat() {
             className="form-input"
             type="password"
             required
-            minLength={16}
+            minLength={8}
             autoComplete="off"
             value={passphrase}
             placeholder="Vault passphrase"
@@ -507,7 +507,7 @@ export default function AIChat() {
               className="form-input"
               type="password"
               required
-              minLength={16}
+              minLength={8}
               autoComplete="off"
               value={confirmation}
               placeholder="Confirm passphrase"
@@ -523,7 +523,7 @@ export default function AIChat() {
             disabled={busy || profile === undefined}
           >
             {busy
-              ? "Working…"
+              ? "Workingâ€¦"
               : profile
                 ? "Unlock vault"
                 : "Create vault"}
@@ -550,7 +550,7 @@ export default function AIChat() {
               }}
             >
               <span className="eyebrow">
-                IMPORTANT · VAULT RECOVERY
+                IMPORTANT Â· VAULT RECOVERY
               </span>
 
               <h2>
@@ -575,7 +575,7 @@ export default function AIChat() {
                   className="primary-button"
                   to="/vault-recovery"
                 >
-                  Create and test Recovery Kit →
+                  Create and test Recovery Kit â†’
                 </Link>
 
                 <button
@@ -601,7 +601,7 @@ export default function AIChat() {
           <section className="iv-ai-chat-window">
             <div className="iv-ai-chat-topbar">
               <span className="iv-ai-bot-avatar">
-                ✦
+                âœ¦
               </span>
 
               <div className="iv-ai-bot-info">
@@ -618,7 +618,7 @@ export default function AIChat() {
                 className="secondary-button"
                 to="/starred"
               >
-                ★ Starred messages
+                â˜… Starred messages
               </Link>
 
               <button
@@ -673,7 +673,7 @@ export default function AIChat() {
                       className="iv-ai-message-avatar"
                       aria-hidden="true"
                     >
-                      ✦
+                      âœ¦
                     </span>
                   )}
 
@@ -763,7 +763,7 @@ export default function AIChat() {
                 maxLength={4000}
                 rows={3}
                 disabled={busy}
-                placeholder="Type your message…"
+                placeholder="Type your messageâ€¦"
                 onChange={event =>
                   setText(event.target.value)
                 }
@@ -785,8 +785,8 @@ export default function AIChat() {
                     }
                   >
                     {busy
-                      ? "Waiting for reply…"
-                      : "Send message →"}
+                      ? "Waiting for replyâ€¦"
+                      : "Send message â†’"}
                   </button>
                 </div>
               </div>
@@ -804,7 +804,7 @@ export default function AIChat() {
             className="iv-ai-support-strip__icon"
             aria-hidden="true"
           >
-            ♡
+            â™¡
           </span>
 
           <div className="iv-ai-support-strip__text">
@@ -828,7 +828,7 @@ export default function AIChat() {
             className="iv-ai-support-strip__button"
             to="/experts"
           >
-            Find an expert →
+            Find an expert â†’
           </Link>
 
           <p className="iv-ai-support-strip__note">

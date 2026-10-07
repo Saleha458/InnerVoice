@@ -1,4 +1,4 @@
-describe("InnerVoice — Mood, Journal & Reports CRUD", () => {
+﻿describe("InnerVoice â€” Mood, Journal & Reports CRUD", () => {
   it("creates and cleans up mood/journal data and creates a private report", () => {
     const stamp = Date.now();
 
@@ -54,7 +54,7 @@ describe("InnerVoice — Mood, Journal & Reports CRUD", () => {
 
         expect(
           VAULT_PASSPHRASE.length
-        ).to.be.gte(16);
+        ).to.be.gte(8);
 
         /* =================================================
            UNLOCK MOOD VAULT

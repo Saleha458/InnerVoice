@@ -1,4 +1,4 @@
-
+﻿
 import {
   useEffect,
   useState
@@ -114,11 +114,11 @@ export default function VaultRecovery() {
 
       if (
         !profile ||
-        passphrase.length < 16 ||
+        passphrase.length < 8 ||
         passphrase !== confirmation
       ) {
         throw new Error(
-          "Enter your existing vault passphrase twice (16+ characters)."
+          "Enter your existing vault passphrase twice (8+ characters)."
         );
       }
 
@@ -410,7 +410,7 @@ export default function VaultRecovery() {
               className="form-input"
               type="password"
               autoComplete="off"
-              minLength={16}
+              minLength={8}
               required
               value={passphrase}
               onChange={event =>
@@ -426,7 +426,7 @@ export default function VaultRecovery() {
               className="form-input"
               type="password"
               autoComplete="off"
-              minLength={16}
+              minLength={8}
               required
               value={confirmation}
               onChange={event =>
@@ -441,7 +441,7 @@ export default function VaultRecovery() {
             disabled={busy || !profile}
           >
             {busy
-              ? "Working…"
+              ? "Workingâ€¦"
               : "Verify passphrase & download encrypted kit"}
           </button>
         </form>
@@ -545,7 +545,7 @@ export default function VaultRecovery() {
             disabled={busy || !profile}
           >
             {busy
-              ? "Testing…"
+              ? "Testingâ€¦"
               : "Test recovery and unlock existing vault"}
           </button>
         </form>
@@ -580,7 +580,7 @@ export default function VaultRecovery() {
             flexShrink: 0
           }}
         >
-          ♧
+          â™§
         </span>
 
         <div style={{ minWidth: 0 }}>

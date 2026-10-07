@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useState
@@ -92,11 +92,11 @@ export default function Journal() {
     try {
       if (!profile) {
         if (
-          passphrase.length < 16 ||
+          passphrase.length < 8 ||
           passphrase !== confirm
         ) {
           throw new Error(
-            "Choose at least 16 characters and confirm the same passphrase."
+            "Choose at least 8 characters and confirm the same passphrase."
           );
         }
 
@@ -242,7 +242,7 @@ export default function Journal() {
         >
           <h2>
             {profile === undefined
-              ? "Checking vault…"
+              ? "Checking vaultâ€¦"
               : profile
                 ? "Unlock your private vault"
                 : "Create your private vault"}
@@ -264,7 +264,7 @@ export default function Journal() {
               type="password"
               autoComplete="off"
               required
-              minLength={16}
+              minLength={8}
               value={passphrase}
               onChange={event =>
                 setPassphrase(event.target.value)
@@ -281,7 +281,7 @@ export default function Journal() {
                 type="password"
                 autoComplete="off"
                 required
-                minLength={16}
+                minLength={8}
                 value={confirm}
                 onChange={event =>
                   setConfirm(event.target.value)
@@ -299,7 +299,7 @@ export default function Journal() {
             type="submit"
           >
             {busy
-              ? "Working…"
+              ? "Workingâ€¦"
               : profile
                 ? "Unlock"
                 : "Create encrypted vault"}
@@ -383,8 +383,8 @@ export default function Journal() {
                         {entry.mood || "No mood"}
 
                         {entry.legacy
-                          ? " · OLD FORMAT (NOT E2EE)"
-                          : " · Device encrypted"}
+                          ? " Â· OLD FORMAT (NOT E2EE)"
+                          : " Â· Device encrypted"}
                       </small>
                     </div>
 

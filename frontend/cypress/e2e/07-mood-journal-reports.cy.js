@@ -1,7 +1,7 @@
-describe("InnerVoice — Mood, Journal & Reports", () => {
+﻿describe("InnerVoice â€” Mood, Journal & Reports", () => {
   it("tests locked private features without bypassing the vault", () => {
     /* =========================================
-       LOGIN — ONLY ONCE
+       LOGIN â€” ONLY ONCE
     ========================================= */
 
     cy.loginAsUser();
@@ -44,7 +44,7 @@ describe("InnerVoice — Mood, Journal & Reports", () => {
       .should("be.visible")
       .should(($input) => {
         expect($input).to.have.attr("required");
-        expect($input).to.have.attr("minlength", "16");
+        expect($input).to.have.attr("minlength", "8");
       });
 
     /* =========================================
@@ -81,7 +81,7 @@ describe("InnerVoice — Mood, Journal & Reports", () => {
       .should("be.visible")
       .should(($input) => {
         expect($input).to.have.attr("required");
-        expect($input).to.have.attr("minlength", "16");
+        expect($input).to.have.attr("minlength", "8");
       });
 
     cy.contains(
@@ -146,7 +146,7 @@ describe("InnerVoice — Mood, Journal & Reports", () => {
       .should("be.visible")
       .should(($input) => {
         expect($input).to.have.attr("required");
-        expect($input).to.have.attr("minlength", "16");
+        expect($input).to.have.attr("minlength", "8");
       });
 
     cy.contains(
@@ -187,7 +187,7 @@ describe("InnerVoice — Mood, Journal & Reports", () => {
 
     cy.contains(
       "button",
-      "Submit private report →"
+      "Submit private report â†’"
     ).should("not.exist");
 
     /* =========================================

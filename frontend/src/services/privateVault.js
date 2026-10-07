@@ -1,4 +1,4 @@
-import api from "./api";
+﻿import api from "./api";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -55,10 +55,10 @@ function ownUid() {
 async function derive(passphrase, salt, iterations = ITERATIONS) {
   if (
     typeof passphrase !== "string" ||
-    passphrase.length < 16
+    passphrase.length < 8
   ) {
     throw new Error(
-      "Use a unique private vault passphrase of at least 16 characters."
+      "Use a unique private vault passphrase of at least 8 characters."
     );
   }
 

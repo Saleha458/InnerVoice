@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useRef,
@@ -479,11 +479,11 @@ export default function ExpertChat() {
     try {
       if (!profile) {
         if (
-          passphrase.length < 16 ||
+          passphrase.length < 8 ||
           passphrase !== confirmation
         ) {
           throw new Error(
-            "Use a matching vault passphrase of 16+ characters."
+            "Use a matching vault passphrase of 8+ characters."
           );
         }
 
@@ -819,7 +819,7 @@ export default function ExpertChat() {
               className="secondary-button"
               to="/starred"
             >
-              ★ My stars
+              â˜… My stars
             </Link>
           )}
 
@@ -863,7 +863,7 @@ export default function ExpertChat() {
         >
           <h2>
             {profile === undefined
-              ? "Checking private vault…"
+              ? "Checking private vaultâ€¦"
               : profile
                 ? "Unlock your vault"
                 : "Create your vault"}
@@ -879,7 +879,7 @@ export default function ExpertChat() {
             className="form-input"
             type="password"
             autoComplete="off"
-            minLength={16}
+            minLength={8}
             required
             value={passphrase}
             onChange={event =>
@@ -893,7 +893,7 @@ export default function ExpertChat() {
               className="form-input"
               type="password"
               autoComplete="off"
-              minLength={16}
+              minLength={8}
               required
               value={confirmation}
               onChange={event =>
@@ -908,7 +908,7 @@ export default function ExpertChat() {
             disabled={busy || profile === undefined}
           >
             {busy
-              ? "Working…"
+              ? "Workingâ€¦"
               : profile
                 ? "Unlock vault"
                 : "Create vault"}
@@ -1045,7 +1045,7 @@ export default function ExpertChat() {
                   ? "You"
                   : peerName}
 
-                {" · "}
+                {" Â· "}
 
                 {item.legacy
                   ? "Older server-encrypted"
@@ -1093,7 +1093,7 @@ export default function ExpertChat() {
 
         {typing && (
           <small>
-            {peerName} is typing…
+            {peerName} is typingâ€¦
           </small>
         )}
 
@@ -1113,7 +1113,7 @@ export default function ExpertChat() {
             }}
             maxLength={4000}
             value={text}
-            placeholder="Type your encrypted message…"
+            placeholder="Type your encrypted messageâ€¦"
             disabled={
               !ready ||
               !active ||
@@ -1167,7 +1167,7 @@ export default function ExpertChat() {
         >
           {recording
             ? "Stop recording"
-            : "🎙 Encrypted voice message (max 15 sec)"}
+            : "ðŸŽ™ Encrypted voice message (max 15 sec)"}
         </button>
       </section>
     </div>

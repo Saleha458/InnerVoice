@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useRef,
@@ -166,11 +166,11 @@ export default function Reports({ adminMode = false }) {
     try {
       if (!profile) {
         if (
-          passphrase.length < 16 ||
+          passphrase.length < 8 ||
           passphrase !== confirmation
         ) {
           throw new Error(
-            "Use a matching passphrase of at least 16 characters."
+            "Use a matching passphrase of at least 8 characters."
           );
         }
 
@@ -370,7 +370,7 @@ export default function Reports({ adminMode = false }) {
           <input
             className="form-input"
             type="password"
-            minLength={16}
+            minLength={8}
             required
             value={passphrase}
             onChange={event =>
@@ -383,7 +383,7 @@ export default function Reports({ adminMode = false }) {
             <input
               className="form-input"
               type="password"
-              minLength={16}
+              minLength={8}
               required
               value={confirmation}
               onChange={event =>

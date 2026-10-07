@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -28,11 +28,11 @@ import {
 import "./MoodTracker.css";
 
 const OPTIONS = [
-  { id: "Great", text: "😊 Great", level: 5 },
-  { id: "Good", text: "🙂 Good", level: 4 },
-  { id: "Okay", text: "😐 Okay", level: 3 },
-  { id: "Low", text: "😔 Low", level: 2 },
-  { id: "Overwhelmed", text: "😣 Overwhelmed", level: 1 },
+  { id: "Great", text: "ðŸ˜Š Great", level: 5 },
+  { id: "Good", text: "ðŸ™‚ Good", level: 4 },
+  { id: "Okay", text: "ðŸ˜ Okay", level: 3 },
+  { id: "Low", text: "ðŸ˜” Low", level: 2 },
+  { id: "Overwhelmed", text: "ðŸ˜£ Overwhelmed", level: 1 },
 ];
 
 const TIPS = {
@@ -147,7 +147,7 @@ export default function MoodTracker() {
   const [confirmation, setConfirmation] = useState("");
   const [vaultBusy, setVaultBusy] = useState(false);
 
-  const [mood, setMood] = useState("🙂 Good");
+  const [mood, setMood] = useState("ðŸ™‚ Good");
   const [intensity, setIntensity] = useState(5);
   const [note, setNote] = useState("");
 
@@ -229,11 +229,11 @@ export default function MoodTracker() {
     try {
       if (profile === null) {
         if (
-          passphrase.length < 16 ||
+          passphrase.length < 8 ||
           passphrase !== confirmation
         ) {
           throw new Error(
-            "Use a unique passphrase of at least 16 characters and matching confirmation."
+            "Use a unique passphrase of at least 8 characters and matching confirmation."
           );
         }
 
@@ -527,7 +527,7 @@ export default function MoodTracker() {
         >
           <h2>
             {profile === undefined
-              ? "Checking private vault…"
+              ? "Checking private vaultâ€¦"
               : profile
                 ? "Unlock private vault"
                 : "Create private vault"}
@@ -546,7 +546,7 @@ export default function MoodTracker() {
             <input
               className="form-input"
               type="password"
-              minLength={16}
+              minLength={8}
               autoComplete="off"
               required
               value={passphrase}
@@ -563,7 +563,7 @@ export default function MoodTracker() {
               <input
                 className="form-input"
                 type="password"
-                minLength={16}
+                minLength={8}
                 autoComplete="off"
                 required
                 value={confirmation}
@@ -583,7 +583,7 @@ export default function MoodTracker() {
             type="submit"
           >
             {vaultBusy
-              ? "Working…"
+              ? "Workingâ€¦"
               : profile
                 ? "Unlock"
                 : "Create vault"}
@@ -649,7 +649,7 @@ export default function MoodTracker() {
             onClick={migrate}
           >
             {vaultBusy
-              ? "Migrating…"
+              ? "Migratingâ€¦"
               : "Migrate old mood entries"}
           </button>
         </div>
@@ -757,8 +757,8 @@ export default function MoodTracker() {
             disabled={saving}
           >
             {saving
-              ? "Saving…"
-              : "Save my check-in →"}
+              ? "Savingâ€¦"
+              : "Save my check-in â†’"}
           </button>
         </form>
       </section>
@@ -853,7 +853,7 @@ export default function MoodTracker() {
 
         {loading ? (
           <div className="mood-chart-empty">
-            Loading your mood overview…
+            Loading your mood overviewâ€¦
           </div>
         ) : logged.length === 0 ? (
           <div className="mood-chart-empty">
@@ -1001,7 +1001,7 @@ export default function MoodTracker() {
                     key={day.key}
                     value={day.key}
                   >
-                    {day.longLabel} ·{" "}
+                    {day.longLabel} Â·{" "}
                     {day.moodId || "No check-in"}
                   </option>
                 ))}
@@ -1010,7 +1010,7 @@ export default function MoodTracker() {
         </div>
 
         <p className="mood-selected-day">
-          {selected?.longLabel || "Today"} ·{" "}
+          {selected?.longLabel || "Today"} Â·{" "}
           {selected?.moodText ||
             "No mood recorded"}
         </p>
@@ -1021,7 +1021,7 @@ export default function MoodTracker() {
               className="mood-advice-icon"
               aria-hidden="true"
             >
-              ♡
+              â™¡
             </span>
 
             <h3>
@@ -1038,7 +1038,7 @@ export default function MoodTracker() {
               className="mood-advice-icon"
               aria-hidden="true"
             >
-              ☀
+              â˜€
             </span>
 
             <h3>
@@ -1057,7 +1057,7 @@ export default function MoodTracker() {
           <p className="mood-support-link">
             You can also{" "}
             <Link to="/experts">
-              explore verified experts →
+              explore verified experts â†’
             </Link>{" "}
             if you would like human support.
           </p>
@@ -1089,7 +1089,7 @@ export default function MoodTracker() {
 
         {loading ? (
           <p className="mood-history-empty">
-            Loading history…
+            Loading historyâ€¦
           </p>
         ) : sortedHistory.length === 0 ? (
           <p className="mood-history-empty">
@@ -1117,7 +1117,7 @@ export default function MoodTracker() {
                       entry.createdAt ??
                       entry.date
                     )}{" "}
-                    ·{" "}
+                    Â·{" "}
                     {entry.legacy
                       ? "OLD: server-encrypted"
                       : "Device-encrypted"}
@@ -1131,7 +1131,7 @@ export default function MoodTracker() {
                 <div className="mood-history-actions">
                   <span>
                     Feeling strength:{" "}
-                    {entry.intensity ?? "—"}/10
+                    {entry.intensity ?? "â€”"}/10
                   </span>
 
                   <button
@@ -1147,7 +1147,7 @@ export default function MoodTracker() {
                     )}`}
                   >
                     {deletingId === entry.id
-                      ? "Deleting…"
+                      ? "Deletingâ€¦"
                       : "Delete"}
                   </button>
                 </div>
