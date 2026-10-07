@@ -1,169 +1,371 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useState
+} from "react";
+
+import {
+  useNavigate
+} from "react-router-dom";
 
 import {
   ChevronDown,
   ChevronUp,
   LockKeyhole,
   ShieldCheck,
-  UserRound,
+  UserRound
 } from "lucide-react";
 
-import { useAuth } from "../../context/AuthContext";
-import api from "../../services/api";
+import {
+  useAuth
+} from "../../context/AuthContext";
+
+import api
+  from "../../services/api";
 
 import "./Profile.css";
 
-// =====================================================
-// ROLE CONFIGURATION
-// =====================================================
-
 const ROLE_INFO = {
   user: {
-    label: "Member",
-    heading: "My profile",
+    label:
+      "Member",
+
+    heading:
+      "My profile"
   },
 
   parent: {
-    label: "Parent",
-    heading: "My profile",
+    label:
+      "Parent",
+
+    heading:
+      "My profile"
   },
 
   expert: {
-    label: "Expert",
-    heading: "Professional profile",
+    label:
+      "Expert",
+
+    heading:
+      "Professional profile"
   },
 
   admin: {
-    label: "Administrator",
-    heading: "My profile",
-  },
+    label:
+      "Administrator",
+
+    heading:
+      "My profile"
+  }
 };
 
-// =====================================================
-// HELPERS
-// =====================================================
+const RECOVERY_QUESTIONS = [
+  [
+    "favorite_writer",
 
-function display(value) {
-  return value === null ||
-    value === undefined ||
+    "Who is a writer you will always remember?"
+  ],
+
+  [
+    "meaningful_book",
+
+    "What is the title of a book that matters to you?"
+  ],
+
+  [
+    "childhood_character",
+
+    "What childhood fictional character do you remember most?"
+  ],
+
+  [
+    "quiet_place",
+
+    "What place would you choose for a quiet day?"
+  ],
+
+  [
+    "memorable_teacher",
+
+    "What was the first name of a teacher you remember well?"
+  ],
+
+  [
+    "private_memory_word",
+
+    "What private word reminds you of a happy memory?"
+  ]
+];
+
+function display(
+  value
+) {
+  return (
+    value === null ||
+    value ===
+      undefined ||
     value === ""
+  )
     ? "Not provided"
-    : String(value);
+    : String(
+        value
+      );
 }
 
-function Detail({ label, value }) {
+function Detail({
+  label,
+  value
+}) {
   return (
     <div className="ivp-detail">
-      <dt>{label}</dt>
-      <dd>{display(value)}</dd>
+      <dt>
+        {label}
+      </dt>
+
+      <dd>
+        {display(
+          value
+        )}
+      </dd>
     </div>
   );
 }
 
-// =====================================================
-// PROFILE
-// =====================================================
-
 export default function Profile() {
-  const { user, accountProfile, logout } = useAuth();
+  const {
+    user,
+    accountProfile,
+    logout,
+    updateAccountProfile
+  } = useAuth();
 
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const role = Object.hasOwn(ROLE_INFO, user?.role)
-    ? user.role
-    : "user";
+  const role =
+    Object.hasOwn(
+      ROLE_INFO,
+      user?.role
+    )
+      ? user.role
+      : "user";
 
-  const isExpert = role === "expert";
+  const isExpert =
+    role ===
+    "expert";
 
   const canEditAge =
-    role === "user" || role === "parent";
+    role ===
+      "user" ||
+    role ===
+      "parent";
 
-  // ===================================================
-  // STATE
-  // ===================================================
+  const [
+    profile,
+    setProfile
+  ] = useState(
+    null
+  );
 
-  const [profile, setProfile] = useState(null);
+  const [
+    age,
+    setAge
+  ] = useState("");
 
-  const [age, setAge] = useState("");
+  const [
+    loading,
+    setLoading
+  ] = useState(
+    true
+  );
 
-  const [loading, setLoading] = useState(true);
+  const [
+    saving,
+    setSaving
+  ] = useState(
+    false
+  );
 
-  const [saving, setSaving] = useState(false);
+  const [
+    working,
+    setWorking
+  ] = useState(
+    false
+  );
 
-  const [working, setWorking] = useState(false);
+  const [
+    password,
+    setPassword
+  ] = useState("");
 
-  const [password, setPassword] = useState("");
+  const [
+    confirmation,
+    setConfirmation
+  ] = useState("");
 
-  const [confirmation, setConfirmation] = useState("");
+  const [
+    recoveryQuestionId,
+    setRecoveryQuestionId
+  ] = useState("");
+
+  const [
+    recoveryAnswer,
+    setRecoveryAnswer
+  ] = useState("");
+
+  const [
+    recoveryCurrentPassword,
+    setRecoveryCurrentPassword
+  ] = useState("");
+
+  const [
+    recoverySaving,
+    setRecoverySaving
+  ] = useState(
+    false
+  );
 
   const [
     accountControlsOpen,
-    setAccountControlsOpen,
-  ] = useState(false);
+    setAccountControlsOpen
+  ] = useState(
+    false
+  );
 
-  const [error, setError] = useState("");
+  const [
+    error,
+    setError
+  ] = useState("");
 
-  const [notice, setNotice] = useState("");
+  const [
+    notice,
+    setNotice
+  ] = useState("");
 
-  // ===================================================
-  // LOAD PROFILE
-  // ===================================================
+  const loadProfile =
+    useCallback(
+      async () => {
+        setLoading(
+          true
+        );
 
-  const loadProfile = useCallback(async () => {
-    setLoading(true);
-    setError("");
+        setError(
+          ""
+        );
 
-    try {
-      const { data } = await api.get(
-        isExpert ? "/experts/me" : "/users/me"
-      );
+        try {
+          const {
+            data
+          } =
+            await api.get(
+              isExpert
+                ? "/experts/me"
+                : "/users/me"
+            );
 
-      const result =
-        data?.expert || data?.user || null;
+          const result =
+            data?.expert ||
+            data?.user ||
+            null;
 
-      setProfile(result);
+          setProfile(
+            result
+          );
 
-      setAge(result?.age ?? "");
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Could not load your profile."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [isExpert]);
+          setAge(
+            result?.age ??
+              ""
+          );
+        } catch (err) {
+          setError(
+            err
+              .response
+              ?.data
+              ?.message ||
+              "Could not load your profile."
+          );
+        } finally {
+          setLoading(
+            false
+          );
+        }
+      },
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(
-      () => void loadProfile()
+      [
+        isExpert
+      ]
     );
 
-    return () => window.cancelAnimationFrame(frame);
-  }, [loadProfile]);
+  useEffect(
+    () => {
+      const frame =
+        window
+          .requestAnimationFrame(
+            () =>
+              void loadProfile()
+          );
 
-  // ===================================================
-  // UPDATE AGE
-  // ===================================================
+      return () =>
+        window
+          .cancelAnimationFrame(
+            frame
+          );
+    },
 
-  async function saveAge(event) {
-    event.preventDefault();
+    [
+      loadProfile
+    ]
+  );
 
-    if (!canEditAge || saving) return;
+  useEffect(
+    () => {
+      setRecoveryQuestionId(
+        accountProfile
+          ?.recoveryQuestionId ||
+          ""
+      );
+    },
 
-    const value = Number(age);
+    [
+      accountProfile
+        ?.recoveryQuestionId
+    ]
+  );
 
-    const minimum = role === "user" ? 15 : 1;
+  async function saveAge(
+    event
+  ) {
+    event
+      .preventDefault();
+
+    if (
+      !canEditAge ||
+      saving
+    ) {
+      return;
+    }
+
+    const value =
+      Number(age);
+
+    const minimum =
+      role ===
+      "user"
+        ? 15
+        : 1;
 
     setError("");
     setNotice("");
 
     if (
       age === "" ||
-      !Number.isInteger(value) ||
-      value < minimum ||
-      value > 120
+      !Number.isInteger(
+        value
+      ) ||
+      value <
+        minimum ||
+      value >
+        120
     ) {
       setError(
         `Age must be between ${minimum} and 120.`
@@ -172,55 +374,200 @@ export default function Profile() {
       return;
     }
 
-    setSaving(true);
+    setSaving(
+      true
+    );
 
     try {
-      const { data } = await api.patch(
-        "/users/me",
-        {
-          age: value,
-        }
+      const {
+        data
+      } =
+        await api.patch(
+          "/users/me",
+
+          {
+            age:
+              value
+          }
+        );
+
+      const savedAge =
+        data
+          ?.user
+          ?.age ??
+        value;
+
+      setProfile(
+        previous => ({
+          ...previous,
+
+          age:
+            savedAge
+        })
       );
 
-      const savedAge = data?.user?.age ?? value;
+      setAge(
+        savedAge
+      );
 
-      setProfile((previous) => ({
-        ...previous,
-        age: savedAge,
-      }));
-
-      setAge(savedAge);
-
-      setNotice("Your age has been updated.");
+      setNotice(
+        "Your age has been updated."
+      );
     } catch (err) {
       setError(
-        err.response?.data?.message ||
+        err
+          .response
+          ?.data
+          ?.message ||
           "Could not update your age."
       );
     } finally {
-      setSaving(false);
+      setSaving(
+        false
+      );
     }
   }
 
-  // ===================================================
-  // ACCOUNT DEACTIVATION / DELETION
-  // EXISTING BACKEND ENDPOINTS
-  // ===================================================
+  async function saveRecoverySettings(
+    event
+  ) {
+    event
+      .preventDefault();
 
-  async function handleAccountAction(kind) {
-    if (working) return;
+    if (
+      recoverySaving ||
+      role ===
+        "admin"
+    ) {
+      return;
+    }
 
     setError("");
     setNotice("");
 
-    if (!password) {
-      setError("Enter your current password first.");
+    if (
+      !recoveryQuestionId
+    ) {
+      setError(
+        "Choose a recovery question."
+      );
+
+      return;
+    }
+
+    const answer =
+      recoveryAnswer
+        .trim();
+
+    if (
+      answer.length <
+        4 ||
+      answer.length >
+        100
+    ) {
+      setError(
+        "Recovery answer must be between 4 and 100 characters."
+      );
+
       return;
     }
 
     if (
-      kind === "delete" &&
-      confirmation !== "DELETE"
+      !recoveryCurrentPassword
+    ) {
+      setError(
+        "Enter your current password to save recovery settings."
+      );
+
+      return;
+    }
+
+    setRecoverySaving(
+      true
+    );
+
+    try {
+      const {
+        data
+      } =
+        await api.post(
+          "/auth/recovery/setup",
+
+          {
+            currentPassword:
+              recoveryCurrentPassword,
+
+            recoveryQuestionId,
+
+            recoveryAnswer:
+              answer
+          }
+        );
+
+      updateAccountProfile({
+        recoveryConfigured:
+          true,
+
+        recoveryQuestionId:
+          data
+            ?.recoveryQuestionId ||
+          recoveryQuestionId
+      });
+
+      setRecoveryAnswer(
+        ""
+      );
+
+      setRecoveryCurrentPassword(
+        ""
+      );
+
+      setNotice(
+        data?.message ||
+          "Password recovery question saved successfully."
+      );
+    } catch (err) {
+      setError(
+        err
+          .response
+          ?.data
+          ?.message ||
+          "Could not save your recovery question."
+      );
+    } finally {
+      setRecoverySaving(
+        false
+      );
+    }
+  }
+
+  async function handleAccountAction(
+    kind
+  ) {
+    if (
+      working
+    ) {
+      return;
+    }
+
+    setError("");
+    setNotice("");
+
+    if (
+      !password
+    ) {
+      setError(
+        "Enter your current password first."
+      );
+
+      return;
+    }
+
+    if (
+      kind ===
+        "delete" &&
+      confirmation !==
+        "DELETE"
     ) {
       setError(
         "Type DELETE exactly to confirm deletion."
@@ -230,27 +577,47 @@ export default function Profile() {
     }
 
     const message =
-      kind === "delete"
+      kind ===
+      "delete"
         ? "Request permanent account deletion? This cannot be undone once processed."
         : "Deactivate your account? You can restore it within 30 days.";
 
-    if (!window.confirm(message)) return;
+    if (
+      !window
+        .confirm(
+          message
+        )
+    ) {
+      return;
+    }
 
-    setWorking(true);
+    setWorking(
+      true
+    );
 
     try {
-      if (kind === "delete") {
-        await api.delete("/users/me", {
-          data: {
-            password,
-            confirmation: "DELETE",
-          },
-        });
+      if (
+        kind ===
+        "delete"
+      ) {
+        await api.delete(
+          "/users/me",
+
+          {
+            data: {
+              password,
+
+              confirmation:
+                "DELETE"
+            }
+          }
+        );
       } else {
         await api.post(
           "/users/me/deactivate",
+
           {
-            password,
+            password
           }
         );
       }
@@ -258,82 +625,120 @@ export default function Profile() {
       await logout();
 
       navigate(
-        kind === "delete" ? "/" : "/login",
+        kind ===
+          "delete"
+          ? "/"
+          : "/login",
+
         {
-          replace: true,
+          replace:
+            true
         }
       );
     } catch (err) {
       setError(
-        err.response?.data?.message ||
+        err
+          .response
+          ?.data
+          ?.message ||
           "Account action could not be completed."
       );
     } finally {
-      setWorking(false);
+      setWorking(
+        false
+      );
     }
   }
 
-  // ===================================================
-  // PROFILE DATA
-  // ===================================================
-
   const details =
-    profile || accountProfile || {};
+    profile ||
+    accountProfile ||
+    {};
 
-  const identity = isExpert
-    ? details.name || "Professional"
-    : details.anonymousId ||
-      user?.anonymousId ||
-      "Anonymous member";
+  const identity =
+    isExpert
+      ? details.name ||
+        "Professional"
 
-  const status = isExpert
-    ? details.verificationStatus ||
-      user?.verificationStatus ||
-      "pending"
-    : details.status || "active";
+      : details
+          .anonymousId ||
+        user
+          ?.anonymousId ||
+        "Anonymous member";
 
-  const statusLabel = isExpert
-    ? {
-        verified: "Verified",
-        pending: "Pending verification",
-        rejected: "Not verified",
-      }[status] || "Pending verification"
-    : status === "suspended"
-      ? "Suspended"
-      : "Active";
+  const status =
+    isExpert
+      ? details
+          .verificationStatus ||
+        user
+          ?.verificationStatus ||
+        "pending"
 
-  const statusStyle = [
-    "suspended",
-    "rejected",
-  ].includes(status)
-    ? "ivp-status--warning"
-    : ["active", "verified"].includes(status)
-      ? "ivp-status--success"
-      : "ivp-status--pending";
+      : details.status ||
+        "active";
 
-  // ===================================================
-  // UI
-  // ===================================================
+  const statusLabel =
+    isExpert
+      ? {
+          verified:
+            "Verified",
+
+          pending:
+            "Pending verification",
+
+          rejected:
+            "Not verified"
+        }[status] ||
+        "Pending verification"
+
+      : status ===
+        "suspended"
+        ? "Suspended"
+
+        : "Active";
+
+  const statusStyle =
+    [
+      "suspended",
+      "rejected"
+    ].includes(
+      status
+    )
+      ? "ivp-status--warning"
+
+      : [
+          "active",
+          "verified"
+        ].includes(
+          status
+        )
+        ? "ivp-status--success"
+
+        : "ivp-status--pending";
 
   return (
     <div
-      className={`page-shell ivp-page ivp-${role}`}
+      className={
+        `page-shell ivp-page ivp-${role}`
+      }
     >
-      {/* PAGE HEADING */}
-
       <header className="ivp-heading">
         <span className="ivp-eyebrow">
           ACCOUNT / PROFILE
         </span>
 
-        <h1>{ROLE_INFO[role].heading}</h1>
+        <h1>
+          {
+            ROLE_INFO[
+              role
+            ].heading
+          }
+        </h1>
 
         <p>
           Review your details and manage your account.
         </p>
       </header>
-
-      {/* FEEDBACK */}
 
       {error && (
         <div
@@ -353,8 +758,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* LOADING */}
-
       {loading ? (
         <div
           className="ivp-card ivp-loading"
@@ -364,10 +767,6 @@ export default function Profile() {
         </div>
       ) : (
         <div className="ivp-stack">
-          {/* =========================================
-              PROFILE IDENTITY
-          ========================================= */}
-
           <section
             className="ivp-card ivp-identity"
             aria-label="Account summary"
@@ -384,21 +783,34 @@ export default function Profile() {
 
             <div className="ivp-identity-copy">
               <span className="ivp-role">
-                {ROLE_INFO[role].label} account
+                {
+                  ROLE_INFO[
+                    role
+                  ].label
+                }{" "}
+                account
               </span>
 
-              <h2>{identity}</h2>
+              <h2>
+                {identity}
+              </h2>
 
               {isExpert &&
-                details.specialization && (
+                details
+                  .specialization && (
                   <p>
-                    {details.specialization}
+                    {
+                      details
+                        .specialization
+                    }
                   </p>
                 )}
             </div>
 
             <span
-              className={`ivp-status ${statusStyle}`}
+              className={
+                `ivp-status ${statusStyle}`
+              }
             >
               <ShieldCheck
                 size={15}
@@ -409,10 +821,6 @@ export default function Profile() {
             </span>
           </section>
 
-          {/* =========================================
-              PERSONAL INFORMATION
-          ========================================= */}
-
           <section
             className="ivp-card ivp-section"
             aria-labelledby="ivp-details-heading"
@@ -422,7 +830,9 @@ export default function Profile() {
                 Personal information
               </h2>
 
-              <p>Your account details</p>
+              <p>
+                Your account details
+              </p>
             </div>
 
             <dl className="ivp-details">
@@ -430,19 +840,25 @@ export default function Profile() {
                 <>
                   <Detail
                     label="Full name"
-                    value={details.name}
+                    value={
+                      details.name
+                    }
                   />
 
                   <Detail
                     label="Email address"
-                    value={details.email}
+                    value={
+                      details.email
+                    }
                   />
 
                   <Detail
                     label="Anonymous ID"
                     value={
-                      details.anonymousId ||
-                      user?.anonymousId
+                      details
+                        .anonymousId ||
+                      user
+                        ?.anonymousId
                     }
                   />
 
@@ -450,26 +866,33 @@ export default function Profile() {
                     label="Age"
                     value={
                       details.age ??
-                      accountProfile?.age
+                      accountProfile
+                        ?.age
                     }
                   />
 
                   <Detail
                     label="Gender"
-                    value={details.gender}
+                    value={
+                      details.gender
+                    }
                   />
                 </>
               ) : (
                 <>
                   <Detail
                     label="Anonymous ID"
-                    value={identity}
+                    value={
+                      identity
+                    }
                   />
 
                   <Detail
                     label="Account type"
                     value={
-                      ROLE_INFO[role].label
+                      ROLE_INFO[
+                        role
+                      ].label
                     }
                   />
 
@@ -478,13 +901,16 @@ export default function Profile() {
                       <Detail
                         label="Display name"
                         value={
-                          details.displayName
+                          details
+                            .displayName
                         }
                       />
 
                       <Detail
                         label="Email address"
-                        value={details.email}
+                        value={
+                          details.email
+                        }
                       />
                     </>
                   ) : (
@@ -500,12 +926,12 @@ export default function Profile() {
               )}
             </dl>
 
-            {/* AGE EDITING: USER AND PARENT */}
-
             {canEditAge && (
               <form
                 className="ivp-age-form"
-                onSubmit={saveAge}
+                onSubmit={
+                  saveAge
+                }
               >
                 <label htmlFor="ivp-age">
                   Edit age
@@ -516,19 +942,26 @@ export default function Profile() {
                     id="ivp-age"
                     type="number"
                     min={
-                      role === "user"
+                      role ===
+                      "user"
                         ? 15
                         : 1
                     }
                     max="120"
-                    value={age}
-                    onChange={(event) =>
-                      setAge(
-                        event.target.value
-                      )
+                    value={
+                      age
+                    }
+                    onChange={
+                      event =>
+                        setAge(
+                          event
+                            .target
+                            .value
+                        )
                     }
                     disabled={
-                      saving || working
+                      saving ||
+                      working
                     }
                     required
                   />
@@ -538,9 +971,13 @@ export default function Profile() {
                     disabled={
                       saving ||
                       working ||
-                      String(age) ===
+                      String(
+                        age
+                      ) ===
                         String(
-                          details.age ?? ""
+                          details
+                            .age ??
+                            ""
                         )
                     }
                   >
@@ -552,10 +989,6 @@ export default function Profile() {
               </form>
             )}
           </section>
-
-          {/* =========================================
-              EXPERT PROFESSIONAL INFORMATION
-          ========================================= */}
 
           {isExpert && (
             <section
@@ -577,21 +1010,24 @@ export default function Profile() {
                 <Detail
                   label="Specialization"
                   value={
-                    details.specialization
+                    details
+                      .specialization
                   }
                 />
 
                 <Detail
                   label="Qualification"
                   value={
-                    details.qualification
+                    details
+                      .qualification
                   }
                 />
 
                 <Detail
                   label="Experience"
                   value={
-                    details.experienceYears ==
+                    details
+                      .experienceYears ==
                     null
                       ? null
                       : `${details.experienceYears} years`
@@ -601,12 +1037,11 @@ export default function Profile() {
                 <Detail
                   label="License number"
                   value={
-                    details.licenseNumber
+                    details
+                      .licenseNumber
                   }
                 />
               </dl>
-
-              {/* EXPERT BIO */}
 
               {details.bio && (
                 <div className="ivp-bio">
@@ -614,26 +1049,30 @@ export default function Profile() {
                     Professional bio
                   </h3>
 
-                  <p>{details.bio}</p>
+                  <p>
+                    {details.bio}
+                  </p>
                 </div>
               )}
 
-              {/* VERIFICATION STATUS */}
-
-              {status !== "verified" && (
+              {status !==
+                "verified" && (
                 <div
                   className="ivp-verification-note"
                   role="status"
                 >
                   <strong>
-                    {status === "rejected"
+                    {status ===
+                    "rejected"
                       ? "Application not approved"
                       : "Verification in progress"}
                   </strong>
 
                   <p>
-                    {status === "rejected"
-                      ? details.rejectionReason ||
+                    {status ===
+                    "rejected"
+                      ? details
+                          .rejectionReason ||
                         "Contact the administrator for more information."
                       : "Your application is awaiting administrative review."}
                   </p>
@@ -641,10 +1080,6 @@ export default function Profile() {
               )}
             </section>
           )}
-
-          {/* =========================================
-              ACCOUNT SECURITY
-          ========================================= */}
 
           {role !== "admin" && (
             <section
@@ -658,8 +1093,8 @@ export default function Profile() {
                   </h2>
 
                   <p>
-                    Manage deactivation or request
-                    account deletion.
+                    Manage password recovery,
+                    deactivation or account deletion.
                   </p>
                 </div>
 
@@ -669,7 +1104,170 @@ export default function Profile() {
                 />
               </div>
 
-              {/* ACCOUNT OPTIONS TOGGLE */}
+              <form
+                onSubmit={
+                  saveRecoverySettings
+                }
+                className="ivp-controls"
+                style={{
+                  marginBottom:
+                    18,
+
+                  display:
+                    "grid",
+
+                  gap:
+                    12
+                }}
+              >
+                <div className="ivp-control-option">
+                  <div>
+                    <h3>
+                      Password recovery
+                    </h3>
+
+                    <p>
+                      {accountProfile
+                        ?.recoveryConfigured
+                        ? "Recovery is configured. You can update the question or answer below."
+                        : "Set a recovery question so you can reset your password without email or phone."}
+                    </p>
+                  </div>
+                </div>
+
+                <label htmlFor="ivp-recovery-question">
+                  Recovery question
+                </label>
+
+                <select
+                  id="ivp-recovery-question"
+                  value={
+                    recoveryQuestionId
+                  }
+                  onChange={
+                    event =>
+                      setRecoveryQuestionId(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  disabled={
+                    recoverySaving ||
+                    working
+                  }
+                  required
+                >
+                  <option value="">
+                    Choose a question
+                  </option>
+
+                  {RECOVERY_QUESTIONS.map(
+                    (
+                      [
+                        value,
+                        label
+                      ]
+                    ) => (
+                      <option
+                        key={
+                          value
+                        }
+                        value={
+                          value
+                        }
+                      >
+                        {label}
+                      </option>
+                    )
+                  )}
+                </select>
+
+                <label htmlFor="ivp-recovery-answer">
+                  Recovery answer
+                </label>
+
+                <input
+                  id="ivp-recovery-answer"
+                  type="password"
+                  autoComplete="off"
+                  value={
+                    recoveryAnswer
+                  }
+                  onChange={
+                    event =>
+                      setRecoveryAnswer(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  minLength={4}
+                  maxLength={100}
+                  disabled={
+                    recoverySaving ||
+                    working
+                  }
+                  placeholder="Enter a private answer"
+                  required
+                />
+
+                <label htmlFor="ivp-recovery-password">
+                  Current password
+                </label>
+
+                <input
+                  id="ivp-recovery-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={
+                    recoveryCurrentPassword
+                  }
+                  onChange={
+                    event =>
+                      setRecoveryCurrentPassword(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                  disabled={
+                    recoverySaving ||
+                    working
+                  }
+                  placeholder="Confirm with your current password"
+                  required
+                />
+
+                <small>
+                  Your recovery answer is stored as a
+                  secure hash and is not shown back to you.
+                </small>
+
+                <button
+                  type="submit"
+                  className="ivp-secondary-button"
+                  disabled={
+                    recoverySaving ||
+                    working ||
+                    !recoveryQuestionId ||
+                    recoveryAnswer
+                      .trim()
+                      .length <
+                      4 ||
+                    !recoveryCurrentPassword
+                  }
+                >
+                  {recoverySaving
+                    ? "Saving…"
+
+                    : accountProfile
+                        ?.recoveryConfigured
+                      ? "Update recovery question"
+
+                      : "Set recovery question"}
+                </button>
+              </form>
 
               <button
                 type="button"
@@ -680,10 +1278,13 @@ export default function Profile() {
                 aria-controls="ivp-account-controls"
                 onClick={() => {
                   setAccountControlsOpen(
-                    (current) => !current
+                    current =>
+                      !current
                   );
 
-                  setError("");
+                  setError(
+                    ""
+                  );
                 }}
               >
                 {accountControlsOpen
@@ -691,13 +1292,15 @@ export default function Profile() {
                   : "Manage account"}
 
                 {accountControlsOpen ? (
-                  <ChevronUp size={17} />
+                  <ChevronUp
+                    size={17}
+                  />
                 ) : (
-                  <ChevronDown size={17} />
+                  <ChevronDown
+                    size={17}
+                  />
                 )}
               </button>
-
-              {/* ACCOUNT OPTIONS */}
 
               {accountControlsOpen && (
                 <div
@@ -712,17 +1315,22 @@ export default function Profile() {
                     id="ivp-password"
                     type="password"
                     autoComplete="current-password"
-                    value={password}
-                    onChange={(event) =>
-                      setPassword(
-                        event.target.value
-                      )
+                    value={
+                      password
                     }
-                    disabled={working}
+                    onChange={
+                      event =>
+                        setPassword(
+                          event
+                            .target
+                            .value
+                        )
+                    }
+                    disabled={
+                      working
+                    }
                     placeholder="Enter your password"
                   />
-
-                  {/* DEACTIVATION */}
 
                   <div className="ivp-control-option">
                     <div>
@@ -740,7 +1348,8 @@ export default function Profile() {
                       type="button"
                       className="ivp-secondary-button"
                       disabled={
-                        working || !password
+                        working ||
+                        !password
                       }
                       onClick={() =>
                         handleAccountAction(
@@ -751,8 +1360,6 @@ export default function Profile() {
                       Deactivate
                     </button>
                   </div>
-
-                  {/* ACCOUNT DELETION */}
 
                   <div className="ivp-control-option ivp-control-option--danger">
                     <div>
@@ -773,13 +1380,20 @@ export default function Profile() {
 
                     <input
                       id="ivp-confirmation"
-                      value={confirmation}
-                      onChange={(event) =>
-                        setConfirmation(
-                          event.target.value
-                        )
+                      value={
+                        confirmation
                       }
-                      disabled={working}
+                      onChange={
+                        event =>
+                          setConfirmation(
+                            event
+                              .target
+                              .value
+                          )
+                      }
+                      disabled={
+                        working
+                      }
                       autoComplete="off"
                       placeholder="DELETE"
                     />

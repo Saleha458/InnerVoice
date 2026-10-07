@@ -4,154 +4,261 @@ import {
   Navigate
 } from "react-router-dom";
 
-import { useAuth } from "../context/AuthContext";
+import {
+  useAuth
+} from "../context/AuthContext";
 
-import ProtectedRoute from "./ProtectedRoute";
-import RoleRoute from "./RoleRoute";
+import ProtectedRoute
+  from "./ProtectedRoute";
 
-import DashboardLayout from "../components/layout/DashboardLayout";
+import RoleRoute
+  from "./RoleRoute";
 
-import Landing from "../pages/Landing";
-import Login from "../pages/auth/Login";
-import Register from "../pages/auth/Register";
+import DashboardLayout
+  from "../components/layout/DashboardLayout";
 
-import UserDashboard from "../pages/dashboard/UserDashboard";
-import ExpertDashboard from "../pages/dashboard/ExpertDashboard";
-import ParentDashboard from "../pages/dashboard/ParentDashboard";
-import AdminDashboard from "../pages/admin/AdminDashboard";
+import Landing
+  from "../pages/Landing";
 
-import AIChat from "../pages/chat/AIChat";
-import ExpertChat from "../pages/chat/ExpertChat";
+import Login
+  from "../pages/auth/Login";
 
-import MoodTracker from "../pages/mood/MoodTracker";
-import Journal from "../pages/journal/Journal";
-import JournalEntry from "../pages/journal/JournalEntry";
+import Register
+  from "../pages/auth/Register";
 
-import Reports from "../pages/reports/Reports";
-import CreateReport from "../pages/reports/CreateReport";
+import ForgotPassword
+  from "../pages/auth/ForgotPassword";
 
-import Notifications from "../pages/notifications/Notifications";
+import UserDashboard
+  from "../pages/dashboard/UserDashboard";
 
-import FindExpert from "../pages/bookings/FindExpert";
-import BookSession from "../pages/bookings/BookSession";
-import Bookings from "../pages/bookings/Bookings";
+import ExpertDashboard
+  from "../pages/dashboard/ExpertDashboard";
 
-import ExpertProfile from "../pages/expert/ExpertProfile";
-import ExpertRequests from "../pages/expert/ExpertRequests";
-import ExpertSessions from "../pages/expert/ExpertSessions";
+import ParentDashboard
+  from "../pages/dashboard/ParentDashboard";
 
-import ExpertVerification from "../pages/admin/ExpertVerification";
-import UserManagement from "../pages/admin/UserManagement";
+import AdminDashboard
+  from "../pages/admin/AdminDashboard";
 
-import Profile from "../pages/profile/Profile";
+import AIChat
+  from "../pages/chat/AIChat";
 
-import Guidelines from "../pages/guidelines/Guidelines";
-import ParentingFoundations from "../pages/guidelines/ParentingFoundations";
+import ExpertChat
+  from "../pages/chat/ExpertChat";
 
-import StarredMessages from "../pages/starred/StarredMessages";
-import VaultRecovery from "../pages/recovery/VaultRecovery";
+import MoodTracker
+  from "../pages/mood/MoodTracker";
+
+import Journal
+  from "../pages/journal/Journal";
+
+import JournalEntry
+  from "../pages/journal/JournalEntry";
+
+import Reports
+  from "../pages/reports/Reports";
+
+import CreateReport
+  from "../pages/reports/CreateReport";
+
+import Notifications
+  from "../pages/notifications/Notifications";
+
+import FindExpert
+  from "../pages/bookings/FindExpert";
+
+import BookSession
+  from "../pages/bookings/BookSession";
+
+import Bookings
+  from "../pages/bookings/Bookings";
+
+import ExpertProfile
+  from "../pages/expert/ExpertProfile";
+
+import ExpertRequests
+  from "../pages/expert/ExpertRequests";
+
+import ExpertSessions
+  from "../pages/expert/ExpertSessions";
+
+import ExpertVerification
+  from "../pages/admin/ExpertVerification";
+
+import UserManagement
+  from "../pages/admin/UserManagement";
+
+import Profile
+  from "../pages/profile/Profile";
+
+import Guidelines
+  from "../pages/guidelines/Guidelines";
+
+import ParentingFoundations
+  from "../pages/guidelines/ParentingFoundations";
+
+import StarredMessages
+  from "../pages/starred/StarredMessages";
+
+import VaultRecovery
+  from "../pages/recovery/VaultRecovery";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route
         path="/"
-        element={<Landing />}
+        element={
+          <Landing />
+        }
       />
 
       <Route
         path="/login"
-        element={<Login />}
+        element={
+          <Login />
+        }
       />
 
       <Route
         path="/register"
-        element={<Register />}
+        element={
+          <Register />
+        }
       />
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<DashboardLayout />}>
+      <Route
+        path="/forgot-password"
+        element={
+          <ForgotPassword />
+        }
+      />
 
+      <Route
+        element={
+          <ProtectedRoute />
+        }
+      >
+        <Route
+          element={
+            <DashboardLayout />
+          }
+        >
           <Route
             path="/dashboard"
-            element={<DashboardRedirect />}
+            element={
+              <DashboardRedirect />
+            }
           />
 
           <Route
             path="/profile"
-            element={<Profile />}
+            element={
+              <Profile />
+            }
           />
 
           <Route
             path="/notifications"
-            element={<Notifications />}
+            element={
+              <Notifications />
+            }
           />
 
           {/* USER ONLY */}
 
           <Route
             element={
-              <RoleRoute allowedRoles={["user"]} />
+              <RoleRoute
+                allowedRoles={[
+                  "user"
+                ]}
+              />
             }
           >
             <Route
               path="/user/dashboard"
-              element={<UserDashboard />}
+              element={
+                <UserDashboard />
+              }
             />
 
             <Route
               path="/chat"
-              element={<AIChat />}
+              element={
+                <AIChat />
+              }
             />
 
             <Route
               path="/mood"
-              element={<MoodTracker />}
+              element={
+                <MoodTracker />
+              }
             />
 
             <Route
               path="/journal"
-              element={<Journal />}
+              element={
+                <Journal />
+              }
             />
 
             <Route
               path="/journal/new"
-              element={<JournalEntry />}
+              element={
+                <JournalEntry />
+              }
             />
 
             <Route
               path="/reports"
-              element={<Reports />}
+              element={
+                <Reports />
+              }
             />
 
             <Route
               path="/reports/new"
-              element={<CreateReport />}
+              element={
+                <CreateReport />
+              }
             />
 
             <Route
               path="/experts"
-              element={<FindExpert />}
+              element={
+                <FindExpert />
+              }
             />
 
             <Route
               path="/experts/:id"
-              element={<ExpertProfile />}
+              element={
+                <ExpertProfile />
+              }
             />
 
             <Route
               path="/bookings"
-              element={<Bookings />}
+              element={
+                <Bookings />
+              }
             />
 
             <Route
               path="/bookings/new"
-              element={<BookSession />}
+              element={
+                <BookSession />
+              }
             />
 
             <Route
               path="/starred"
-              element={<StarredMessages />}
+              element={
+                <StarredMessages />
+              }
             />
           </Route>
 
@@ -159,41 +266,59 @@ export default function AppRoutes() {
 
           <Route
             element={
-              <RoleRoute allowedRoles={["user", "expert"]} />
+              <RoleRoute
+                allowedRoles={[
+                  "user",
+                  "expert"
+                ]}
+              />
             }
           >
             <Route
               path="/vault-recovery"
-              element={<VaultRecovery />}
+              element={
+                <VaultRecovery />
+              }
             />
 
             <Route
               path="/session-chat/:sessionId"
-              element={<ExpertChat />}
+              element={
+                <ExpertChat />
+              }
             />
-
           </Route>
 
           {/* EXPERT ONLY */}
 
           <Route
             element={
-              <RoleRoute allowedRoles={["expert"]} />
+              <RoleRoute
+                allowedRoles={[
+                  "expert"
+                ]}
+              />
             }
           >
             <Route
               path="/expert/dashboard"
-              element={<ExpertDashboard />}
+              element={
+                <ExpertDashboard />
+              }
             />
 
             <Route
               path="/expert/requests"
-              element={<ExpertRequests />}
+              element={
+                <ExpertRequests />
+              }
             />
 
             <Route
               path="/expert/sessions"
-              element={<ExpertSessions />}
+              element={
+                <ExpertSessions />
+              }
             />
 
             <Route
@@ -208,7 +333,9 @@ export default function AppRoutes() {
 
             <Route
               path="/expert/profile"
-              element={<Profile />}
+              element={
+                <Profile />
+              }
             />
           </Route>
 
@@ -216,36 +343,50 @@ export default function AppRoutes() {
 
           <Route
             element={
-              <RoleRoute allowedRoles={["parent"]} />
+              <RoleRoute
+                allowedRoles={[
+                  "parent"
+                ]}
+              />
             }
           >
             <Route
               path="/parent/dashboard"
-              element={<ParentDashboard />}
+              element={
+                <ParentDashboard />
+              }
             />
 
             <Route
               path="/parent/foundations"
-              element={<ParentingFoundations />}
+              element={
+                <ParentingFoundations />
+              }
             />
 
             <Route
               path="/parent/guidelines"
               element={
-                <Guidelines section="guidelines" />
+                <Guidelines
+                  section="guidelines"
+                />
               }
             />
 
             <Route
               path="/parent/warnings"
               element={
-                <Guidelines section="warnings" />
+                <Guidelines
+                  section="warnings"
+                />
               }
             />
 
             <Route
               path="/parent/profile"
-              element={<Profile />}
+              element={
+                <Profile />
+              }
             />
           </Route>
 
@@ -253,27 +394,41 @@ export default function AppRoutes() {
 
           <Route
             element={
-              <RoleRoute allowedRoles={["admin"]} />
+              <RoleRoute
+                allowedRoles={[
+                  "admin"
+                ]}
+              />
             }
           >
             <Route
               path="/admin/dashboard"
-              element={<AdminDashboard />}
+              element={
+                <AdminDashboard />
+              }
             />
 
             <Route
               path="/admin/experts"
-              element={<ExpertVerification />}
+              element={
+                <ExpertVerification />
+              }
             />
 
             <Route
               path="/admin/users"
-              element={<UserManagement />}
+              element={
+                <UserManagement />
+              }
             />
 
             <Route
               path="/admin/reports"
-              element={<Reports adminMode />}
+              element={
+                <Reports
+                  adminMode
+                />
+              }
             />
 
             <Route
@@ -286,14 +441,16 @@ export default function AppRoutes() {
               }
             />
           </Route>
-
         </Route>
       </Route>
 
       <Route
         path="*"
         element={
-          <Navigate to="/" replace />
+          <Navigate
+            to="/"
+            replace
+          />
         }
       />
     </Routes>
@@ -301,17 +458,29 @@ export default function AppRoutes() {
 }
 
 function DashboardRedirect() {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
 
   const paths = {
-    expert: "/expert/dashboard",
-    parent: "/parent/dashboard",
-    admin: "/admin/dashboard"
+    expert:
+      "/expert/dashboard",
+
+    parent:
+      "/parent/dashboard",
+
+    admin:
+      "/admin/dashboard"
   };
 
   return (
     <Navigate
-      to={paths[user?.role] || "/user/dashboard"}
+      to={
+        paths[
+          user?.role
+        ] ||
+        "/user/dashboard"
+      }
       replace
     />
   );
