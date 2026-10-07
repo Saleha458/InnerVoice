@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -70,12 +71,27 @@ export default function ForgotPassword() {
     setSuccess,
   ] = useState("");
 
+  /* =========================================================
+     ALWAYS OPEN PAGE FROM THE TOP
+
+     React Router can preserve the previous page's scroll
+     position. That made the Forgot Password heading appear
+     clipped when arriving from the Login page.
+  ========================================================= */
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+  }, []);
+
   const passwordRules =
     useMemo(
       () => ({
         length:
-          newPassword
-            .length >=
+          newPassword.length >=
           8,
 
         uppercase:
@@ -114,8 +130,7 @@ export default function ForgotPassword() {
       );
 
   const passwordsMatch =
-    confirmPassword
-      .length >
+    confirmPassword.length >
       0 &&
     newPassword ===
       confirmPassword;
@@ -123,15 +138,13 @@ export default function ForgotPassword() {
   async function loadQuestion(
     event
   ) {
-    event
-      .preventDefault();
+    event.preventDefault();
 
     setError("");
     setSuccess("");
 
     const id =
-      anonymousId
-        .trim();
+      anonymousId.trim();
 
     if (
       !/^[A-Za-z0-9_]{3,30}$/.test(
@@ -146,9 +159,7 @@ export default function ForgotPassword() {
     }
 
     try {
-      setLoading(
-        true
-      );
+      setLoading(true);
 
       const {
         data,
@@ -171,10 +182,14 @@ export default function ForgotPassword() {
       setQuestionLoaded(
         true
       );
+
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
     } catch (err) {
-      setQuestion(
-        ""
-      );
+      setQuestion("");
 
       setQuestionLoaded(
         false
@@ -188,17 +203,14 @@ export default function ForgotPassword() {
           "Could not start password recovery."
       );
     } finally {
-      setLoading(
-        false
-      );
+      setLoading(false);
     }
   }
 
   async function resetPassword(
     event
   ) {
-    event
-      .preventDefault();
+    event.preventDefault();
 
     setError("");
     setSuccess("");
@@ -252,9 +264,7 @@ export default function ForgotPassword() {
     }
 
     try {
-      setLoading(
-        true
-      );
+      setLoading(true);
 
       const {
         data,
@@ -264,12 +274,10 @@ export default function ForgotPassword() {
 
           {
             anonymousId:
-              anonymousId
-                .trim(),
+              anonymousId.trim(),
 
             recoveryAnswer:
-              recoveryAnswer
-                .trim(),
+              recoveryAnswer.trim(),
 
             newPassword,
 
@@ -282,33 +290,24 @@ export default function ForgotPassword() {
           "Password reset successful. You can now sign in."
       );
 
-      setRecoveryAnswer(
-        ""
+      setRecoveryAnswer("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+      window.setTimeout(
+        () => {
+          navigate(
+            "/login",
+
+            {
+              replace:
+                true,
+            }
+          );
+        },
+
+        1800
       );
-
-      setNewPassword(
-        ""
-      );
-
-      setConfirmPassword(
-        ""
-      );
-
-      window
-        .setTimeout(
-          () => {
-            navigate(
-              "/login",
-
-              {
-                replace:
-                  true,
-              }
-            );
-          },
-
-          1800
-        );
     } catch (err) {
       setError(
         err
@@ -318,40 +317,34 @@ export default function ForgotPassword() {
           "Password reset failed. Please try again."
       );
     } finally {
-      setLoading(
-        false
-      );
+      setLoading(false);
     }
   }
 
   function changeAccount() {
     setQuestion("");
-    setQuestionLoaded(
-      false
-    );
+    setQuestionLoaded(false);
 
-    setRecoveryAnswer(
-      ""
-    );
-
-    setNewPassword(
-      ""
-    );
-
-    setConfirmPassword(
-      ""
-    );
+    setRecoveryAnswer("");
+    setNewPassword("");
+    setConfirmPassword("");
 
     setError("");
     setSuccess("");
+
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
   }
 
   return (
     <AuthShell variant="login">
-      <div className="auth-card">
+      <div className="auth-card iv-forgot-card">
         <div className="auth-header">
           <span className="eyebrow">
-            INNERVOICE
+            PRIVATE ACCOUNT RECOVERY
           </span>
 
           <h1>
@@ -385,7 +378,7 @@ export default function ForgotPassword() {
 
         {!questionLoaded ? (
           <form
-            className="auth-form"
+            className="auth-form iv-forgot-start-form"
             onSubmit={
               loadQuestion
             }
@@ -419,6 +412,11 @@ export default function ForgotPassword() {
                   loading
                 }
               />
+
+              <small>
+                Enter the same Anonymous ID you use
+                to sign in.
+              </small>
             </div>
 
             <button
@@ -435,24 +433,29 @@ export default function ForgotPassword() {
           </form>
         ) : (
           <form
-            className="auth-form"
+            className="auth-form iv-forgot-reset-form"
             onSubmit={
               resetPassword
             }
           >
-            <div className="notice-box">
+            <div className="notice-box iv-recovery-question-card">
+              <span className="iv-recovery-question-label">
+                YOUR RECOVERY QUESTION
+              </span>
+
               <strong>
-                Recovery question
+                {question}
               </strong>
 
               <p>
-                {question}
+                Enter the private answer you chose
+                when recovery was configured.
               </p>
             </div>
 
             <div className="form-group">
               <label htmlFor="recovery-answer">
-                Your answer
+                Recovery answer
               </label>
 
               <input
@@ -476,7 +479,7 @@ export default function ForgotPassword() {
                 disabled={
                   loading
                 }
-                placeholder="Enter your recovery answer"
+                placeholder="Enter your private recovery answer"
               />
             </div>
 
@@ -509,13 +512,6 @@ export default function ForgotPassword() {
                   disabled={
                     loading
                   }
-                  style={{
-                    paddingRight:
-                      80,
-
-                    width:
-                      "100%",
-                  }}
                 />
 
                 <button
@@ -534,28 +530,6 @@ export default function ForgotPassword() {
                       ? "Hide password"
                       : "Show password"
                   }
-                  style={{
-                    position:
-                      "absolute",
-
-                    right:
-                      10,
-
-                    top:
-                      "50%",
-
-                    transform:
-                      "translateY(-50%)",
-
-                    border:
-                      "none",
-
-                    background:
-                      "transparent",
-
-                    cursor:
-                      "pointer",
-                  }}
                 >
                   {showPassword
                     ? "Hide"
@@ -630,13 +604,6 @@ export default function ForgotPassword() {
                   disabled={
                     loading
                   }
-                  style={{
-                    paddingRight:
-                      80,
-
-                    width:
-                      "100%",
-                  }}
                 />
 
                 <button
@@ -655,28 +622,6 @@ export default function ForgotPassword() {
                       ? "Hide confirmation password"
                       : "Show confirmation password"
                   }
-                  style={{
-                    position:
-                      "absolute",
-
-                    right:
-                      10,
-
-                    top:
-                      "50%",
-
-                    transform:
-                      "translateY(-50%)",
-
-                    border:
-                      "none",
-
-                    background:
-                      "transparent",
-
-                    cursor:
-                      "pointer",
-                  }}
                 >
                   {showConfirmPassword
                     ? "Hide"
@@ -688,22 +633,12 @@ export default function ForgotPassword() {
                 .length >
                 0 && (
                 <p
+                  className={`iv-password-match ${
+                    passwordsMatch
+                      ? "is-match"
+                      : "is-mismatch"
+                  }`}
                   role="status"
-                  style={{
-                    margin:
-                      "8px 0 0",
-
-                    fontSize:
-                      12,
-
-                    fontWeight:
-                      650,
-
-                    color:
-                      passwordsMatch
-                        ? "#287c58"
-                        : "#ae493a",
-                  }}
                 >
                   {passwordsMatch
                     ? "✓ Passwords match"
@@ -712,30 +647,32 @@ export default function ForgotPassword() {
               )}
             </div>
 
-            <button
-              className="primary-button"
-              type="submit"
-              disabled={
-                loading
-              }
-            >
-              {loading
-                ? "Resetting..."
-                : "Reset password"}
-            </button>
+            <div className="iv-forgot-actions">
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={
+                  loading
+                }
+              >
+                {loading
+                  ? "Resetting..."
+                  : "Reset password"}
+              </button>
 
-            <button
-              className="secondary-button"
-              type="button"
-              disabled={
-                loading
-              }
-              onClick={
-                changeAccount
-              }
-            >
-              Use a different Anonymous ID
-            </button>
+              <button
+                className="secondary-button"
+                type="button"
+                disabled={
+                  loading
+                }
+                onClick={
+                  changeAccount
+                }
+              >
+                Use a different Anonymous ID
+              </button>
+            </div>
           </form>
         )}
 

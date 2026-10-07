@@ -1,109 +1,1103 @@
-/* InnerVoice responsive & keyboard patch. Import last in src/main.jsx. */
-:root { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-html { overflow-x: clip; }
-body { min-width: 0; }
-.dashboard-layout { min-width: 0; }
+/* =========================================================
+   INNERVOICE
+   FINAL RESPONSIVE + ACCESSIBILITY + PHASE 2 UI POLISH
+
+   Import this file LAST in src/main.jsx.
+========================================================= */
+
+:root {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html {
+  overflow-x: clip;
+}
+
+body {
+  min-width: 0;
+}
+
+
+/* =========================================================
+   GENERAL DASHBOARD SAFETY
+========================================================= */
+
+.dashboard-layout {
+  min-width: 0;
+}
+
 .dashboard-layout .dashboard-body,
 .dashboard-layout .dashboard-content,
 .dashboard-layout .page-shell,
 .dashboard-layout .feature-card,
 .dashboard-layout .dashboard-grid,
-.dashboard-layout .list-grid { min-width: 0; }
-.dashboard-layout img { max-width: 100%; }
-.dashboard-layout :is(p, h1, h2, h3, dd, .chat-bubble, .iv-ai-bubble) { overflow-wrap: anywhere; }
-.dashboard-layout :is(input, select, textarea) { max-width: 100%; }
-.dashboard-layout :is(button, a, input, select, textarea, [tabindex]):focus-visible,
-.iv-home :is(a, button, input, select, textarea):focus-visible,
-.iv-auth-page :is(a, button, input, select, textarea):focus-visible {
+.dashboard-layout .list-grid {
+  min-width: 0;
+}
+
+.dashboard-layout img {
+  max-width: 100%;
+}
+
+.dashboard-layout :is(
+  p,
+  h1,
+  h2,
+  h3,
+  dd,
+  .chat-bubble,
+  .iv-ai-bubble
+) {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-layout :is(
+  input,
+  select,
+  textarea
+) {
+  max-width: 100%;
+}
+
+
+/* =========================================================
+   KEYBOARD FOCUS
+========================================================= */
+
+.dashboard-layout :is(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [tabindex]
+):focus-visible,
+.iv-home :is(
+  a,
+  button,
+  input,
+  select,
+  textarea
+):focus-visible,
+.iv-auth-page :is(
+  a,
+  button,
+  input,
+  select,
+  textarea
+):focus-visible {
   outline: 3px solid #8b452b;
   outline-offset: 3px;
 }
-.dashboard-layout .iv-skip-link { position: fixed; top: -80px; left: 12px; z-index: 2500; padding: 10px 16px; border-radius: 8px; background: #fff; color: #5c2d19; border: 2px solid #8b452b; }
-.dashboard-layout .iv-skip-link:focus { top: 10px; }
-/* Keep long IDs and messages readable without clipping neighboring cards. */
+
+
+/* =========================================================
+   SKIP LINK
+========================================================= */
+
+.dashboard-layout .iv-skip-link {
+  position: fixed;
+
+  top: -80px;
+  left: 12px;
+
+  z-index: 2500;
+
+  padding: 10px 16px;
+
+  border: 2px solid #8b452b;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #5c2d19;
+}
+
+.dashboard-layout .iv-skip-link:focus {
+  top: 10px;
+}
+
+
+/* =========================================================
+   LONG CONTENT / CHAT SAFETY
+========================================================= */
+
 .dashboard-layout .chat-messages,
 .dashboard-layout .chat-compose,
 .dashboard-layout .iv-ai-messages,
 .dashboard-layout .iv-ai-compose,
-.dashboard-layout .iv-ai-message-body { min-width: 0; }
-.dashboard-layout :is(.chat-bubble, .iv-ai-bubble, .chat-messages p, .iv-ai-messages p) { overflow-wrap: anywhere; white-space: pre-wrap; }
-.dashboard-layout .chat-compose .form-input { flex: 1 1 230px; width: 100%; min-width: 0; }
-.dashboard-layout .chat-compose .button-row { display: flex; flex-wrap: wrap; gap: 10px; }
-.dashboard-layout .chat-compose .button-row > * { max-width: 100%; }
-.dashboard-layout .iv-ai-compose-actions { min-width: 0; }
-.dashboard-layout .mood-page .mood-chart-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
-.dashboard-layout .mood-page .mood-chart-inner { min-width: 480px; }
-.dashboard-layout .page-shell audio { display: block; max-width: 100%; }
-.dashboard-layout .page-shell audio { width: min(100%, 360px); }
-/* Ensure responsive navigation behaves like a dialog, above the sticky navbar. */
-.dashboard-layout .mobile-drawer-wrapper { z-index: 2000; }
-.dashboard-layout .mobile-drawer { overflow-y: auto; overscroll-behavior: contain; }
+.dashboard-layout .iv-ai-message-body {
+  min-width: 0;
+}
+
+.dashboard-layout :is(
+  .chat-bubble,
+  .iv-ai-bubble,
+  .chat-messages p,
+  .iv-ai-messages p
+) {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.dashboard-layout .chat-compose .form-input {
+  flex: 1 1 230px;
+
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-layout .chat-compose .button-row {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 10px;
+}
+
+.dashboard-layout .chat-compose .button-row > * {
+  max-width: 100%;
+}
+
+.dashboard-layout .iv-ai-compose-actions {
+  min-width: 0;
+}
+
+
+/* =========================================================
+   MOOD / AUDIO
+========================================================= */
+
+.dashboard-layout .mood-page .mood-chart-scroll {
+  max-width: 100%;
+
+  overflow-x: auto;
+
+  overscroll-behavior-inline: contain;
+}
+
+.dashboard-layout .mood-page .mood-chart-inner {
+  min-width: 480px;
+}
+
+.dashboard-layout .page-shell audio {
+  display: block;
+
+  width: min(100%, 360px);
+  max-width: 100%;
+}
+
+
+/* =========================================================
+   MOBILE NAVIGATION
+========================================================= */
+
+.dashboard-layout .mobile-drawer-wrapper {
+  z-index: 2000;
+}
+
+.dashboard-layout .mobile-drawer {
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
+}
+
 .dashboard-layout .iv-mobile-close {
-  position: absolute; top: 12px; right: 12px; z-index: 2;
-  display: grid; place-items: center; width: 44px; height: 44px;
-  border: 1px solid #ddcfc3; border-radius: 10px;
-  background: white; color: #3e322c; font-size: 23px; cursor: pointer;
+  position: absolute;
+
+  top: 12px;
+  right: 12px;
+
+  z-index: 2;
+
+  display: grid;
+  place-items: center;
+
+  width: 44px;
+  height: 44px;
+
+  border: 1px solid #ddcfc3;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #3e322c;
+
+  font-size: 23px;
+
+  cursor: pointer;
 }
-.dashboard-layout .mobile-drawer .sidebar-nav { padding-top: 56px; }
-/* Admin UI, if the newer Admin.css has been installed. */
-.dashboard-layout .iv-admin :is(.iv-admin-metric, .iv-admin-tool, .iv-admin-panel) { min-width: 0; }
-@media (max-width: 1050px) {
-  .dashboard-layout .dashboard-content { padding-inline: clamp(16px, 2.2vw, 26px); }
-  .dashboard-layout .page-shell .list-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.dashboard-layout .mobile-drawer .sidebar-nav {
+  padding-top: 56px;
 }
-@media (max-width: 900px) {
-  .dashboard-layout .dashboard-body { display: block; }
-  .dashboard-layout .desktop-sidebar { display: none; }
-  .dashboard-layout .navbar-menu-button { display: inline-flex; }
-  .dashboard-layout .dashboard-content { width: 100%; padding: 24px 20px 44px; }
-  .dashboard-layout .mobile-drawer-wrapper { position: fixed; inset: 0; display: block; }
-  .dashboard-layout .mobile-drawer-overlay { position: absolute; inset: 0; background: rgba(24,20,17,.6); }
-  .dashboard-layout .mobile-drawer { position: relative; width: min(315px, calc(100vw - 32px)); height: 100dvh; background: #fff; }
-  .dashboard-layout .mobile-drawer .sidebar { width: 100%; height: 100%; position: static; overflow-y: auto; }
-  .dashboard-layout .dashboard-hero { flex-wrap: wrap; }
-  .dashboard-layout .quick-exit-area { flex: 1 1 210px; max-width: 300px; }
+
+
+/* =========================================================
+   ADMIN UI
+========================================================= */
+
+.dashboard-layout .iv-admin :is(
+  .iv-admin-metric,
+  .iv-admin-tool,
+  .iv-admin-panel
+) {
+  min-width: 0;
 }
-@media (max-width: 700px) {
-  .dashboard-layout .dashboard-content { padding: 20px 15px 36px; }
+
+
+/* =========================================================
+   PHASE 2
+   FORGOT PASSWORD PAGE POLISH
+========================================================= */
+
+.iv-auth-page .iv-auth-main:has(.iv-forgot-card) {
+  align-items: start;
+
+  padding-top: 48px;
+  padding-bottom: 64px;
+}
+
+.iv-auth-page .iv-auth-form-column:has(.iv-forgot-card) {
+  display: flex;
+  justify-content: center;
+
+  min-width: 0;
+}
+
+.iv-auth-page .iv-forgot-card {
+  width: 100%;
+  max-width: 610px !important;
+
+  padding: 36px 38px 32px;
+
+  border-radius: 22px;
+}
+
+.iv-auth-page .iv-forgot-card .auth-header {
+  margin-bottom: 24px;
+}
+
+.iv-auth-page .iv-forgot-card .auth-header .eyebrow {
+  margin-bottom: 10px;
+}
+
+.iv-auth-page .iv-forgot-card .auth-header h1 {
+  margin-bottom: 10px;
+
+  font-size: clamp(
+    32px,
+    3vw,
+    42px
+  );
+}
+
+.iv-auth-page .iv-forgot-card .auth-header p {
+  max-width: 520px;
+
+  line-height: 1.75;
+}
+
+.iv-auth-page .iv-forgot-card .form-group {
+  margin-bottom: 18px;
+}
+
+.iv-auth-page .iv-forgot-card .form-group input {
+  min-height: 50px;
+}
+
+.iv-auth-page .iv-recovery-question-card {
+  position: relative;
+
+  margin-bottom: 20px !important;
+  padding: 18px 19px !important;
+
+  border: 1px solid #ecd5c1 !important;
+  border-radius: 14px !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #fff7ee,
+      #fffaf5
+    ) !important;
+}
+
+.iv-auth-page .iv-recovery-question-label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #a06246;
+
+  font-size: 9px;
+  font-weight: 850;
+
+  letter-spacing: 0.14em;
+}
+
+.iv-auth-page .iv-recovery-question-card strong {
+  display: block;
+
+  color: #4b3529;
+
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.iv-auth-page .iv-recovery-question-card p {
+  margin-top: 6px !important;
+
+  color: #8a7568;
+
+  font-size: 11px !important;
+  line-height: 1.6 !important;
+}
+
+.iv-auth-page .iv-forgot-reset-form .iv-auth-password-rules {
+  margin-top: 10px;
+  padding: 13px 15px;
+
+  gap: 6px 14px;
+}
+
+.iv-auth-page .iv-password-match {
+  margin: 8px 0 0;
+
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.iv-auth-page .iv-password-match.is-match {
+  color: #287c58;
+}
+
+.iv-auth-page .iv-password-match.is-mismatch {
+  color: #ae493a;
+}
+
+.iv-auth-page .iv-forgot-actions {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+
+  align-items: stretch;
+
+  gap: 10px;
+
+  margin-top: 3px;
+}
+
+.iv-auth-page .iv-forgot-actions .primary-button {
+  margin: 0;
+
+  min-height: 48px;
+}
+
+.iv-auth-page .iv-forgot-actions .secondary-button {
+  min-height: 48px;
+
+  white-space: nowrap;
+}
+
+.iv-auth-page .iv-forgot-card .auth-footer {
+  margin-top: 22px;
+  padding-top: 19px;
+}
+
+
+/* =========================================================
+   PHASE 2
+   PROFILE PASSWORD RECOVERY POLISH
+========================================================= */
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question) {
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  grid-template-areas:
+    "intro intro"
+    "question-label question-label"
+    "question question"
+    "answer-label password-label"
+    "answer password"
+    "note note"
+    "action action";
+
+  column-gap: 18px;
+  row-gap: 8px;
+
+  margin-top: 16px;
+  padding: 20px;
+
+  border: 1px solid #eee1d6;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #fffdfa,
+      #fff9f4
+    );
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+.ivp-control-option {
+  grid-area: intro;
+
+  margin: 0 0 5px;
+  padding: 0 0 15px;
+
+  border-top: 0;
+  border-bottom: 1px solid #eee4dc;
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+.ivp-control-option h3 {
+  margin-bottom: 5px;
+
+  font-size: 14px;
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+.ivp-control-option p {
+  max-width: 680px;
+
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.ivp-page
+label[for="ivp-recovery-question"] {
+  grid-area: question-label;
+}
+
+.ivp-page
+#ivp-recovery-question {
+  grid-area: question;
+}
+
+.ivp-page
+label[for="ivp-recovery-answer"] {
+  grid-area: answer-label;
+}
+
+.ivp-page
+#ivp-recovery-answer {
+  grid-area: answer;
+}
+
+.ivp-page
+label[for="ivp-recovery-password"] {
+  grid-area: password-label;
+}
+
+.ivp-page
+#ivp-recovery-password {
+  grid-area: password;
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+> small {
+  grid-area: note;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  margin-top: 3px;
+
+  color: #7c7067;
+
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+> small::before {
+  content: "●";
+
+  color: #b87858;
+
+  font-size: 7px;
+}
+
+.ivp-page
+#ivp-recovery-question,
+.ivp-page
+#ivp-recovery-answer,
+.ivp-page
+#ivp-recovery-password {
+  width: 100%;
+  max-width: none;
+
+  min-height: 48px;
+
+  padding: 11px 13px;
+
+  border: 1px solid #dfd2c7;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #332d29;
+
+  font: inherit;
+  font-size: 13px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.ivp-page
+#ivp-recovery-question {
+  cursor: pointer;
+}
+
+.ivp-page
+#ivp-recovery-question:focus,
+.ivp-page
+#ivp-recovery-answer:focus,
+.ivp-page
+#ivp-recovery-password:focus {
+  outline: none;
+
+  border-color: #b67657;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(
+      167,
+      103,
+      75,
+      0.11
+    );
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+.ivp-secondary-button {
+  grid-area: action;
+
+  justify-self: start;
+
+  min-width: 240px;
+  min-height: 46px;
+
+  margin-top: 6px;
+  padding-inline: 22px;
+
+  border: 1px solid #e2cabc;
+
+  background: #f6e7dc;
+  color: #8e543c;
+
+  box-shadow: none;
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+.ivp-secondary-button:hover:not(:disabled) {
+  border-color: #cfa78f;
+
+  background: #efdbcd;
+
+  filter: none;
+}
+
+.ivp-page
+.ivp-controls:has(#ivp-recovery-question)
+.ivp-secondary-button:disabled {
+  border-color: #eadfd7;
+
+  background: #f7efea;
+  color: #c5a596;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (
+  max-width: 1050px
+) {
+  .dashboard-layout .dashboard-content {
+    padding-inline:
+      clamp(
+        16px,
+        2.2vw,
+        26px
+      );
+  }
+
+  .dashboard-layout
+  .page-shell
+  .list-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+
+/* =========================================================
+   SMALL LAPTOP / TABLET
+========================================================= */
+
+@media (
+  max-width: 900px
+) {
+  .dashboard-layout .dashboard-body {
+    display: block;
+  }
+
+  .dashboard-layout .desktop-sidebar {
+    display: none;
+  }
+
+  .dashboard-layout .navbar-menu-button {
+    display: inline-flex;
+  }
+
+  .dashboard-layout .dashboard-content {
+    width: 100%;
+
+    padding:
+      24px
+      20px
+      44px;
+  }
+
+  .dashboard-layout .mobile-drawer-wrapper {
+    position: fixed;
+
+    inset: 0;
+
+    display: block;
+  }
+
+  .dashboard-layout .mobile-drawer-overlay {
+    position: absolute;
+
+    inset: 0;
+
+    background:
+      rgba(
+        24,
+        20,
+        17,
+        0.6
+      );
+  }
+
+  .dashboard-layout .mobile-drawer {
+    position: relative;
+
+    width:
+      min(
+        315px,
+        calc(
+          100vw - 32px
+        )
+      );
+
+    height: 100dvh;
+
+    background: #ffffff;
+  }
+
+  .dashboard-layout
+  .mobile-drawer
+  .sidebar {
+    position: static;
+
+    width: 100%;
+    height: 100%;
+
+    overflow-y: auto;
+  }
+
+  .dashboard-layout .dashboard-hero {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-layout .quick-exit-area {
+    flex: 1 1 210px;
+
+    max-width: 300px;
+  }
+
+  .iv-auth-page
+  .iv-auth-main:has(.iv-forgot-card) {
+    align-items: center;
+
+    padding-top: 38px;
+  }
+
+  .iv-auth-page .iv-forgot-card {
+    max-width: 620px !important;
+  }
+}
+
+
+/* =========================================================
+   MOBILE / NARROW TABLET
+========================================================= */
+
+@media (
+  max-width: 700px
+) {
+  .dashboard-layout .dashboard-content {
+    padding:
+      20px
+      15px
+      36px;
+  }
+
   .dashboard-layout .dashboard-grid,
-  .dashboard-layout .page-shell .list-grid,
+  .dashboard-layout
+  .page-shell
+  .list-grid,
   .dashboard-layout .dashboard-cards,
-  .dashboard-layout .iv-admin .iv-admin-tools,
-  .dashboard-layout .iv-admin .iv-admin-application-grid,
-  .dashboard-layout .iv-admin .iv-admin-account-grid,
-  .dashboard-layout .iv-admin .iv-admin-session-grid,
-  .dashboard-layout .iv-admin .iv-admin-report-grid { grid-template-columns: minmax(0, 1fr); }
-  .dashboard-layout .dashboard-hero { flex-direction: column; align-items: stretch; padding: 22px 19px; gap: 15px; }
-  .dashboard-layout .quick-exit-area { width: 100%; max-width: none; flex: 0 1 auto; }
-  .dashboard-layout .page-header { flex-direction: column; align-items: stretch; gap: 12px; }
-  .dashboard-layout .page-header h1 { font-size: clamp(27px, 7.8vw, 37px); }
-  .dashboard-layout .page-shell :is(.feature-card, .empty-card) { padding: 19px; }
-  .dashboard-layout .page-shell :is(.button-row, .expert-actions) { display: flex; flex-wrap: wrap; gap: 10px; }
-  .dashboard-layout .page-shell .button-row > :is(button,a) { flex: 1 1 135px; min-width: 0; }
-  .dashboard-layout .page-shell .form-input { width: 100%; min-width: 0; }
-  .dashboard-layout .iv-ai-page .iv-ai-messages { min-height: 220px; height: min(52dvh, 520px); }
-  .dashboard-layout .iv-ai-page .iv-ai-compose { padding: 14px 12px; }
-  .dashboard-layout .iv-ai-page .iv-ai-compose-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
-  .dashboard-layout .iv-ai-page .iv-ai-compose-actions > button { flex: 1 1 120px; }
-  .dashboard-layout .mood-page .mood-heading-with-tabs { flex-wrap: wrap; gap: 14px; }
-  .dashboard-layout .mood-page .mood-period-tabs { max-width: 100%; }
-  .dashboard-layout .mood-page .mood-chart-inner { min-width: 430px; }
-  .dashboard-layout .ivp-page .ivp-identity { align-items: flex-start; }
+  .dashboard-layout
+  .iv-admin
+  .iv-admin-tools,
+  .dashboard-layout
+  .iv-admin
+  .iv-admin-application-grid,
+  .dashboard-layout
+  .iv-admin
+  .iv-admin-account-grid,
+  .dashboard-layout
+  .iv-admin
+  .iv-admin-session-grid,
+  .dashboard-layout
+  .iv-admin
+  .iv-admin-report-grid {
+    grid-template-columns:
+      minmax(0, 1fr);
+  }
+
+  .dashboard-layout .dashboard-hero {
+    flex-direction: column;
+    align-items: stretch;
+
+    gap: 15px;
+
+    padding:
+      22px
+      19px;
+  }
+
+  .dashboard-layout .quick-exit-area {
+    flex: 0 1 auto;
+
+    width: 100%;
+    max-width: none;
+  }
+
+  .dashboard-layout .page-header {
+    flex-direction: column;
+    align-items: stretch;
+
+    gap: 12px;
+  }
+
+  .dashboard-layout .page-header h1 {
+    font-size:
+      clamp(
+        27px,
+        7.8vw,
+        37px
+      );
+  }
+
+  .dashboard-layout
+  .page-shell
+  :is(
+    .feature-card,
+    .empty-card
+  ) {
+    padding: 19px;
+  }
+
+  .dashboard-layout
+  .page-shell
+  :is(
+    .button-row,
+    .expert-actions
+  ) {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+  }
+
+  .dashboard-layout
+  .page-shell
+  .button-row
+  > :is(
+    button,
+    a
+  ) {
+    flex: 1 1 135px;
+
+    min-width: 0;
+  }
+
+  .dashboard-layout
+  .page-shell
+  .form-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dashboard-layout
+  .iv-ai-page
+  .iv-ai-messages {
+    min-height: 220px;
+
+    height:
+      min(
+        52dvh,
+        520px
+      );
+  }
+
+  .dashboard-layout
+  .iv-ai-page
+  .iv-ai-compose {
+    padding:
+      14px
+      12px;
+  }
+
+  .dashboard-layout
+  .iv-ai-page
+  .iv-ai-compose-actions {
+    display: flex;
+    flex-wrap: wrap;
+
+    width: 100%;
+
+    gap: 8px;
+  }
+
+  .dashboard-layout
+  .iv-ai-page
+  .iv-ai-compose-actions
+  > button {
+    flex: 1 1 120px;
+  }
+
+  .dashboard-layout
+  .mood-page
+  .mood-heading-with-tabs {
+    flex-wrap: wrap;
+
+    gap: 14px;
+  }
+
+  .dashboard-layout
+  .mood-page
+  .mood-period-tabs {
+    max-width: 100%;
+  }
+
+  .dashboard-layout
+  .mood-page
+  .mood-chart-inner {
+    min-width: 430px;
+  }
+
+  .dashboard-layout
+  .ivp-page
+  .ivp-identity {
+    align-items: flex-start;
+  }
+
+  /* PROFILE RECOVERY FORM */
+
+  .ivp-page
+  .ivp-controls:has(#ivp-recovery-question) {
+    grid-template-columns:
+      minmax(0, 1fr);
+
+    grid-template-areas:
+      "intro"
+      "question-label"
+      "question"
+      "answer-label"
+      "answer"
+      "password-label"
+      "password"
+      "note"
+      "action";
+
+    padding: 17px;
+
+    row-gap: 8px;
+  }
+
+  .ivp-page
+  .ivp-controls:has(#ivp-recovery-question)
+  .ivp-secondary-button {
+    justify-self: stretch;
+
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* FORGOT PASSWORD */
+
+  .iv-auth-page .iv-forgot-card {
+    padding:
+      30px
+      25px
+      27px;
+  }
+
+  .iv-auth-page .iv-forgot-actions {
+    grid-template-columns:
+      minmax(0, 1fr);
+  }
+
+  .iv-auth-page
+  .iv-forgot-actions
+  .secondary-button {
+    width: 100%;
+  }
 }
-@media (max-width: 420px) {
-  .dashboard-layout .top-navbar { padding-inline: 12px; }
-  .dashboard-layout .navbar-left, .dashboard-layout .navbar-right { gap: 6px; }
-  .dashboard-layout .navbar-brand { font-size: 17px; gap: 5px; }
-  .dashboard-layout .navbar-brand-symbol { width: 31px; height: 31px; font-size: 20px; }
-  .dashboard-layout .navbar-profile-name { display: none; }
-  .dashboard-layout .page-shell .feature-card { padding: 16px; }
-  .dashboard-layout .dashboard-feature-card { padding: 19px; min-height: 0; }
-  .dashboard-layout .iv-ai-message-body { max-width: 88%; }
-  .dashboard-layout .mood-page .mood-chart-inner { min-width: 400px; }
-  .dashboard-layout .iv-admin .iv-admin-metrics { grid-template-columns: minmax(0, 1fr); }
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (
+  max-width: 420px
+) {
+  .dashboard-layout .top-navbar {
+    padding-inline: 12px;
+  }
+
+  .dashboard-layout .navbar-left,
+  .dashboard-layout .navbar-right {
+    gap: 6px;
+  }
+
+  .dashboard-layout .navbar-brand {
+    gap: 5px;
+
+    font-size: 17px;
+  }
+
+  .dashboard-layout .navbar-brand-symbol {
+    width: 31px;
+    height: 31px;
+
+    font-size: 20px;
+  }
+
+  .dashboard-layout .navbar-profile-name {
+    display: none;
+  }
+
+  .dashboard-layout
+  .page-shell
+  .feature-card {
+    padding: 16px;
+  }
+
+  .dashboard-layout
+  .dashboard-feature-card {
+    min-height: 0;
+
+    padding: 19px;
+  }
+
+  .dashboard-layout .iv-ai-message-body {
+    max-width: 88%;
+  }
+
+  .dashboard-layout
+  .mood-page
+  .mood-chart-inner {
+    min-width: 400px;
+  }
+
+  .dashboard-layout
+  .iv-admin
+  .iv-admin-metrics {
+    grid-template-columns:
+      minmax(0, 1fr);
+  }
+
+  .iv-auth-page .iv-forgot-card {
+    padding:
+      25px
+      18px
+      23px;
+
+    border-radius: 17px;
+  }
+
+  .iv-auth-page
+  .iv-forgot-card
+  .auth-header h1 {
+    font-size: 31px;
+  }
+
+  .iv-auth-page
+  .iv-forgot-reset-form
+  .iv-auth-password-rules {
+    grid-template-columns:
+      minmax(0, 1fr);
+  }
 }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .dashboard-layout *, .dashboard-layout *::before, .dashboard-layout *::after,
-  .iv-home *, .iv-home *::before, .iv-home *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .dashboard-layout *,
+  .dashboard-layout *::before,
+  .dashboard-layout *::after,
+  .iv-home *,
+  .iv-home *::before,
+  .iv-home *::after {
+    animation-duration:
+      0.01ms !important;
+
+    transition-duration:
+      0.01ms !important;
+
+    scroll-behavior:
+      auto !important;
+  }
 }
