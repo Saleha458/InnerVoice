@@ -26,84 +26,26 @@ const VALID_AGES = [
 ];
 
 const AGE_LABELS = {
-  "0-3":
-    "0–3",
-
-  "4-6":
-    "4–6",
-
-  "7-10":
-    "7–10",
-
-  "11-14":
-    "11–14",
-
-  "15-18":
-    "15–18",
+  "0-3": "0–3",
+  "4-6": "4–6",
+  "7-10": "7–10",
+  "11-14": "11–14",
+  "15-18": "15–18",
 };
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-function formatDate(
-  value
-) {
+function safeArray(value) {
   if (
-    !value
+    Array.isArray(value)
   ) {
-    return "Not available";
-  }
-
-  const date =
-    new Date(
-      value
-    );
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return String(
-      value
-    );
-  }
-
-  return date
-    .toLocaleDateString(
-      undefined,
-
-      {
-        day:
-          "numeric",
-
-        month:
-          "short",
-
-        year:
-          "numeric",
-      }
-    );
-}
-
-function safeArray(
-  value
-) {
-  if (
-    Array.isArray(
-      value
-    )
-  ) {
-    return value
-      .filter(
-        Boolean
-      );
+    return value.filter(Boolean);
   }
 
   if (
-    typeof value ===
-      "string" &&
+    typeof value === "string" &&
     value.trim()
   ) {
     return [
@@ -114,28 +56,129 @@ function safeArray(
   return [];
 }
 
+function formatDate(value) {
+  if (!value) {
+    return "Not available";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString(
+    undefined,
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }
+  );
+}
+
+/* =========================================================
+   WARNING-EVIDENCE FILTER
+
+   Guidelines page:
+   → all official sources relevant to the selected age.
+
+   Warning Signs page:
+   → only sources that are meaningfully related to
+     mental health, warning signs, safety, abuse,
+     exploitation or clinical response.
+
+   This intentionally removes generic positive-parenting
+   sources from Warning Signs while preserving them on
+   general age guidance.
+========================================================= */
+
+function isWarningEvidenceSource(
+  source
+) {
+  if (!source) {
+    return false;
+  }
+
+  /*
+   * These are general parenting resources.
+   * Useful for Guidelines, but not evidence cards
+   * specifically attached to warning signs.
+   */
+  const genericParentingIds =
+    new Set([
+      "cdc-positive-parenting",
+      "cdc-parenting-teens",
+    ]);
+
+  if (
+    genericParentingIds.has(
+      source.id
+    )
+  ) {
+    return false;
+  }
+
+  const searchable =
+    [
+      source.title,
+      source.type,
+      source.note,
+      ...safeArray(
+        source.topics
+      ),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+  const evidenceTerms = [
+    "mental health",
+    "warning",
+    "clinical",
+    "maltreatment",
+    "abuse",
+    "exploitation",
+    "safety",
+    "trauma",
+    "suicide",
+    "self-harm",
+    "professional evaluation",
+    "help-seeking",
+  ];
+
+  return evidenceTerms.some(
+    term =>
+      searchable.includes(
+        term
+      )
+  );
+}
+
 /* =========================================================
    STYLES
 ========================================================= */
 
 const styles = {
   tabs: {
-    display:
-      "grid",
+    display: "grid",
 
     gridTemplateColumns:
       "repeat(auto-fit, minmax(120px, 1fr))",
 
-    gap:
-      "10px",
+    gap: "10px",
 
     margin:
       "22px 0 26px",
   },
 
   tab: {
-    padding:
-      "14px",
+    padding: "14px",
 
     border:
       "1px solid #e4d8cf",
@@ -149,14 +192,11 @@ const styles = {
     color:
       "#5b514b",
 
-    fontWeight:
-      700,
+    fontWeight: 700,
 
-    fontSize:
-      "14px",
+    fontSize: "14px",
 
-    cursor:
-      "pointer",
+    cursor: "pointer",
   },
 
   activeTab: {
@@ -170,69 +210,79 @@ const styles = {
       "1px solid #bf7653",
   },
 
-  evidenceBar: {
-    display:
-      "grid",
+  reviewRow: {
+    display: "flex",
 
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(190px, 1fr))",
+    alignItems: "center",
 
-    gap:
-      "10px",
+    justifyContent:
+      "space-between",
+
+    flexWrap: "wrap",
+
+    gap: "10px",
 
     marginBottom:
       "20px",
 
     padding:
-      "14px 16px",
+      "13px 16px",
 
     border:
       "1px solid #ead9cd",
 
     borderRadius:
-      "15px",
+      "14px",
 
     background:
       "#fffaf6",
   },
 
-  evidenceItem: {
-    minWidth:
-      0,
-  },
-
-  evidenceLabel: {
+  reviewBadge: {
     display:
-      "block",
+      "inline-flex",
 
-    marginBottom:
-      "4px",
+    alignItems:
+      "center",
 
-    color:
-      "#a15f42",
-
-    fontSize:
-      "9px",
-
-    fontWeight:
-      850,
-
-    letterSpacing:
-      "0.1em",
-  },
-
-  evidenceValue: {
-    margin:
-      0,
+    gap: "7px",
 
     color:
-      "#564c46",
-
-    lineHeight:
-      1.5,
+      "#6f5143",
 
     fontSize:
       "12px",
+
+    fontWeight:
+      750,
+  },
+
+  reviewDot: {
+    width: "7px",
+
+    height: "7px",
+
+    borderRadius:
+      "50%",
+
+    background:
+      "#bb7252",
+
+    flex:
+      "0 0 auto",
+  },
+
+  reviewText: {
+    margin: 0,
+
+    color:
+      "#786d66",
+
+    fontSize:
+      "12px",
+
+    lineHeight:
+      1.5,
   },
 
   ageHero: {
@@ -278,8 +328,7 @@ const styles = {
   },
 
   list: {
-    margin:
-      0,
+    margin: 0,
 
     paddingLeft:
       "20px",
@@ -298,8 +347,7 @@ const styles = {
   },
 
   paragraph: {
-    margin:
-      0,
+    margin: 0,
 
     color:
       "#555d70",
@@ -374,27 +422,71 @@ const styles = {
   },
 
   sourceCard: {
+    display:
+      "flex",
+
+    flexDirection:
+      "column",
+
+    minHeight:
+      "190px",
+
     padding:
-      "15px",
+      "16px",
 
     border:
       "1px solid #ede3dc",
 
     borderRadius:
-      "13px",
+      "14px",
 
     background:
       "#fffaf6",
   },
+
+  sourceType: {
+    marginTop:
+      "8px",
+
+    color:
+      "#8c7468",
+
+    fontSize:
+      "11px",
+
+    lineHeight:
+      1.5,
+  },
+
+  sourceNote: {
+    margin:
+      "7px 0 0",
+
+    color:
+      "#6d6570",
+
+    fontSize:
+      "12px",
+
+    lineHeight:
+      1.55,
+  },
+
+  sourceLink: {
+    marginTop:
+      "auto",
+
+    paddingTop:
+      "12px",
+  },
 };
 
 /* =========================================================
-   COMPONENT
+   MAIN COMPONENT
 ========================================================= */
 
 export default function Guidelines({
-  section =
-    "guidelines",
+  section = "guidelines",
 }) {
   const [
     searchParams,
@@ -418,41 +510,31 @@ export default function Guidelines({
     guidelines,
     setGuidelines,
   ] =
-    useState(
-      []
-    );
+    useState([]);
 
   const [
     sources,
     setSources,
   ] =
-    useState(
-      []
-    );
+    useState([]);
 
   const [
     meta,
     setMeta,
   ] =
-    useState(
-      null
-    );
+    useState(null);
 
   const [
     loading,
     setLoading,
   ] =
-    useState(
-      true
-    );
+    useState(true);
 
   const [
     error,
     setError,
   ] =
-    useState(
-      ""
-    );
+    useState("");
 
   /* =======================================================
      LOAD DYNAMIC FIRESTORE CONTENT
@@ -470,16 +552,12 @@ export default function Guidelines({
               true
             );
 
-            setError(
-              ""
-            );
+            setError("");
 
             const response =
               await getGuidelines();
 
-            if (
-              !active
-            ) {
+            if (!active) {
               return;
             }
 
@@ -533,18 +611,13 @@ export default function Guidelines({
                 ?.meta ||
                 null
             );
-          } catch (
-            err
-          ) {
+          } catch (err) {
             console.error(
               "Parent Hub error:",
-
               err
             );
 
-            if (
-              active
-            ) {
+            if (active) {
               setError(
                 err
                   ?.response
@@ -554,9 +627,7 @@ export default function Guidelines({
               );
             }
           } finally {
-            if (
-              active
-            ) {
+            if (active) {
               setLoading(
                 false
               );
@@ -576,18 +647,17 @@ export default function Guidelines({
   );
 
   /* =======================================================
-     SELECTED GROUP
+     SELECTED AGE GROUP
   ======================================================= */
 
   const group =
     useMemo(
       () =>
-        guidelines
-          .find(
-            item =>
-              item.id ===
-              selected
-          ) ||
+        guidelines.find(
+          item =>
+            item.id ===
+            selected
+        ) ||
         guidelines[0] ||
         null,
 
@@ -598,15 +668,13 @@ export default function Guidelines({
     );
 
   /* =======================================================
-     SOURCES FOR CURRENT AGE
+     ALL OFFICIAL SOURCES FOR CURRENT AGE GROUP
   ======================================================= */
 
   const groupSources =
     useMemo(
       () => {
-        if (
-          !group
-        ) {
+        if (!group) {
           return [];
         }
 
@@ -618,18 +686,35 @@ export default function Guidelines({
             )
           );
 
-        return sources
-          .filter(
-            source =>
-              wanted.has(
-                source.id
-              )
-          );
+        return sources.filter(
+          source =>
+            wanted.has(
+              source.id
+            )
+        );
       },
 
       [
         group,
         sources,
+      ]
+    );
+
+  /* =======================================================
+     WARNING-SPECIFIC EVIDENCE
+
+     This is deliberately narrower than groupSources.
+  ======================================================= */
+
+  const warningSources =
+    useMemo(
+      () =>
+        groupSources.filter(
+          isWarningEvidenceSource
+        ),
+
+      [
+        groupSources,
       ]
     );
 
@@ -640,10 +725,9 @@ export default function Guidelines({
   const changeAge =
     age => {
       if (
-        !VALID_AGES
-          .includes(
-            age
-          )
+        !VALID_AGES.includes(
+          age
+        )
       ) {
         return;
       }
@@ -657,9 +741,7 @@ export default function Guidelines({
      LOADING
   ======================================================= */
 
-  if (
-    loading
-  ) {
+  if (loading) {
     return (
       <div className="page-shell">
         <div className="empty-card">
@@ -673,21 +755,20 @@ export default function Guidelines({
      ERROR
   ======================================================= */
 
-  if (
-    error
-  ) {
+  if (error) {
     return (
       <div className="page-shell">
-        <div className="error-box">
+        <div
+          className="error-box"
+          role="alert"
+        >
           {error}
         </div>
       </div>
     );
   }
 
-  if (
-    !group
-  ) {
+  if (!group) {
     return (
       <div className="page-shell">
         <div className="error-box">
@@ -696,6 +777,10 @@ export default function Guidelines({
       </div>
     );
   }
+
+  const reviewedAt =
+    group.reviewedAt ||
+    meta?.reviewedAt;
 
   /* =======================================================
      WARNING SIGNS PAGE
@@ -707,7 +792,7 @@ export default function Guidelines({
   ) {
     return (
       <div className="page-shell">
-        {/* PAGE HEADER */}
+        {/* HEADER */}
 
         <div className="page-header">
           <div>
@@ -720,7 +805,7 @@ export default function Guidelines({
             </h1>
 
             <p>
-              Source-backed educational guidance on changes
+              Age-specific educational guidance on changes
               that may deserve attention. Look at persistence,
               severity, daily functioning and the wider context.
             </p>
@@ -734,16 +819,16 @@ export default function Guidelines({
           </Link>
         </div>
 
-        {/* EVIDENCE BAR */}
+        {/* CLEAN REVIEW INFORMATION */}
 
-        <EvidenceBar
-          meta={
-            meta
+        <ReviewRow
+          reviewedAt={
+            reviewedAt
           }
           sourceCount={
-            groupSources
-              .length
+            warningSources.length
           }
+          label="warning-sign evidence references"
         />
 
         {/* AGE TABS */}
@@ -757,7 +842,7 @@ export default function Guidelines({
           }
         />
 
-        {/* AGE HERO */}
+        {/* AGE INTRO */}
 
         <section style={styles.ageHero}>
           <span className="eyebrow">
@@ -773,10 +858,7 @@ export default function Guidelines({
                 "29px",
             }}
           >
-            {
-              group
-                .title
-            }
+            {group.title}
           </h2>
 
           <h3
@@ -788,17 +870,11 @@ export default function Guidelines({
                 "#5b6274",
             }}
           >
-            {
-              group
-                .shortTitle
-            }
+            {group.shortTitle}
           </h3>
 
           <p style={styles.paragraph}>
-            {
-              group
-                .subtitle
-            }
+            {group.subtitle}
           </p>
         </section>
 
@@ -825,15 +901,14 @@ export default function Guidelines({
           </p>
         </div>
 
-        {/* WARNING CARDS */}
+        {/* WARNING CONTENT */}
 
         <div style={styles.infoGrid}>
           <ListCard
             icon="⚠"
             title={`Warning signs for ${group.title}`}
             items={
-              group
-                .warnings
+              group.warnings
             }
           />
 
@@ -841,8 +916,7 @@ export default function Guidelines({
             icon="♡"
             title="How parents should respond"
             items={
-              group
-                .respond
+              group.respond
             }
           />
 
@@ -850,8 +924,7 @@ export default function Guidelines({
             icon="✕"
             title="What NOT to do"
             items={
-              group
-                .dont
+              group.dont
             }
           />
 
@@ -859,8 +932,7 @@ export default function Guidelines({
             icon="💬"
             title="Helpful conversation starters"
             items={
-              group
-                .conversations
+              group.conversations
             }
           />
         </div>
@@ -882,18 +954,14 @@ export default function Guidelines({
           </h3>
 
           <p style={styles.paragraph}>
-            {
-              group
-                .help
-            }
+            {group.help}
           </p>
         </div>
 
         {/* URGENT SAFETY */}
 
         {safeArray(
-          group
-            .urgent
+          group.urgent
         ).length >
           0 && (
           <div style={styles.urgent}>
@@ -907,14 +975,12 @@ export default function Guidelines({
                   "8px 0 10px",
               }}
             >
-              Do not wait for routine support when there is
-              immediate risk
+              Do not wait for routine support when there is immediate risk
             </h3>
 
             <ul style={styles.list}>
               {safeArray(
-                group
-                  .urgent
+                group.urgent
               ).map(
                 item => (
                   <li
@@ -922,9 +988,7 @@ export default function Guidelines({
                       item
                     }
                   >
-                    {
-                      item
-                    }
+                    {item}
                   </li>
                 )
               )}
@@ -932,25 +996,25 @@ export default function Guidelines({
           </div>
         )}
 
-        {/* SOURCES */}
+        {/* WARNING-SPECIFIC EVIDENCE */}
 
         <SourceSection
+          title="Evidence related to these warning signs"
+          description="These references focus on mental health, safety, abuse, exploitation or clinical response. General positive-parenting resources are kept on the age-guidance page instead of being presented as warning-sign evidence."
           sources={
-            groupSources
+            warningSources
           }
           reviewedAt={
-            group
-              .reviewedAt ||
-            meta
-              ?.reviewedAt
+            reviewedAt
           }
+          linkLabel="Open evidence source →"
         />
       </div>
     );
   }
 
   /* =======================================================
-     GUIDELINES PAGE
+     GENERAL GUIDANCE PAGE
   ======================================================= */
 
   return (
@@ -991,16 +1055,16 @@ export default function Guidelines({
         </div>
       </div>
 
-      {/* EVIDENCE */}
+      {/* CLEAN REVIEW INFORMATION */}
 
-      <EvidenceBar
-        meta={
-          meta
+      <ReviewRow
+        reviewedAt={
+          reviewedAt
         }
         sourceCount={
-          groupSources
-            .length
+          groupSources.length
         }
+        label="official references for this age"
       />
 
       {/* AGE TABS */}
@@ -1049,10 +1113,7 @@ export default function Guidelines({
                   "29px",
               }}
             >
-              {
-                group
-                  .title
-              }
+              {group.title}
             </h2>
 
             <h3
@@ -1064,10 +1125,7 @@ export default function Guidelines({
                   "#5b6274",
               }}
             >
-              {
-                group
-                  .shortTitle
-              }
+              {group.shortTitle}
             </h3>
           </div>
 
@@ -1080,22 +1138,18 @@ export default function Guidelines({
         </div>
 
         <p style={styles.paragraph}>
-          {
-            group
-              .overview
-          }
+          {group.overview}
         </p>
       </section>
 
-      {/* CONTENT CARDS */}
+      {/* GUIDANCE CONTENT */}
 
       <div style={styles.infoGrid}>
         <ListCard
           icon="♡"
           title="What children need to know"
           items={
-            group
-              .children
+            group.children
           }
         />
 
@@ -1103,8 +1157,7 @@ export default function Guidelines({
           icon="✓"
           title="What parents should teach"
           items={
-            group
-              .teach
+            group.teach
           }
         />
 
@@ -1112,8 +1165,7 @@ export default function Guidelines({
           icon="✕"
           title="What NOT to do"
           items={
-            group
-              .dont
+            group.dont
           }
         />
 
@@ -1121,8 +1173,7 @@ export default function Guidelines({
           icon="💬"
           title="Conversation starters"
           items={
-            group
-              .conversations
+            group.conversations
           }
         />
 
@@ -1130,8 +1181,7 @@ export default function Guidelines({
           icon="◯"
           title="Healthy boundaries"
           items={
-            group
-              .boundaries
+            group.boundaries
           }
         />
 
@@ -1139,13 +1189,12 @@ export default function Guidelines({
           icon="🛡"
           title="Digital safety"
           items={
-            group
-              .digital
+            group.digital
           }
         />
       </div>
 
-      {/* HELP */}
+      {/* PROFESSIONAL SUPPORT */}
 
       <div style={styles.help}>
         <span className="eyebrow">
@@ -1162,18 +1211,14 @@ export default function Guidelines({
         </h3>
 
         <p style={styles.paragraph}>
-          {
-            group
-              .help
-          }
+          {group.help}
         </p>
       </div>
 
-      {/* URGENT */}
+      {/* URGENT SAFETY */}
 
       {safeArray(
-        group
-          .urgent
+        group.urgent
       ).length >
         0 && (
         <div style={styles.urgent}>
@@ -1192,8 +1237,7 @@ export default function Guidelines({
 
           <ul style={styles.list}>
             {safeArray(
-              group
-                .urgent
+              group.urgent
             ).map(
               item => (
                 <li
@@ -1201,9 +1245,7 @@ export default function Guidelines({
                     item
                   }
                 >
-                  {
-                    item
-                  }
+                  {item}
                 </li>
               )
             )}
@@ -1211,18 +1253,18 @@ export default function Guidelines({
         </div>
       )}
 
-      {/* SOURCES */}
+      {/* AGE-SPECIFIC SOURCES */}
 
       <SourceSection
+        title="Sources for this age guidance"
+        description="These official references support the guidance shown for the selected developmental stage. Some trusted sources cover more than one age group, so a source may appropriately appear in multiple age ranges."
         sources={
           groupSources
         }
         reviewedAt={
-          group
-            .reviewedAt ||
-          meta
-            ?.reviewedAt
+          reviewedAt
         }
+        linkLabel="Open source →"
       />
 
       {/* DISCLAIMER */}
@@ -1239,8 +1281,7 @@ export default function Guidelines({
         </strong>
 
         <p>
-          {meta
-            ?.disclaimer ||
+          {meta?.disclaimer ||
             "InnerVoice Parent Education Hub provides general educational information and does not diagnose abuse, trauma or mental-health conditions."}
         </p>
       </div>
@@ -1249,68 +1290,49 @@ export default function Guidelines({
 }
 
 /* =========================================================
-   EVIDENCE BAR
+   REVIEW ROW
 ========================================================= */
 
-function EvidenceBar({
-  meta,
+function ReviewRow({
+  reviewedAt,
   sourceCount,
+  label,
 }) {
   return (
     <section
       style={
-        styles
-          .evidenceBar
+        styles.reviewRow
       }
-      aria-label="Guidance evidence information"
+      aria-label="Guidance review information"
     >
-      <div style={styles.evidenceItem}>
-        <span style={styles.evidenceLabel}>
-          DATA SOURCE
-        </span>
+      <div
+        style={
+          styles.reviewBadge
+        }
+      >
+        <span
+          style={
+            styles.reviewDot
+          }
+          aria-hidden="true"
+        />
 
-        <p style={styles.evidenceValue}>
-          Dynamic Firestore content
-        </p>
-      </div>
-
-      <div style={styles.evidenceItem}>
-        <span style={styles.evidenceLabel}>
-          LAST REVIEWED
-        </span>
-
-        <p style={styles.evidenceValue}>
+        <span>
+          Last reviewed{" "}
           {formatDate(
-            meta
-              ?.reviewedAt
+            reviewedAt
           )}
-        </p>
-      </div>
-
-      <div style={styles.evidenceItem}>
-        <span style={styles.evidenceLabel}>
-          SOURCES FOR THIS AGE
         </span>
-
-        <p style={styles.evidenceValue}>
-          {
-            sourceCount
-          }{" "}
-          official references
-        </p>
       </div>
 
-      <div style={styles.evidenceItem}>
-        <span style={styles.evidenceLabel}>
-          CONTENT VERSION
-        </span>
-
-        <p style={styles.evidenceValue}>
-          {meta
-            ?.contentVersion ||
-            "Current"}
-        </p>
-      </div>
+      <p
+        style={
+          styles.reviewText
+        }
+      >
+        {sourceCount}{" "}
+        {label}
+      </p>
     </section>
   );
 }
@@ -1333,16 +1355,13 @@ function AgeTabs({
 
           return (
             <button
-              key={
-                age
-              }
+              key={age}
               type="button"
               aria-pressed={
                 active
               }
               style={{
-                ...styles
-                  .tab,
+                ...styles.tab,
 
                 ...(active
                   ? styles
@@ -1350,16 +1369,10 @@ function AgeTabs({
                   : {}),
               }}
               onClick={() =>
-                onSelect(
-                  age
-                )
+                onSelect(age)
               }
             >
-              {
-                AGE_LABELS[
-                  age
-                ]
-              }
+              {AGE_LABELS[age]}
             </button>
           );
         }
@@ -1378,9 +1391,7 @@ function ListCard({
   items,
 }) {
   const safeItems =
-    safeArray(
-      items
-    );
+    safeArray(items);
 
   return (
     <article style={styles.infoCard}>
@@ -1411,13 +1422,9 @@ function ListCard({
           {safeItems.map(
             item => (
               <li
-                key={
-                  item
-                }
+                key={item}
               >
-                {
-                  item
-                }
+                {item}
               </li>
             )
           )}
@@ -1433,12 +1440,15 @@ function ListCard({
 }
 
 /* =========================================================
-   TRUSTED SOURCE SECTION
+   SOURCE SECTION
 ========================================================= */
 
 function SourceSection({
+  title,
+  description,
   sources,
   reviewedAt,
+  linkLabel,
 }) {
   return (
     <section style={styles.sourceSection}>
@@ -1455,116 +1465,132 @@ function SourceSection({
             "22px",
         }}
       >
-        Official sources for this age group
+        {title}
       </h2>
 
       <p style={styles.paragraph}>
-        InnerVoice summarizes educational guidance rather
-        than presenting it as a diagnosis. Parents can open
-        the original source and check the underlying guidance
-        directly. Content reviewed:{" "}
+        {description}
+      </p>
+
+      <p
+        style={{
+          margin:
+            "8px 0 0",
+
+          color:
+            "#87756a",
+
+          fontSize:
+            "11px",
+        }}
+      >
+        Last reviewed{" "}
         {formatDate(
           reviewedAt
         )}
-        .
       </p>
 
-      <div style={styles.sourceGrid}>
-        {sources.map(
-          source => (
-            <article
-              key={
-                source.id
-              }
-              style={
-                styles
-                  .sourceCard
-              }
-            >
-              <span
-                style={{
-                  display:
-                    "block",
-
-                  marginBottom:
-                    "5px",
-
-                  color:
-                    "#a15f42",
-
-                  fontSize:
-                    "10px",
-
-                  fontWeight:
-                    850,
-
-                  letterSpacing:
-                    "0.08em",
-                }}
-              >
-                {
-                  source
-                    .organization
+      {sources.length >
+      0 ? (
+        <div style={styles.sourceGrid}>
+          {sources.map(
+            source => (
+              <article
+                key={
+                  source.id
                 }
-              </span>
-
-              <strong
-                style={{
-                  display:
-                    "block",
-
-                  lineHeight:
-                    1.45,
-                }}
-              >
-                {
-                  source
-                    .title
+                style={
+                  styles.sourceCard
                 }
-              </strong>
-
-              <p
-                style={{
-                  margin:
-                    "7px 0 0",
-
-                  color:
-                    "#6d6570",
-
-                  fontSize:
-                    "12px",
-
-                  lineHeight:
-                    1.55,
-                }}
               >
-                {
-                  source
-                    .note
-                }
-              </p>
+                <span
+                  style={{
+                    display:
+                      "block",
 
-              <a
-                href={
-                  source.url
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="text-link"
-                style={{
-                  display:
-                    "inline-block",
+                    marginBottom:
+                      "5px",
 
-                  marginTop:
-                    "9px",
-                }}
-              >
-                Open official source →
-              </a>
-            </article>
-          )
-        )}
-      </div>
+                    color:
+                      "#a15f42",
+
+                    fontSize:
+                      "10px",
+
+                    fontWeight:
+                      850,
+
+                    letterSpacing:
+                      "0.08em",
+                  }}
+                >
+                  {source.organization}
+                </span>
+
+                <strong
+                  style={{
+                    display:
+                      "block",
+
+                    lineHeight:
+                      1.45,
+                  }}
+                >
+                  {source.title}
+                </strong>
+
+                {source.type && (
+                  <span
+                    style={
+                      styles.sourceType
+                    }
+                  >
+                    {source.type}
+                  </span>
+                )}
+
+                {source.note && (
+                  <p
+                    style={
+                      styles.sourceNote
+                    }
+                  >
+                    {source.note}
+                  </p>
+                )}
+
+                <div
+                  style={
+                    styles.sourceLink
+                  }
+                >
+                  <a
+                    href={
+                      source.url
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-link"
+                  >
+                    {linkLabel}
+                  </a>
+                </div>
+              </article>
+            )
+          )}
+        </div>
+      ) : (
+        <div
+          className="notice-box"
+          style={{
+            marginTop:
+              "14px",
+          }}
+        >
+          Source references for this section are currently
+          unavailable.
+        </div>
+      )}
     </section>
   );
 }

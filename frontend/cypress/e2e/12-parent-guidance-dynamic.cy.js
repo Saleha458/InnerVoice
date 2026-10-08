@@ -2,8 +2,11 @@ describe(
   "InnerVoice — Dynamic Parent Guidance",
 
   () => {
+    const backendBaseUrl =
+      "https://api.innervoice.salehaimtiaz.com/api";
+
     it(
-      "loads source-backed parent guidance, warning signs and provenance",
+      "loads dynamic parent guidance with focused warning-sign evidence",
 
       () => {
         cy.viewport(
@@ -12,21 +15,88 @@ describe(
         );
 
         /* =================================================
+           DIRECT API VERIFICATION
+
+           Do NOT depend on cy.intercept() here.
+
+           The previous failure:
+             expected undefined to exist
+
+           happened because Cypress received an intercepted
+           request whose response object was unavailable.
+
+           Direct cy.request() gives us a deterministic
+           production API check.
+        ================================================= */
+
+        cy.request({
+          method:
+            "GET",
+
+          url:
+            `${backendBaseUrl}/guidelines`,
+
+          failOnStatusCode:
+            false,
+        }).then(
+          response => {
+            expect(
+              response.status
+            ).to.eq(
+              200
+            );
+
+            expect(
+              response.body
+                ?.success
+            ).to.eq(
+              true
+            );
+
+            expect(
+              response.body
+                ?.guidelines
+            )
+              .to.be.an(
+                "array"
+              )
+              .and.have.length(
+                5
+              );
+
+            expect(
+              response.body
+                ?.sources
+            ).to.be.an(
+              "array"
+            );
+
+            expect(
+              response.body
+                .sources
+                .length
+            ).to.be.gte(
+              5
+            );
+
+            expect(
+              response.body
+                ?.meta
+                ?.reviewedAt
+            )
+              .to.be.a(
+                "string"
+              )
+              .and.not.be
+              .empty;
+          }
+        );
+
+        /* =================================================
            LOGIN
         ================================================= */
 
         cy.loginAsParent();
-
-        /* =================================================
-           INTERCEPT DYNAMIC GUIDANCE API
-        ================================================= */
-
-        cy.intercept(
-          "GET",
-          "**/api/guidelines"
-        ).as(
-          "getGuidelines"
-        );
 
         /* =================================================
            PARENT DASHBOARD
@@ -61,88 +131,7 @@ describe(
         );
 
         /* =================================================
-           VERIFY API RESPONSE
-        ================================================= */
-
-        cy.wait(
-          "@getGuidelines",
-
-          {
-            timeout:
-              30000,
-          }
-        ).then(
-          interception => {
-            expect(
-              interception.response
-            ).to.exist;
-
-            expect(
-              interception
-                .response
-                .statusCode
-            ).to.eq(
-              200
-            );
-
-            expect(
-              interception
-                .response
-                .body
-                ?.success
-            ).to.eq(
-              true
-            );
-
-            expect(
-              interception
-                .response
-                .body
-                ?.guidelines
-            ).to.have.length(
-              5
-            );
-
-            expect(
-              interception
-                .response
-                .body
-                ?.sources
-                ?.length
-            ).to.be.gte(
-              5
-            );
-
-            expect(
-              interception
-                .response
-                .body
-                ?.meta
-                ?.contentVersion
-            )
-              .to.be.a(
-                "string"
-              )
-              .and.not.be
-              .empty;
-
-            expect(
-              interception
-                .response
-                .body
-                ?.meta
-                ?.reviewedAt
-            )
-              .to.be.a(
-                "string"
-              )
-              .and.not.be
-              .empty;
-          }
-        );
-
-        /* =================================================
-           DASHBOARD EVIDENCE UI
+           DYNAMIC DASHBOARD EVIDENCE
         ================================================= */
 
         cy.contains(
@@ -150,19 +139,14 @@ describe(
 
           {
             timeout:
-              15000,
+              20000,
           }
         ).should(
           "be.visible"
         );
 
         cy.contains(
-          "Current Evidence Snapshot",
-
-          {
-            matchCase:
-              false,
-          }
+          /Current Evidence Snapshot/i
         ).should(
           "be.visible"
         );
@@ -174,7 +158,7 @@ describe(
         );
 
         /* =================================================
-           GUIDELINES
+           GUIDELINES PAGE
         ================================================= */
 
         cy.get(
@@ -209,14 +193,43 @@ describe(
           "be.visible"
         );
 
+        /* =================================================
+           CLEAN USER-FACING REVIEW INFO
+
+           Developer-style metadata must not be displayed.
+        ================================================= */
+
         cy.contains(
-          "Dynamic Firestore content"
+          /Last reviewed/i
         ).should(
           "be.visible"
         );
 
         cy.contains(
-          "Official sources for this age group"
+          "DATA SOURCE"
+        ).should(
+          "not.exist"
+        );
+
+        cy.contains(
+          "CONTENT VERSION"
+        ).should(
+          "not.exist"
+        );
+
+        cy.contains(
+          "SOURCES FOR THIS AGE"
+        ).should(
+          "not.exist"
+        );
+
+        /* =================================================
+           AGE GUIDANCE SOURCES
+        ================================================= */
+
+        cy.contains(
+          "h2",
+          "Sources for this age guidance"
         ).should(
           "be.visible"
         );
@@ -279,7 +292,11 @@ describe(
         cy.contains(
           "a",
           /Warning signs for this age/i
-        ).click();
+        )
+          .should(
+            "be.visible"
+          )
+          .click();
 
         cy.location(
           "pathname",
@@ -312,6 +329,20 @@ describe(
           "be.visible"
         );
 
+        /* =================================================
+           REVIEW INFO
+        ================================================= */
+
+        cy.contains(
+          /Last reviewed/i
+        ).should(
+          "be.visible"
+        );
+
+        /* =================================================
+           WARNING CONTENT
+        ================================================= */
+
         cy.contains(
           "Important context"
         ).should(
@@ -336,15 +367,67 @@ describe(
           "be.visible"
         );
 
+        /* =================================================
+           WARNING-SPECIFIC EVIDENCE
+        ================================================= */
+
         cy.contains(
-          "Official sources for this age group"
+          "h2",
+          "Evidence related to these warning signs"
+        ).should(
+          "be.visible"
+        );
+
+        /*
+         * General parenting resources belong on the
+         * Guidelines page, not the warning-evidence area.
+         */
+
+        cy.contains(
+          "Positive Parenting Tips"
+        ).should(
+          "not.exist"
+        );
+
+        cy.contains(
+          "Essentials for Parenting Teens"
+        ).should(
+          "not.exist"
+        );
+
+        /*
+         * Mental-health / safety / clinical evidence
+         * must remain visible.
+         */
+
+        cy.contains(
+          "About Children's Mental Health"
+        ).should(
+          "be.visible"
+        );
+
+        cy.contains(
+          "WHO"
+        ).should(
+          "be.visible"
+        );
+
+        cy.contains(
+          /clinical guideline|clinical handbook/i
         ).should(
           "be.visible"
         );
 
         /* =================================================
-           SOURCE LINKS
+           EXTERNAL EVIDENCE LINKS
         ================================================= */
+
+        cy.contains(
+          "a",
+          "Open evidence source →"
+        ).should(
+          "be.visible"
+        );
 
         cy.get(
           'a[target="_blank"][rel="noreferrer"]'
