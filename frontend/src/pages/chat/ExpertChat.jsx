@@ -1,4 +1,5 @@
-﻿import {
+﻿
+import {
   useCallback,
   useEffect,
   useRef,
@@ -13,9 +14,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
-
 import api from "../../services/api";
-
 import StarButton from "../../components/chat/StarButton";
 
 import {
@@ -37,18 +36,11 @@ const errorText = error =>
 
 const asDate = value => {
   if (!value) return null;
-
-  const seconds =
-    value.seconds ?? value._seconds;
-
-  const date =
-    seconds === undefined
-      ? new Date(value)
-      : new Date(Number(seconds) * 1000);
-
-  return Number.isNaN(date.getTime())
-    ? null
-    : date;
+  const seconds = value.seconds ?? value._seconds;
+  const date = seconds === undefined
+    ? new Date(value)
+    : new Date(Number(seconds) * 1000);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
 const endOf = session =>
@@ -65,42 +57,23 @@ const endOf = session =>
 
 const phaseOf = (session, now) => {
   if (!session) return "loading";
-
   const start = asDate(session.startTime);
   const end = endOf(session);
-
   if (!start || !end) return "invalid";
-
   if (
     session.status === "completed" ||
     now >= end.getTime()
-  ) {
-    return "ended";
-  }
-
-  if (session.status !== "scheduled") {
-    return "closed";
-  }
-
-  return now < start.getTime()
-    ? "upcoming"
-    : "active";
+  ) return "ended";
+  if (session.status !== "scheduled") return "closed";
+  return now < start.getTime() ? "upcoming" : "active";
 };
 
 const toDataUrl = blob =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onerror = () =>
-      reject(
-        new Error(
-          "Could not read voice recording."
-        )
-      );
-
-    reader.onload = () =>
-      resolve(reader.result);
-
+      reject(new Error("Could not read voice recording."));
+    reader.onload = () => resolve(reader.result);
     reader.readAsDataURL(blob);
   });
 
@@ -120,73 +93,41 @@ function VoiceMessage({ source }) {
       aria-label="Private voice message"
     />
   ) : (
-    <span>
-      Voice message unavailable.
-    </span>
+    <span>Voice message unavailable.</span>
   );
 }
 
 export default function ExpertChat() {
   const { sessionId: routeId } = useParams();
-
   const [params] = useSearchParams();
-
-  const sessionId =
-    routeId || params.get("sessionId");
+  const sessionId = routeId || params.get("sessionId");
 
   const { user } = useAuth();
-
-  // Personal stars belong only to the User role.
-  const canUseStars =
-    user?.role === "user";
-
   const { socket } = useSocket();
+
+  const canUseStars = user?.role === "user";
 
   const [session, setSession] = useState(null);
   const [now, setNow] = useState(Date.now());
-
-  const [profile, setProfile] =
-    useState(undefined);
-
-  const [unlocked, setUnlocked] =
-    useState(isVaultUnlocked());
-
-  const [passphrase, setPassphrase] =
-    useState("");
-
-  const [confirmation, setConfirmation] =
-    useState("");
-
+  const [profile, setProfile] = useState(undefined);
+  const [unlocked, setUnlocked] = useState(isVaultUnlocked());
+  const [passphrase, setPassphrase] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [peer, setPeer] = useState(null);
-
-  const [rawMessages, setRawMessages] =
-    useState([]);
-
-  const [messages, setMessages] =
-    useState([]);
-
+  const [rawMessages, setRawMessages] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const [recording, setRecording] =
-    useState(false);
-
-  const [joined, setJoined] =
-    useState(false);
-
-  const [typing, setTyping] =
-    useState(false);
-
+  const [recording, setRecording] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const [typing, setTyping] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-
-  const [showRecovery, setShowRecovery] =
-    useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
-
   const bottomRef = useRef(null);
   const peerRef = useRef(null);
   const activeRef = useRef(false);
@@ -208,7 +149,6 @@ export default function ExpertChat() {
       () => setNow(Date.now()),
       1000
     );
-
     return () => clearInterval(interval);
   }, []);
 
@@ -235,26 +175,18 @@ export default function ExpertChat() {
   const initializeKeys = useCallback(async () => {
     if (!sessionId) return;
 
-    let result = await getChatPeer(
-      sessionId
-    );
+    let result = await getChatPeer(sessionId);
 
     if (!result.verified) {
-      // Remember the first peer key.
-      // Independent fingerprint verification
-      // provides stronger identity assurance.
+      // Trust on first use. Verify fingerprints separately.
       trustChatPeer(
         result.peerUid,
         result.fingerprint
       );
-
-      result = await getChatPeer(
-        sessionId
-      );
+      result = await getChatPeer(sessionId);
     }
 
     setPeer(result);
-
     await loadHistory();
   }, [sessionId, loadHistory]);
 
@@ -270,46 +202,33 @@ export default function ExpertChat() {
       .then(value => {
         if (alive) {
           setProfile(value);
-
           if (
             value &&
             recoveryKey &&
-            localStorage.getItem(recoveryKey) !==
-              "dismissed"
+            localStorage.getItem(recoveryKey) !== "dismissed"
           ) {
             setShowRecovery(true);
           }
         }
       })
       .catch(cause => {
-        if (alive) {
-          setError(errorText(cause));
-        }
+        if (alive) setError(errorText(cause));
       });
 
     loadSession().catch(cause => {
-      if (alive) {
-        setError(errorText(cause));
-      }
+      if (alive) setError(errorText(cause));
     });
 
     if (isVaultUnlocked()) {
       initializeKeys().catch(cause => {
-        if (alive) {
-          setError(errorText(cause));
-        }
+        if (alive) setError(errorText(cause));
       });
     }
 
     return () => {
       alive = false;
     };
-  }, [
-    sessionId,
-    loadSession,
-    initializeKeys,
-    recoveryKey
-  ]);
+  }, [sessionId, loadSession, initializeKeys, recoveryKey]);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -318,9 +237,7 @@ export default function ExpertChat() {
 
     Promise.all(
       rawMessages.map(async item => {
-        if (item.legacy) {
-          return item;
-        }
+        if (item.legacy) return item;
 
         try {
           return await decryptChat(item);
@@ -328,21 +245,16 @@ export default function ExpertChat() {
           return {
             ...item,
             failed: true,
-            message:
-              "Encrypted message unavailable."
+            message: "Encrypted message unavailable."
           };
         }
       })
     )
       .then(items => {
-        if (alive) {
-          setMessages(items);
-        }
+        if (alive) setMessages(items);
       })
       .catch(cause => {
-        if (alive) {
-          setError(errorText(cause));
-        }
+        if (alive) setError(errorText(cause));
       });
 
     return () => {
@@ -357,19 +269,13 @@ export default function ExpertChat() {
   }, [messages]);
 
   useEffect(() => {
-    if (!socket || !sessionId || !active) {
-      return;
-    }
+    if (!socket || !sessionId || !active) return;
 
     setJoined(false);
 
     const join = () => {
       setJoined(false);
-
-      socket.emit(
-        "join-session",
-        sessionId
-      );
+      socket.emit("join-session", sessionId);
     };
 
     const onJoined = data => {
@@ -378,16 +284,12 @@ export default function ExpertChat() {
       }
     };
 
-    const onDisconnect = () => {
-      setJoined(false);
-    };
+    const onDisconnect = () => setJoined(false);
 
     const onMessage = data => {
       if (data?.sessionId === sessionId) {
         setRawMessages(previous =>
-          previous.some(
-            item => item.id === data.id
-          )
+          previous.some(item => item.id === data.id)
             ? previous
             : [...previous, data]
         );
@@ -406,56 +308,38 @@ export default function ExpertChat() {
     const onLocked = data => {
       if (data?.sessionId === sessionId) {
         setJoined(false);
-
-        setError(
-          data.message || "Session ended."
-        );
-
+        setError(data.message || "Session ended.");
         void loadSession();
       }
     };
 
     const onError = data => {
-      setError(
-        data?.message ||
-        "Chat connection error."
-      );
+      setError(data?.message || "Chat connection error.");
     };
 
     socket.on("connect", join);
     socket.on("disconnect", onDisconnect);
-
     socket.on("session-joined", onJoined);
-
     socket.on("chat-message", onMessage);
     socket.on("voice-message", onMessage);
-
     socket.on("typing", onTyping);
     socket.on("session-locked", onLocked);
     socket.on("socket-error", onError);
 
-    if (socket.connected) {
-      join();
-    }
+    if (socket.connected) join();
 
     return () => {
       socket.off("connect", join);
       socket.off("disconnect", onDisconnect);
-
       socket.off("session-joined", onJoined);
-
       socket.off("chat-message", onMessage);
       socket.off("voice-message", onMessage);
-
       socket.off("typing", onTyping);
       socket.off("session-locked", onLocked);
       socket.off("socket-error", onError);
 
       if (socket.connected) {
-        socket.emit(
-          "leave-session",
-          sessionId
-        );
+        socket.emit("leave-session", sessionId);
       }
 
       joinedRef.current = false;
@@ -470,7 +354,6 @@ export default function ExpertChat() {
 
   async function openVault(event) {
     event.preventDefault();
-
     if (busy) return;
 
     setBusy(true);
@@ -488,9 +371,7 @@ export default function ExpertChat() {
         }
 
         await createVault(passphrase);
-
         setProfile(await getVaultProfile());
-
         setShowRecovery(true);
       } else {
         await unlockVault(passphrase);
@@ -498,9 +379,7 @@ export default function ExpertChat() {
 
       setPassphrase("");
       setConfirmation("");
-
       setUnlocked(true);
-
       await initializeKeys();
     } catch (cause) {
       setError(errorText(cause));
@@ -509,23 +388,15 @@ export default function ExpertChat() {
     }
   }
 
-  const ready =
-    unlocked &&
-    Boolean(peer?.verified);
+  const ready = unlocked && Boolean(peer?.verified);
 
   const peerName = peer
     ? `${
-        peer.peerRole === "expert"
-          ? "Expert"
-          : "User"
+        peer.peerRole === "expert" ? "Expert" : "User"
       } ${peer.peerLabel}`
     : "participant";
 
-  async function send(
-    type,
-    body,
-    mimeType = ""
-  ) {
+  async function send(type, body, mimeType = "") {
     const currentPeer = peerRef.current;
 
     if (
@@ -554,16 +425,11 @@ export default function ExpertChat() {
         type === "voice"
           ? "voice-message"
           : "chat-message",
-
         {
           sessionId,
           e2ee,
-
-          ...(type === "voice"
-            ? { mimeType }
-            : {})
+          ...(type === "voice" ? { mimeType } : {})
         },
-
         (ackError, receipt) => {
           if (ackError) {
             reject(
@@ -571,18 +437,15 @@ export default function ExpertChat() {
                 "Save confirmation timed out. Refresh before retrying."
               )
             );
-
             return;
           }
 
           if (!receipt?.success) {
             reject(
               new Error(
-                receipt?.message ||
-                "Message was not saved."
+                receipt?.message || "Message was not saved."
               )
             );
-
             return;
           }
 
@@ -597,20 +460,13 @@ export default function ExpertChat() {
 
     const value = text.trim();
 
-    if (
-      !value ||
-      busy ||
-      value.length > 4000
-    ) {
-      return;
-    }
+    if (!value || busy || value.length > 4000) return;
 
     setBusy(true);
     setError("");
 
     try {
       await send("text", value);
-
       setText("");
 
       socket.emit("typing", {
@@ -625,14 +481,7 @@ export default function ExpertChat() {
   }
 
   async function startVoice() {
-    if (
-      !ready ||
-      !active ||
-      !joined ||
-      busy
-    ) {
-      return;
-    }
+    if (!ready || !active || !joined || busy) return;
 
     setError("");
 
@@ -662,13 +511,10 @@ export default function ExpertChat() {
         MediaRecorder.isTypeSupported(type)
       );
 
-      const recorder = new MediaRecorder(
-        stream,
-        {
-          ...(mimeType ? { mimeType } : {}),
-          audioBitsPerSecond: 24000
-        }
-      );
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: 24000
+      });
 
       recorderRef.current = recorder;
 
@@ -683,33 +529,21 @@ export default function ExpertChat() {
       recorder.onstop = async () => {
         clearTimeout(timerRef.current);
 
-        stream
-          .getTracks()
-          .forEach(track => track.stop());
-
+        stream.getTracks().forEach(track => track.stop());
         streamRef.current = null;
         recorderRef.current = null;
-
         setRecording(false);
 
-        if (!activeRef.current) {
-          return;
-        }
+        if (!activeRef.current) return;
 
         const blob = new Blob(chunks, {
-          type:
-            recorder.mimeType ||
-            "audio/webm"
+          type: recorder.mimeType || "audio/webm"
         });
 
-        if (
-          !blob.size ||
-          blob.size > 180000
-        ) {
+        if (!blob.size || blob.size > 180000) {
           setError(
             "Voice clip is empty or too large. Please record a shorter clip."
           );
-
           return;
         }
 
@@ -721,10 +555,7 @@ export default function ExpertChat() {
             await toDataUrl(blob),
             blob.type
           );
-
-          setNotice(
-            "Encrypted voice message saved."
-          );
+          setNotice("Encrypted voice message saved.");
         } catch (cause) {
           setError(errorText(cause));
         } finally {
@@ -733,7 +564,6 @@ export default function ExpertChat() {
       };
 
       recorder.start(250);
-
       setRecording(true);
 
       timerRef.current = setTimeout(() => {
@@ -747,15 +577,12 @@ export default function ExpertChat() {
         .forEach(track => track.stop());
 
       streamRef.current = null;
-
       setError(errorText(cause));
     }
   }
 
   function stopVoice() {
-    if (
-      recorderRef.current?.state === "recording"
-    ) {
+    if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
     }
   }
@@ -764,9 +591,7 @@ export default function ExpertChat() {
     () => () => {
       clearTimeout(timerRef.current);
 
-      if (
-        recorderRef.current?.state === "recording"
-      ) {
+      if (recorderRef.current?.state === "recording") {
         recorderRef.current.onstop = null;
         recorderRef.current.stop();
       }
@@ -792,9 +617,7 @@ export default function ExpertChat() {
     <div className="page-shell">
       <header className="page-header">
         <div>
-          <span className="eyebrow">
-            PRIVATE SESSION
-          </span>
+          <span className="eyebrow">PRIVATE SESSION</span>
 
           <h1>
             {peer
@@ -819,7 +642,7 @@ export default function ExpertChat() {
               className="secondary-button"
               to="/starred"
             >
-              â˜… My stars
+              ★ My stars
             </Link>
           )}
 
@@ -829,24 +652,17 @@ export default function ExpertChat() {
           >
             Recovery Kit
           </Link>
-
         </div>
       </header>
 
       {error && (
-        <div
-          className="error-box"
-          role="alert"
-        >
+        <div className="error-box" role="alert">
           {error}
         </div>
       )}
 
       {notice && (
-        <div
-          className="notice-box"
-          role="status"
-        >
+        <div className="notice-box" role="status">
           {notice}
         </div>
       )}
@@ -863,7 +679,7 @@ export default function ExpertChat() {
         >
           <h2>
             {profile === undefined
-              ? "Checking private vaultâ€¦"
+              ? "Checking private vault…"
               : profile
                 ? "Unlock your vault"
                 : "Create your vault"}
@@ -908,7 +724,7 @@ export default function ExpertChat() {
             disabled={busy || profile === undefined}
           >
             {busy
-              ? "Workingâ€¦"
+              ? "Working…"
               : profile
                 ? "Unlock vault"
                 : "Create vault"}
@@ -956,7 +772,6 @@ export default function ExpertChat() {
                         "dismissed"
                       );
                     }
-
                     setShowRecovery(false);
                   }}
                 >
@@ -975,7 +790,6 @@ export default function ExpertChat() {
               className="secondary-button"
               onClick={() => {
                 lockVault();
-
                 setUnlocked(false);
                 setPeer(null);
                 setMessages([]);
@@ -1025,9 +839,7 @@ export default function ExpertChat() {
             padding: 12
           }}
         >
-          {!messages.length && (
-            <p>No messages yet.</p>
-          )}
+          {!messages.length && <p>No messages yet.</p>}
 
           {messages.map(item => (
             <div
@@ -1044,9 +856,7 @@ export default function ExpertChat() {
                 {item.senderId === user?.uid
                   ? "You"
                   : peerName}
-
-                {" Â· "}
-
+                {" · "}
                 {item.legacy
                   ? "Older server-encrypted"
                   : "Vault-encrypted"}
@@ -1068,8 +878,7 @@ export default function ExpertChat() {
                 {item.type === "voice" ? (
                   <VoiceMessage source={item.audio} />
                 ) : (
-                  item.message ||
-                  "Message unavailable."
+                  item.message || "Message unavailable."
                 )}
               </div>
 
@@ -1092,9 +901,7 @@ export default function ExpertChat() {
         </div>
 
         {typing && (
-          <small>
-            {peerName} is typingâ€¦
-          </small>
+          <small>{peerName} is typing…</small>
         )}
 
         <form
@@ -1107,13 +914,10 @@ export default function ExpertChat() {
         >
           <input
             className="form-input"
-            style={{
-              flex: 1,
-              minWidth: 0
-            }}
+            style={{ flex: 1, minWidth: 0 }}
             maxLength={4000}
             value={text}
-            placeholder="Type your encrypted messageâ€¦"
+            placeholder="Type your encrypted message…"
             disabled={
               !ready ||
               !active ||
@@ -1167,7 +971,7 @@ export default function ExpertChat() {
         >
           {recording
             ? "Stop recording"
-            : "ðŸŽ™ Encrypted voice message (max 15 sec)"}
+            : "🎙 Encrypted voice message (max 15 sec)"}
         </button>
       </section>
     </div>

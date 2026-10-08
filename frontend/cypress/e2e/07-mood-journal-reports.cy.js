@@ -1,7 +1,8 @@
-﻿describe("InnerVoice â€” Mood, Journal & Reports", () => {
+﻿
+describe("InnerVoice — Mood, Journal & Reports", () => {
   it("tests locked private features without bypassing the vault", () => {
     /* =========================================
-       LOGIN â€” ONLY ONCE
+       LOGIN — ONLY ONCE
     ========================================= */
 
     cy.loginAsUser();
@@ -187,7 +188,7 @@
 
     cy.contains(
       "button",
-      "Submit private report â†’"
+      "Submit private report →"
     ).should("not.exist");
 
     /* =========================================

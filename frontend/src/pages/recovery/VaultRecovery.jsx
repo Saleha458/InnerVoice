@@ -441,7 +441,7 @@ export default function VaultRecovery() {
             disabled={busy || !profile}
           >
             {busy
-              ? "Workingâ€¦"
+              ? "Working…"
               : "Verify passphrase & download encrypted kit"}
           </button>
         </form>
@@ -545,7 +545,7 @@ export default function VaultRecovery() {
             disabled={busy || !profile}
           >
             {busy
-              ? "Testingâ€¦"
+              ? "Testing…"
               : "Test recovery and unlock existing vault"}
           </button>
         </form>
@@ -580,7 +580,7 @@ export default function VaultRecovery() {
             flexShrink: 0
           }}
         >
-          â™§
+          ♧
         </span>
 
         <div style={{ minWidth: 0 }}>

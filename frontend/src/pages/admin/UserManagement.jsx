@@ -1,8 +1,5 @@
-import {
-  useEffect,
-  useState
-} from "react";
 
+import { useEffect, useState } from "react";
 import api from "../../services/api";
 
 const describe = error =>
@@ -14,18 +11,23 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
-
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const activeUsers = users.filter(
+    item => item.status !== "deleting"
+  );
+
+  const pendingUsers = users.filter(
+    item => item.status === "deleting"
+  );
 
   async function load() {
     setLoading(true);
     setError("");
 
     try {
-      const { data } = await api.get(
-        "/admin/users"
-      );
+      const { data } = await api.get("/admin/users");
 
       setUsers([
         ...new Map(
@@ -69,7 +71,6 @@ export default function UserManagement() {
       );
 
       setNotice(`Account ${status}.`);
-
       await load();
     } catch (cause) {
       setError(describe(cause));
@@ -116,7 +117,7 @@ export default function UserManagement() {
       }
 
       setNotice(
-        "Deletion QUEUED, not completed. Refresh to check the worker's progress."
+        "Deletion requested. The account remains pending until secure cleanup completes."
       );
 
       await load();
@@ -182,7 +183,7 @@ export default function UserManagement() {
         </div>
       ) : (
         <div className="list-grid">
-          {users.map(item => {
+          {activeUsers.map(item => {
             const uid = item.uid || item.id;
 
             const canEdit =
@@ -245,6 +246,43 @@ export default function UserManagement() {
             );
           })}
         </div>
+      )}
+
+      {!loading && pendingUsers.length > 0 && (
+        <section
+          aria-label="Pending account deletions"
+          style={{ marginTop: 24 }}
+        >
+          <h2>
+            Pending secure deletion (
+            {pendingUsers.length})
+          </h2>
+
+          <p>
+            These accounts are not yet
+            permanently deleted. The backend
+            cleanup worker must finish before
+            they disappear.
+          </p>
+
+          <div className="list-grid">
+            {pendingUsers.map(item => (
+              <article
+                className="feature-card"
+                key={item.uid || item.id}
+              >
+                <h3>
+                  {item.anonymousId ||
+                    "Anonymous"}
+                </h3>
+
+                <span className="status deleting">
+                  Deletion pending
+                </span>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+
 "use strict";
 
 const express = require("express");
@@ -8,7 +9,8 @@ const authenticate = require("../middleware/auth");
 const allowRoles = require("../middleware/roleAuth");
 
 const {
-  queueAdminDeletion
+  queueAdminDeletion,
+  processDeletionJobs
 } = require("../services/accountLifecycle");
 
 const router = express.Router();
@@ -112,7 +114,9 @@ router.patch("/:uid/status", async (req, res) => {
 
       if (
         account.role === "admin" ||
-        !["active", "suspended"].includes(account.status)
+        !["active", "suspended"].includes(
+          account.status
+        )
       ) {
         throw Object.assign(
           new Error(
@@ -159,12 +163,27 @@ router.delete("/:uid", async (req, res) => {
   }
 
   try {
-    // Existing accountLifecycle safety gate remains active.
-    await queueAdminDeletion(uid);
+    // Existing accountLifecycle safety
+    // gate remains active.
+    const result = await queueAdminDeletion(uid);
+
+    // Run promptly on persistent servers.
+    // Cron retries incomplete jobs.
+    setImmediate(() => {
+      processDeletionJobs().catch(error =>
+        console.error(
+          "Account deletion worker failed:",
+          error?.message
+        )
+      );
+    });
 
     return res.status(202).json({
       success: true,
       queued: true,
+      alreadyQueued: Boolean(
+        result?.alreadyQueued
+      ),
       message:
         "Deletion queued, not yet completed."
     });

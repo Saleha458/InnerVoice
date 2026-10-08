@@ -1,4 +1,5 @@
-﻿import {
+﻿
+import {
   useCallback,
   useEffect,
   useState
@@ -242,7 +243,7 @@ export default function Journal() {
         >
           <h2>
             {profile === undefined
-              ? "Checking vaultâ€¦"
+              ? "Checking vault…"
               : profile
                 ? "Unlock your private vault"
                 : "Create your private vault"}
@@ -299,7 +300,7 @@ export default function Journal() {
             type="submit"
           >
             {busy
-              ? "Workingâ€¦"
+              ? "Working…"
               : profile
                 ? "Unlock"
                 : "Create encrypted vault"}
@@ -383,8 +384,8 @@ export default function Journal() {
                         {entry.mood || "No mood"}
 
                         {entry.legacy
-                          ? " Â· OLD FORMAT (NOT E2EE)"
-                          : " Â· Device encrypted"}
+                          ? " · OLD FORMAT (NOT E2EE)"
+                          : " · Device encrypted"}
                       </small>
                     </div>
 

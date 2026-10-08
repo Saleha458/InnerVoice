@@ -431,11 +431,6 @@ export default function AIChat() {
           </span>
 
           <h1>AI Support</h1>
-
-          <p>
-            Your saved chat history uses your private vault.
-            InnerVoice and Gemini process readable text to reply.
-          </p>
         </div>
 
         <button
@@ -444,7 +439,7 @@ export default function AIChat() {
           disabled={!unlocked || busy}
           onClick={startNewConversation}
         >
-          ï¼‹ New chat
+          ＋ New chat
         </button>
       </header>
 
@@ -478,7 +473,7 @@ export default function AIChat() {
         >
           <h2>
             {profile === undefined
-              ? "Checking private vaultâ€¦"
+              ? "Checking private vault…"
               : profile
                 ? "Unlock AI history"
                 : "Create private vault"}
@@ -523,7 +518,7 @@ export default function AIChat() {
             disabled={busy || profile === undefined}
           >
             {busy
-              ? "Workingâ€¦"
+              ? "Working…"
               : profile
                 ? "Unlock vault"
                 : "Create vault"}
@@ -550,7 +545,7 @@ export default function AIChat() {
               }}
             >
               <span className="eyebrow">
-                IMPORTANT Â· VAULT RECOVERY
+                IMPORTANT · VAULT RECOVERY
               </span>
 
               <h2>
@@ -575,7 +570,7 @@ export default function AIChat() {
                   className="primary-button"
                   to="/vault-recovery"
                 >
-                  Create and test Recovery Kit â†’
+                  Create and test Recovery Kit →
                 </Link>
 
                 <button
@@ -601,7 +596,7 @@ export default function AIChat() {
           <section className="iv-ai-chat-window">
             <div className="iv-ai-chat-topbar">
               <span className="iv-ai-bot-avatar">
-                âœ¦
+                ✦
               </span>
 
               <div className="iv-ai-bot-info">
@@ -618,7 +613,7 @@ export default function AIChat() {
                 className="secondary-button"
                 to="/starred"
               >
-                â˜… Starred messages
+                ★ Starred messages
               </Link>
 
               <button
@@ -673,7 +668,7 @@ export default function AIChat() {
                       className="iv-ai-message-avatar"
                       aria-hidden="true"
                     >
-                      âœ¦
+                      ✦
                     </span>
                   )}
 
@@ -763,7 +758,7 @@ export default function AIChat() {
                 maxLength={4000}
                 rows={3}
                 disabled={busy}
-                placeholder="Type your messageâ€¦"
+                placeholder="Type your message…"
                 onChange={event =>
                   setText(event.target.value)
                 }
@@ -785,8 +780,8 @@ export default function AIChat() {
                     }
                   >
                     {busy
-                      ? "Waiting for replyâ€¦"
-                      : "Send message â†’"}
+                      ? "Waiting for reply…"
+                      : "Send message →"}
                   </button>
                 </div>
               </div>
@@ -804,7 +799,7 @@ export default function AIChat() {
             className="iv-ai-support-strip__icon"
             aria-hidden="true"
           >
-            â™¡
+            ♡
           </span>
 
           <div className="iv-ai-support-strip__text">
@@ -828,7 +823,7 @@ export default function AIChat() {
             className="iv-ai-support-strip__button"
             to="/experts"
           >
-            Find an expert â†’
+            Find an expert →
           </Link>
 
           <p className="iv-ai-support-strip__note">
