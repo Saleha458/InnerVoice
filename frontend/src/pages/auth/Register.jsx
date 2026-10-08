@@ -1,44 +1,13 @@
 import { useState } from "react";
+
 import {
   Link,
-  useNavigate
+  useNavigate,
 } from "react-router-dom";
 
 import api from "../../services/api";
 import useAuth from "../../hooks/useAuth";
 import AuthShell from "./AuthShell";
-
-const RECOVERY_QUESTIONS = [
-  [
-    "favorite_writer",
-    "Who is a writer you will always remember?"
-  ],
-
-  [
-    "meaningful_book",
-    "What is the title of a book that matters to you?"
-  ],
-
-  [
-    "childhood_character",
-    "What childhood fictional character do you remember most?"
-  ],
-
-  [
-    "quiet_place",
-    "What place would you choose for a quiet day?"
-  ],
-
-  [
-    "memorable_teacher",
-    "What was the first name of a teacher you remember well?"
-  ],
-
-  [
-    "private_memory_word",
-    "What private word reminds you of a happy memory?"
-  ]
-];
 
 const initialForm = {
   anonymousId: "",
@@ -50,12 +19,6 @@ const initialForm = {
   role: "user",
 
   age: "",
-
-  recoveryQuestionId:
-    "",
-
-  recoveryAnswer:
-    "",
 
   professionalName:
     "",
@@ -82,7 +45,7 @@ const initialForm = {
     "",
 
   bio:
-    ""
+    "",
 };
 
 export default function Register() {
@@ -90,39 +53,39 @@ export default function Register() {
     useNavigate();
 
   const {
-    register
+    register,
   } = useAuth();
 
   const [
     form,
-    setForm
+    setForm,
   ] = useState(
     initialForm
   );
 
   const [
     showPassword,
-    setShowPassword
+    setShowPassword,
   ] = useState(false);
 
   const [
     showConfirmPassword,
-    setShowConfirmPassword
+    setShowConfirmPassword,
   ] = useState(false);
 
   const [
     loading,
-    setLoading
+    setLoading,
   ] = useState(false);
 
   const [
     error,
-    setError
+    setError,
   ] = useState("");
 
   const [
     success,
-    setSuccess
+    setSuccess,
   ] = useState("");
 
   const handleChange =
@@ -130,7 +93,7 @@ export default function Register() {
       const {
         name,
         value,
-        files
+        files,
       } =
         event.target;
 
@@ -144,7 +107,7 @@ export default function Register() {
 
             licenseImage:
               files?.[0] ||
-              null
+              null,
           })
         );
 
@@ -156,7 +119,7 @@ export default function Register() {
           ...previous,
 
           [name]:
-            value
+            value,
         })
       );
     };
@@ -186,7 +149,7 @@ export default function Register() {
     special:
       /[^A-Za-z0-9]/.test(
         form.password
-      )
+      ),
   };
 
   const passwordValid =
@@ -277,11 +240,6 @@ export default function Register() {
           .anonymousId
           .trim();
 
-      const recoveryAnswer =
-        form
-          .recoveryAnswer
-          .trim();
-
       if (
         !/^[A-Za-z0-9_]{3,30}$/.test(
           anonymousId
@@ -361,31 +319,9 @@ export default function Register() {
         return;
       }
 
-      if (
-        !form
-          .recoveryQuestionId
-      ) {
-        setError(
-          "Please choose a password recovery question."
-        );
-
-        return;
-      }
-
-      if (
-        recoveryAnswer
-          .length <
-          4 ||
-        recoveryAnswer
-          .length >
-          100
-      ) {
-        setError(
-          "Recovery answer must be between 4 and 100 characters."
-        );
-
-        return;
-      }
+      /* =====================================================
+         EXPERT VALIDATION
+      ===================================================== */
 
       if (
         form.role ===
@@ -546,9 +482,11 @@ export default function Register() {
       }
 
       try {
-        setLoading(
-          true
-        );
+        setLoading(true);
+
+        /* =================================================
+           EXPERT REGISTRATION
+        ================================================= */
 
         if (
           form.role ===
@@ -578,17 +516,6 @@ export default function Register() {
             String(
               numericAge
             )
-          );
-
-          data.append(
-            "recoveryQuestionId",
-            form
-              .recoveryQuestionId
-          );
-
-          data.append(
-            "recoveryAnswer",
-            recoveryAnswer
           );
 
           data.append(
@@ -686,7 +613,7 @@ export default function Register() {
 
                   {
                     replace:
-                      true
+                      true,
                   }
                 );
               },
@@ -696,6 +623,10 @@ export default function Register() {
 
           return;
         }
+
+        /* =================================================
+           USER / PARENT
+        ================================================= */
 
         await register({
           anonymousId,
@@ -712,12 +643,6 @@ export default function Register() {
 
           age:
             numericAge,
-
-          recoveryQuestionId:
-            form
-              .recoveryQuestionId,
-
-          recoveryAnswer
         });
 
         setSuccess(
@@ -736,7 +661,7 @@ export default function Register() {
 
                 {
                   replace:
-                    true
+                    true,
                 }
               );
             },
@@ -758,9 +683,7 @@ export default function Register() {
             "Registration failed. Please try again."
         );
       } finally {
-        setLoading(
-          false
-        );
+        setLoading(false);
       }
     };
 
@@ -802,8 +725,12 @@ export default function Register() {
 
         <form
           className="auth-form"
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
         >
+          {/* ANONYMOUS ID */}
+
           <div className="form-group">
             <label htmlFor="anonymousId">
               Anonymous ID
@@ -837,6 +764,8 @@ export default function Register() {
             </small>
           </div>
 
+          {/* ROLE */}
+
           <div className="form-group">
             <label htmlFor="role">
               I am registering as
@@ -869,6 +798,8 @@ export default function Register() {
             </select>
           </div>
 
+          {/* AGE */}
+
           <div className="form-group">
             <label htmlFor="age">
               Age
@@ -893,98 +824,18 @@ export default function Register() {
               }
             />
 
-            {form.role === "user" && (
+            {form.role ===
+              "user" && (
               <small>
                 Users must be 15 or older.
               </small>
             )}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="recoveryQuestionId">
-              Password Recovery Question
-            </label>
+          {/* EXPERT DETAILS */}
 
-            <select
-              id="recoveryQuestionId"
-              name="recoveryQuestionId"
-              value={
-                form
-                  .recoveryQuestionId
-              }
-              onChange={
-                handleChange
-              }
-              disabled={
-                loading
-              }
-              required
-            >
-              <option value="">
-                Choose a question
-              </option>
-
-              {RECOVERY_QUESTIONS.map(
-                (
-                  [
-                    value,
-                    label
-                  ]
-                ) => (
-                  <option
-                    key={
-                      value
-                    }
-                    value={
-                      value
-                    }
-                  >
-                    {label}
-                  </option>
-                )
-              )}
-            </select>
-
-            <small>
-              This question is used only if you forget
-              your password. Choose one you will remember.
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="recoveryAnswer">
-              Recovery Answer
-            </label>
-
-            <input
-              id="recoveryAnswer"
-              name="recoveryAnswer"
-              type="password"
-              value={
-                form
-                  .recoveryAnswer
-              }
-              onChange={
-                handleChange
-              }
-              autoComplete="off"
-              minLength={4}
-              maxLength={100}
-              required
-              disabled={
-                loading
-              }
-              placeholder="Enter a private answer"
-            />
-
-            <small>
-              Your answer is stored as a secure hash,
-              not as readable text. Avoid an answer that
-              other people could easily guess.
-            </small>
-          </div>
-
-          {form.role === "expert" && (
+          {form.role ===
+            "expert" && (
             <>
               <div className="notice-box">
                 <strong>
@@ -1238,6 +1089,8 @@ export default function Register() {
             </>
           )}
 
+          {/* PASSWORD */}
+
           <div className="form-group">
             <label htmlFor="password">
               Password
@@ -1268,7 +1121,7 @@ export default function Register() {
                     80,
 
                   width:
-                    "100%"
+                    "100%",
                 }}
               />
 
@@ -1288,28 +1141,6 @@ export default function Register() {
                     ? "Hide password"
                     : "Show password"
                 }
-                style={{
-                  position:
-                    "absolute",
-
-                  right:
-                    10,
-
-                  top:
-                    "50%",
-
-                  transform:
-                    "translateY(-50%)",
-
-                  border:
-                    "none",
-
-                  background:
-                    "transparent",
-
-                  cursor:
-                    "pointer"
-                }}
               >
                 {showPassword
                   ? "Hide"
@@ -1358,7 +1189,7 @@ export default function Register() {
               aria-live="polite"
               style={{
                 marginTop:
-                  12
+                  12,
               }}
             >
               <div
@@ -1373,7 +1204,7 @@ export default function Register() {
                     12,
 
                   fontSize:
-                    12
+                    12,
                 }}
               >
                 <span>
@@ -1383,7 +1214,7 @@ export default function Register() {
                 <strong
                   style={{
                     color:
-                      strengthColor
+                      strengthColor,
                   }}
                 >
                   {strength}
@@ -1406,7 +1237,7 @@ export default function Register() {
                     "#ebe6e0",
 
                   overflow:
-                    "hidden"
+                    "hidden",
                 }}
               >
                 <div
@@ -1424,12 +1255,14 @@ export default function Register() {
                       "inherit",
 
                     transition:
-                      "width 0.2s ease"
+                      "width 0.2s ease",
                   }}
                 />
               </div>
             </div>
           </div>
+
+          {/* CONFIRM PASSWORD */}
 
           <div className="form-group">
             <label htmlFor="confirmPassword">
@@ -1462,7 +1295,7 @@ export default function Register() {
                     80,
 
                   width:
-                    "100%"
+                    "100%",
                 }}
               />
 
@@ -1482,28 +1315,6 @@ export default function Register() {
                     ? "Hide confirmation password"
                     : "Show confirmation password"
                 }
-                style={{
-                  position:
-                    "absolute",
-
-                  right:
-                    10,
-
-                  top:
-                    "50%",
-
-                  transform:
-                    "translateY(-50%)",
-
-                  border:
-                    "none",
-
-                  background:
-                    "transparent",
-
-                  cursor:
-                    "pointer"
-                }}
               >
                 {showConfirmPassword
                   ? "Hide"
@@ -1530,7 +1341,7 @@ export default function Register() {
                   color:
                     passwordsMatch
                       ? "#287c58"
-                      : "#ae493a"
+                      : "#ae493a",
                 }}
               >
                 {passwordsMatch
@@ -1540,7 +1351,8 @@ export default function Register() {
             )}
           </div>
 
-          {form.role === "expert" && (
+          {form.role ===
+            "expert" && (
             <div className="notice-box">
               <strong>
                 What happens after registration?

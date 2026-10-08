@@ -16,38 +16,15 @@ const {
   isValidAnonymousId,
   isValidPassword,
   isValidAgeForRole,
-  isValidEmail
+  isValidEmail,
 } = require("../utils/validators");
 
 const router =
   express.Router();
 
-const RECOVERY_QUESTION_IDS =
-  new Set([
-    "favorite_writer",
-    "meaningful_book",
-    "childhood_character",
-    "quiet_place",
-    "memorable_teacher",
-    "private_memory_word"
-  ]);
-
-function normalizeRecoveryAnswer(
-  value
-) {
-  return String(
-    value || ""
-  )
-    .normalize("NFKC")
-    .trim()
-    .replace(
-      /\s+/g,
-      " "
-    )
-    .toLocaleLowerCase(
-      "en-US"
-    );
-}
+/* =========================================================
+   FILE UPLOAD
+========================================================= */
 
 const upload =
   multer({
@@ -59,7 +36,7 @@ const upload =
       fileSize:
         5 *
         1024 *
-        1024
+        1024,
     },
 
     fileFilter:
@@ -86,7 +63,7 @@ const upload =
             )
           );
         }
-      }
+      },
   });
 
 function uploadToCloudinary(
@@ -109,7 +86,7 @@ function uploadToCloudinary(
                 "image",
 
               type:
-                "authenticated"
+                "authenticated",
             },
 
             (
@@ -154,7 +131,7 @@ async function deleteCloudinaryImage(
             "authenticated",
 
           invalidate:
-            true
+            true,
         }
       );
   } catch (error) {
@@ -165,6 +142,10 @@ async function deleteCloudinaryImage(
     );
   }
 }
+
+/* =========================================================
+   REGISTER EXPERT ACCOUNT
+========================================================= */
 
 router.post(
   "/",
@@ -200,8 +181,6 @@ router.post(
         specialization,
         experienceYears,
         bio,
-        recoveryQuestionId,
-        recoveryAnswer
       } = req.body;
 
       const cleanAnonymousId =
@@ -252,17 +231,6 @@ router.post(
           bio || ""
         ).trim();
 
-      const cleanRecoveryQuestionId =
-        String(
-          recoveryQuestionId ||
-            ""
-        ).trim();
-
-      const cleanRecoveryAnswer =
-        normalizeRecoveryAnswer(
-          recoveryAnswer
-        );
-
       const numericAge =
         Number(age);
 
@@ -284,7 +252,7 @@ router.post(
               success:
                 false,
 
-              message
+              message,
             });
 
       if (
@@ -313,28 +281,6 @@ router.post(
       ) {
         return invalid(
           "Passwords do not match."
-        );
-      }
-
-      if (
-        !RECOVERY_QUESTION_IDS
-          .has(
-            cleanRecoveryQuestionId
-          )
-      ) {
-        return invalid(
-          "Choose a valid recovery question."
-        );
-      }
-
-      if (
-        cleanRecoveryAnswer
-          .length < 4 ||
-        cleanRecoveryAnswer
-          .length > 100
-      ) {
-        return invalid(
-          "Recovery answer must be between 4 and 100 characters."
         );
       }
 
@@ -439,6 +385,10 @@ router.post(
         );
       }
 
+      /* =====================================================
+         FIND EXISTING ACCOUNT
+      ===================================================== */
+
       const users =
         await db
           .collection(
@@ -468,7 +418,7 @@ router.post(
             existingDoc.id,
 
           ...existingDoc
-            .data()
+            .data(),
         };
 
         if (
@@ -483,7 +433,7 @@ router.post(
                 false,
 
               message:
-                "This Anonymous ID is already taken."
+                "This Anonymous ID is already taken.",
             });
         }
 
@@ -508,7 +458,7 @@ router.post(
                 false,
 
               message:
-                "An expert account with this ID already exists. Use its original password or another ID."
+                "An expert account with this ID already exists. Use its original password or another ID.",
             });
         }
 
@@ -539,7 +489,7 @@ router.post(
                 false,
 
               message:
-                "An expert application already exists for this ID."
+                "An expert application already exists for this ID.",
             });
         }
 
@@ -548,9 +498,13 @@ router.post(
             existingUser
               .uid ||
             existingUser
-              .id
+              .id,
         };
       }
+
+      /* =====================================================
+         CHECK LICENSE DUPLICATE
+      ===================================================== */
 
       const existingLicense =
         await db
@@ -576,9 +530,13 @@ router.post(
               false,
 
             message:
-              "This license number is already registered."
+              "This license number is already registered.",
           });
       }
+
+      /* =====================================================
+         UPLOAD LICENSE
+      ===================================================== */
 
       const uploadedImage =
         await uploadToCloudinary(
@@ -605,11 +563,9 @@ router.post(
       const now =
         new Date();
 
-      const recoveryAnswerHash =
-        await bcrypt.hash(
-          cleanRecoveryAnswer,
-          12
-        );
+      /* =====================================================
+         CREATE FIREBASE + USER ACCOUNT
+      ===================================================== */
 
       if (
         !firebaseUser
@@ -623,7 +579,7 @@ router.post(
                 ),
 
               displayName:
-                cleanAnonymousId
+                cleanAnonymousId,
             });
 
         createdFirebaseUid =
@@ -671,48 +627,24 @@ router.post(
             verificationStatus:
               "pending",
 
+            /*
+             * Expert can configure recovery later
+             * from Profile after login.
+             */
             recoveryConfigured:
-              true,
-
-            recoveryQuestionId:
-              cleanRecoveryQuestionId,
-
-            recoveryAnswerHash,
-
-            recoveryConfiguredAt:
-              now,
+              false,
 
             createdAt:
               now,
 
             updatedAt:
-              now
-          });
-      } else {
-        await db
-          .collection(
-            "users"
-          )
-          .doc(
-            firebaseUser
-              .uid
-          )
-          .update({
-            recoveryConfigured:
-              true,
-
-            recoveryQuestionId:
-              cleanRecoveryQuestionId,
-
-            recoveryAnswerHash,
-
-            recoveryConfiguredAt:
               now,
-
-            updatedAt:
-              now
           });
       }
+
+      /* =====================================================
+         CREATE EXPERT APPLICATION
+      ===================================================== */
 
       const expertData = {
         uid:
@@ -770,7 +702,7 @@ router.post(
           now,
 
         updatedAt:
-          now
+          now,
       };
 
       const expertRef =
@@ -799,7 +731,7 @@ router.post(
             "pending",
 
           updatedAt:
-            new Date()
+            new Date(),
         });
 
       const token =
@@ -819,7 +751,7 @@ router.post(
                 numericAge,
 
               verificationStatus:
-                "pending"
+                "pending",
             }
           );
 
@@ -849,7 +781,13 @@ router.post(
               numericAge,
 
             verificationStatus:
-              "pending"
+              "pending",
+
+            recoveryConfigured:
+              Boolean(
+                existingUser
+                  ?.recoveryConfigured
+              ),
           },
 
           expert: {
@@ -866,8 +804,8 @@ router.post(
               false,
 
             available:
-              false
-          }
+              false,
+          },
         });
     } catch (error) {
       console.error(
@@ -954,7 +892,7 @@ router.post(
             false,
 
           message:
-            "Expert registration failed. Please retry or contact support."
+            "Expert registration failed. Please retry or contact support.",
         });
     }
   }

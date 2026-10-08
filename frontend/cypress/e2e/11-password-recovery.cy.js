@@ -23,7 +23,7 @@ describe("InnerVoice — Password Recovery", () => {
   /* =====================================================
      SAFETY CLEANUP
 
-     If the main recovery test fails after changing the
+     If the recovery test fails after changing the
      password, Cypress attempts to restore the original
      test password automatically.
   ===================================================== */
@@ -37,7 +37,8 @@ describe("InnerVoice — Password Recovery", () => {
     }
 
     cy.request({
-      method: "POST",
+      method:
+        "POST",
 
       url:
         `${backendBaseUrl}/auth/recovery/reset`,
@@ -68,10 +69,13 @@ describe("InnerVoice — Password Recovery", () => {
 
   /* =====================================================
      TEST 1
-     REGISTRATION UI
+     REGISTRATION MUST STAY SIMPLE
+
+     Password recovery is intentionally configured later
+     from Profile → Account & security.
   ===================================================== */
 
-  it("shows recovery question fields during registration", () => {
+  it("keeps password recovery setup out of registration", () => {
     cy.visit(
       "/register"
     );
@@ -87,68 +91,78 @@ describe("InnerVoice — Password Recovery", () => {
       "h1",
       "Create your account.",
       {
-        timeout: 20000,
+        timeout:
+          20000,
       }
     ).should(
       "be.visible"
     );
 
-    cy.get(
-      "#recoveryQuestionId"
-    )
-      .should(
-        "be.visible"
-      )
-      .and(
-        "have.attr",
-        "required"
-      );
+    /* -------------------------------------------------
+       MAIN REGISTRATION FIELDS STILL EXIST
+    ------------------------------------------------- */
 
     cy.get(
-      "#recoveryQuestionId option"
+      "#anonymousId"
     ).should(
-      "have.length.greaterThan",
-      1
+      "be.visible"
+    );
+
+    cy.get(
+      "#role"
+    ).should(
+      "be.visible"
+    );
+
+    cy.get(
+      "#age"
+    ).should(
+      "be.visible"
+    );
+
+    cy.get(
+      "#password"
+    ).should(
+      "be.visible"
+    );
+
+    cy.get(
+      "#confirmPassword"
+    ).should(
+      "be.visible"
+    );
+
+    /* -------------------------------------------------
+       RECOVERY SETUP MUST NOT BE PART OF REGISTRATION
+    ------------------------------------------------- */
+
+    cy.get(
+      "#recoveryQuestionId"
+    ).should(
+      "not.exist"
     );
 
     cy.get(
       "#recoveryAnswer"
-    )
-      .should(
-        "be.visible"
-      )
-      .and(
-        "have.attr",
-        "type",
-        "password"
-      )
-      .and(
-        "have.attr",
-        "required"
-      );
-
-    cy.get(
-      "#recoveryAnswer"
     ).should(
-      $input => {
-        expect(
-          $input
-        ).to.have.attr(
-          "minlength",
-          "4"
-        );
+      "not.exist"
+    );
 
-        expect(
-          $input
-        ).to.have.attr(
-          "maxlength",
-          "100"
-        );
-      }
+    cy.contains(
+      /Password Recovery Question/i
+    ).should(
+      "not.exist"
     );
 
     cy.contains(
       /stored as a secure hash/i
+    ).should(
+      "not.exist"
+    );
+
+    cy.contains(
+      "button",
+      /Create Account/i
     ).should(
       "be.visible"
     );
@@ -163,7 +177,7 @@ describe("InnerVoice — Password Recovery", () => {
 
   /* =====================================================
      TEST 2
-     EXISTING USER → SETUP → WRONG ANSWER →
+     PROFILE SETUP → WRONG ANSWER →
      RESET → OLD PASSWORD REJECTED →
      NEW PASSWORD WORKS → RESTORE ORIGINAL PASSWORD
   ===================================================== */
@@ -288,7 +302,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             recoveryAnswer,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -304,7 +320,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             originalPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -422,7 +440,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             userId,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -488,7 +508,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             wrongRecoveryAnswer,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -501,7 +523,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             temporaryPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -514,7 +538,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             temporaryPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -585,7 +611,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             recoveryAnswer,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -670,7 +698,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             userId,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -683,7 +713,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             originalPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -723,7 +755,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             temporaryPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -780,7 +814,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             userId,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -820,7 +856,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             recoveryAnswer,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -833,7 +871,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             originalPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -846,7 +886,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             originalPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -902,7 +944,7 @@ describe("InnerVoice — Password Recovery", () => {
         );
 
         /* =============================================
-           FINAL CONFIRMATION:
+           FINAL:
            ORIGINAL PASSWORD WORKS AGAIN
         ============================================= */
 
@@ -913,7 +955,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             userId,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }
@@ -926,7 +970,9 @@ describe("InnerVoice — Password Recovery", () => {
           .type(
             originalPassword,
             {
-              log: false,
+              log:
+                false,
+
               parseSpecialCharSequences:
                 false,
             }

@@ -56,15 +56,13 @@ export default function Login() {
 
   const submit =
     async event => {
-      event
-        .preventDefault();
+      event.preventDefault();
 
       setError("");
       setSuccess("");
 
       if (
-        !anonymousId
-          .trim() ||
+        !anonymousId.trim() ||
         !password
       ) {
         setError(
@@ -75,17 +73,17 @@ export default function Login() {
       }
 
       try {
-        setLoading(
-          true
-        );
+        setLoading(true);
+
+        /* =================================================
+           RESTORE DEACTIVATED ACCOUNT
+        ================================================= */
 
         if (
           restoreMode
         ) {
           await restore(
-            anonymousId
-              .trim(),
-
+            anonymousId.trim(),
             password
           );
 
@@ -93,9 +91,7 @@ export default function Login() {
             false
           );
 
-          setPassword(
-            ""
-          );
+          setPassword("");
 
           setSuccess(
             "Account restored. Please sign in. Cancelled bookings remain cancelled."
@@ -104,19 +100,23 @@ export default function Login() {
           return;
         }
 
+        /* =================================================
+           NORMAL LOGIN
+        ================================================= */
+
         const result =
           await login(
-            anonymousId
-              .trim(),
-
+            anonymousId.trim(),
             password
           );
 
         const role =
-          result
-            ?.user
-            ?.role ||
+          result?.user?.role ||
           "user";
+
+        /* =================================================
+           RETURN TO PREVIOUS PROTECTED PAGE
+        ================================================= */
 
         const destination =
           location
@@ -142,6 +142,14 @@ export default function Login() {
 
           return;
         }
+
+        /* =================================================
+           NORMAL ROLE DASHBOARD
+
+           Recovery setup reminder is handled inside
+           DashboardLayout. Login itself should never
+           force the user into Profile.
+        ================================================= */
 
         const routes = {
           user:
@@ -188,9 +196,7 @@ export default function Login() {
           );
         }
       } finally {
-        setLoading(
-          false
-        );
+        setLoading(false);
       }
     };
 

@@ -28,6 +28,12 @@ const {
 
 const router = express.Router();
 
+/* =========================================================
+   PASSWORD RECOVERY QUESTIONS
+
+   Recovery is configured AFTER registration from Profile.
+========================================================= */
+
 const RECOVERY_QUESTIONS = Object.freeze({
   favorite_writer:
     "Who is a writer you will always remember?",
@@ -153,6 +159,13 @@ async function getAccountByAnonymousId(
 
 /* =========================================================
    REGISTER
+
+   Recovery question is intentionally NOT required here.
+
+   New accounts start with:
+   recoveryConfigured: false
+
+   The user can configure recovery later from Profile.
 ========================================================= */
 
 router.post(
@@ -167,8 +180,6 @@ router.post(
         confirmPassword,
         role,
         age,
-        recoveryQuestionId,
-        recoveryAnswer,
       } = req.body;
 
       const required = {
@@ -177,8 +188,6 @@ router.post(
         confirmPassword,
         role,
         age,
-        recoveryQuestionId,
-        recoveryAnswer,
       };
 
       const missingFields =
@@ -266,36 +275,6 @@ router.post(
           });
       }
 
-      if (
-        !validRecoveryQuestion(
-          recoveryQuestionId
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            message:
-              "Choose a valid recovery question.",
-          });
-      }
-
-      if (
-        !validRecoveryAnswer(
-          recoveryAnswer
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-
-            message:
-              "Recovery answer must be between 4 and 100 characters.",
-          });
-      }
-
       const numericAge =
         Number(age);
 
@@ -346,23 +325,11 @@ router.post(
           });
       }
 
-      const [
-        hashedPassword,
-        recoveryAnswerHash,
-      ] =
-        await Promise.all([
-          bcrypt.hash(
-            String(password),
-            12
-          ),
-
-          bcrypt.hash(
-            normalizeRecoveryAnswer(
-              recoveryAnswer
-            ),
-            12
-          ),
-        ]);
+      const hashedPassword =
+        await bcrypt.hash(
+          String(password),
+          12
+        );
 
       const firebaseUser =
         await auth.createUser({
@@ -410,18 +377,11 @@ router.post(
 
           verificationStatus,
 
+          /*
+           * Recovery is optional onboarding after login.
+           */
           recoveryConfigured:
-            true,
-
-          recoveryQuestionId:
-            String(
-              recoveryQuestionId
-            ),
-
-          recoveryAnswerHash,
-
-          recoveryConfiguredAt:
-            now,
+            false,
 
           createdAt:
             now,
@@ -476,7 +436,7 @@ router.post(
             verificationStatus,
 
             recoveryConfigured:
-              true,
+              false,
           },
 
           token,
@@ -695,6 +655,11 @@ router.post(
               user
                 .recoveryConfigured
             ),
+
+          recoveryQuestionId:
+            user
+              .recoveryQuestionId ||
+            null,
         },
       });
     } catch (err) {
@@ -830,7 +795,7 @@ router.post(
 );
 
 /* =========================================================
-   PASSWORD RESET USING RECOVERY ANSWER
+   PASSWORD RESET
 ========================================================= */
 
 router.post(
