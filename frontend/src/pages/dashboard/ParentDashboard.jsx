@@ -1,6 +1,16 @@
 import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
   Link,
 } from "react-router-dom";
+
+import {
+  getGuidelines,
+} from "../../services/guidelineService";
 
 /* =========================================================
    PARENT HUB MODULES
@@ -44,7 +54,7 @@ const parentModules = [
       "guidelines",
 
     eyebrow:
-      "AGE-SPECIFIC SUPPORT",
+      "SOURCE-BACKED AGE GUIDANCE",
 
     title:
       "Parenting Guidelines",
@@ -53,12 +63,12 @@ const parentModules = [
       "▤",
 
     description:
-      "Explore practical guidance designed for different childhood and teenage developmental stages.",
+      "Explore age-specific guidance served dynamically from the Parent Education Hub and linked to trusted public-health sources.",
 
     highlights: [
       "Guidance for ages 0–18",
       "Healthy boundaries and communication",
-      "Digital safety and conversation starters",
+      "Digital safety with source provenance",
     ],
 
     button:
@@ -85,12 +95,12 @@ const parentModules = [
       "!",
 
     description:
-      "Understand age-specific behavioural and emotional changes that may deserve careful attention.",
+      "Review age-specific behavioural and emotional changes with clear context about persistence, daily functioning and when to seek help.",
 
     highlights: [
       "Age-specific warning signs",
       "How parents can respond",
-      "When professional support may help",
+      "Urgent-safety guidance for serious risk",
     ],
 
     button:
@@ -105,6 +115,51 @@ const parentModules = [
 ];
 
 /* =========================================================
+   HELPERS
+========================================================= */
+
+function formatDate(
+  value
+) {
+  if (
+    !value
+  ) {
+    return "Not available";
+  }
+
+  const date =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return String(
+      value
+    );
+  }
+
+  return date
+    .toLocaleDateString(
+      undefined,
+
+      {
+        day:
+          "numeric",
+
+        month:
+          "short",
+
+        year:
+          "numeric",
+      }
+    );
+}
+
+/* =========================================================
    STYLES
 ========================================================= */
 
@@ -114,7 +169,7 @@ const styles = {
       "760px",
 
     marginBottom:
-      "34px",
+      "28px",
   },
 
   introText: {
@@ -129,6 +184,71 @@ const styles = {
 
     maxWidth:
       "720px",
+  },
+
+  evidencePanel: {
+    display:
+      "grid",
+
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(220px, 1fr))",
+
+    gap:
+      "12px",
+
+    marginBottom:
+      "24px",
+
+    padding:
+      "18px 20px",
+
+    border:
+      "1px solid #ead9cd",
+
+    borderRadius:
+      "18px",
+
+    background:
+      "linear-gradient(135deg, #fffaf6 0%, #ffffff 100%)",
+  },
+
+  evidenceItem: {
+    minWidth:
+      0,
+  },
+
+  evidenceLabel: {
+    display:
+      "block",
+
+    marginBottom:
+      "5px",
+
+    color:
+      "#a15f42",
+
+    fontSize:
+      "10px",
+
+    fontWeight:
+      800,
+
+    letterSpacing:
+      "0.1em",
+  },
+
+  evidenceValue: {
+    margin:
+      0,
+
+    color:
+      "#403631",
+
+    lineHeight:
+      1.55,
+
+    fontSize:
+      "13px",
   },
 
   grid: {
@@ -188,7 +308,10 @@ const styles = {
       "15px",
 
     background:
-      "#f1efff",
+      "#fff0e5",
+
+    color:
+      "#a85f3c",
 
     fontSize:
       "24px",
@@ -273,7 +396,10 @@ const styles = {
       "50%",
 
     background:
-      "#f1efff",
+      "#fff0e5",
+
+    color:
+      "#a85f3c",
 
     fontSize:
       "11px",
@@ -285,6 +411,51 @@ const styles = {
   buttonArea: {
     marginTop:
       "auto",
+  },
+
+  contextCard: {
+    marginTop:
+      "24px",
+
+    padding:
+      "20px 22px",
+
+    border:
+      "1px solid #ead9cd",
+
+    borderRadius:
+      "18px",
+
+    background:
+      "#fffaf6",
+  },
+
+  sourceGrid: {
+    display:
+      "grid",
+
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(230px, 1fr))",
+
+    gap:
+      "12px",
+
+    marginTop:
+      "14px",
+  },
+
+  sourceCard: {
+    padding:
+      "14px 15px",
+
+    border:
+      "1px solid #eadfd7",
+
+    borderRadius:
+      "13px",
+
+    background:
+      "#ffffff",
   },
 
   footer: {
@@ -310,17 +481,150 @@ const styles = {
 ========================================================= */
 
 export default function ParentDashboard() {
+  const [
+    meta,
+    setMeta,
+  ] = useState(
+    null
+  );
+
+  const [
+    sources,
+    setSources,
+  ] = useState(
+    []
+  );
+
+  const [
+    sourceStatus,
+    setSourceStatus,
+  ] = useState(
+    "loading"
+  );
+
+  /* =======================================================
+     LOAD CURRENT SOURCE METADATA
+  ======================================================= */
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      const load =
+        async () => {
+          try {
+            setSourceStatus(
+              "loading"
+            );
+
+            const response =
+              await getGuidelines();
+
+            if (
+              !active
+            ) {
+              return;
+            }
+
+            setMeta(
+              response
+                ?.meta ||
+                null
+            );
+
+            setSources(
+              Array.isArray(
+                response
+                  ?.sources
+              )
+                ? response
+                    .sources
+                : []
+            );
+
+            setSourceStatus(
+              "ready"
+            );
+          } catch (
+            error
+          ) {
+            console.error(
+              "Parent evidence summary error:",
+
+              error
+            );
+
+            if (
+              active
+            ) {
+              setSourceStatus(
+                "unavailable"
+              );
+            }
+          }
+        };
+
+      load();
+
+      return () => {
+        active =
+          false;
+      };
+    },
+
+    []
+  );
+
+  /* =======================================================
+     CURRENT CONTEXT
+  ======================================================= */
+
+  const contextItem =
+    Array.isArray(
+      meta?.context
+    )
+      ? meta
+          .context[0]
+      : null;
+
+  const featuredSources =
+    useMemo(
+      () =>
+        sources.slice(
+          0,
+          4
+        ),
+
+      [
+        sources,
+      ]
+    );
+
+  const sourceForContext =
+    useMemo(
+      () =>
+        sources.find(
+          source =>
+            source.id ===
+            contextItem
+              ?.sourceId
+        ) ||
+        null,
+
+      [
+        sources,
+        contextItem,
+      ]
+    );
+
   return (
     <div className="page-shell">
       {/* =================================================
           PAGE HEADER
       ================================================= */}
 
-      <div
-        style={
-          styles.intro
-        }
-      >
+      <div style={styles.intro}>
         <span className="eyebrow">
           PARENT EDUCATION HUB
         </span>
@@ -334,30 +638,74 @@ export default function ParentDashboard() {
           Parent Support Center
         </h1>
 
-        <p
-          style={
-            styles.introText
-          }
-        >
-          Choose the kind of support you need. Explore core
-          parenting principles, age-specific guidance or
-          warning signs through dedicated sections.
+        <p style={styles.introText}>
+          Practical parenting information with age-specific
+          guidance, warning-sign context and clear links to
+          trusted public-health sources.
         </p>
       </div>
+
+      {/* =================================================
+          SOURCE / REVIEW STATUS
+      ================================================= */}
+
+      <section
+        style={
+          styles.evidencePanel
+        }
+        aria-label="Parent guidance evidence status"
+      >
+        <div style={styles.evidenceItem}>
+          <span style={styles.evidenceLabel}>
+            CONTENT MODEL
+          </span>
+
+          <p style={styles.evidenceValue}>
+            {sourceStatus ===
+            "ready"
+              ? "Source-backed guidance loaded from Firestore"
+
+              : sourceStatus ===
+                "loading"
+                ? "Loading source-backed guidance..."
+
+                : "Guidance is available, but source metadata could not be loaded."}
+          </p>
+        </div>
+
+        <div style={styles.evidenceItem}>
+          <span style={styles.evidenceLabel}>
+            LAST REVIEWED
+          </span>
+
+          <p style={styles.evidenceValue}>
+            {formatDate(
+              meta
+                ?.reviewedAt
+            )}
+          </p>
+        </div>
+
+        <div style={styles.evidenceItem}>
+          <span style={styles.evidenceLabel}>
+            TRUSTED SOURCES
+          </span>
+
+          <p style={styles.evidenceValue}>
+            {sources.length
+              ? `${sources.length} official source references available`
+              : "Source directory loading"}
+          </p>
+        </div>
+      </section>
 
       {/* =================================================
           THREE MAIN MODULES
       ================================================= */}
 
-      <div
-        style={
-          styles.grid
-        }
-      >
+      <div style={styles.grid}>
         {parentModules.map(
-          (
-            module
-          ) => (
+          module => (
             <article
               key={
                 module.id
@@ -366,92 +714,84 @@ export default function ParentDashboard() {
                 styles.card
               }
             >
-              {/* ICON */}
-
-              <div
-                style={
-                  styles.icon
+              <div style={styles.icon}>
+                {
+                  module
+                    .icon
                 }
-              >
-                {module.icon}
               </div>
 
-              {/* TITLE */}
-
               <span className="eyebrow">
-                {module.eyebrow}
+                {
+                  module
+                    .eyebrow
+                }
               </span>
 
-              <h2
-                style={
-                  styles.title
+              <h2 style={styles.title}>
+                {
+                  module
+                    .title
                 }
-              >
-                {module.title}
               </h2>
 
-              <p
-                style={
-                  styles.description
+              <p style={styles.description}>
+                {
+                  module
+                    .description
                 }
-              >
-                {module.description}
               </p>
 
-              {/* SHORT OVERVIEW */}
-
-              <ul
-                style={
-                  styles.list
-                }
-              >
-                {module.highlights.map(
-                  (
-                    item
-                  ) => (
-                    <li
-                      key={
-                        item
-                      }
-                      style={
-                        styles.listItem
-                      }
-                    >
-                      <span
+              <ul style={styles.list}>
+                {module
+                  .highlights
+                  .map(
+                    item => (
+                      <li
+                        key={
+                          item
+                        }
                         style={
-                          styles.check
+                          styles
+                            .listItem
                         }
                       >
-                        ✓
-                      </span>
+                        <span
+                          style={
+                            styles
+                              .check
+                          }
+                        >
+                          ✓
+                        </span>
 
-                      <span>
-                        {item}
-                      </span>
-                    </li>
-                  )
-                )}
+                        <span>
+                          {
+                            item
+                          }
+                        </span>
+                      </li>
+                    )
+                  )}
               </ul>
 
-              {/* BUTTON */}
-
-              <div
-                style={
-                  styles.buttonArea
-                }
-              >
+              <div style={styles.buttonArea}>
                 <Link
                   to={
                     module.to
                   }
                   className={
-                    module.primary
+                    module
+                      .primary
                       ? "primary-button"
                       : "secondary-button"
                   }
                 >
-                  {module.button}
-                  {" "}→
+                  {
+                    module
+                      .button
+                  }{" "}
+                  →
                 </Link>
               </div>
             </article>
@@ -460,16 +800,251 @@ export default function ParentDashboard() {
       </div>
 
       {/* =================================================
-          SMALL DISCLAIMER
+          CURRENT REAL-WORLD CONTEXT
       ================================================= */}
 
-      <div
-        style={
-          styles.footer
-        }
-      >
+      {contextItem && (
+        <section style={styles.contextCard}>
+          <span className="eyebrow">
+            CURRENT EVIDENCE SNAPSHOT
+          </span>
+
+          <h2
+            style={{
+              margin:
+                "8px 0 8px",
+
+              fontSize:
+                "21px",
+            }}
+          >
+            {
+              contextItem
+                .title
+            }
+          </h2>
+
+          <p
+            style={{
+              margin:
+                0,
+
+              color:
+                "#555d70",
+
+              lineHeight:
+                1.7,
+            }}
+          >
+            {
+              contextItem
+                .text
+            }
+          </p>
+
+          <p
+            style={{
+              margin:
+                "10px 0 0",
+
+              color:
+                "#77706b",
+
+              lineHeight:
+                1.6,
+
+              fontSize:
+                "12px",
+            }}
+          >
+            {
+              contextItem
+                .note
+            }
+          </p>
+
+          <div
+            style={{
+              marginTop:
+                "12px",
+
+              display:
+                "flex",
+
+              flexWrap:
+                "wrap",
+
+              gap:
+                "10px",
+
+              alignItems:
+                "center",
+            }}
+          >
+            <span
+              style={{
+                fontSize:
+                  "12px",
+
+                color:
+                  "#75665e",
+              }}
+            >
+              Evidence date:{" "}
+              {formatDate(
+                contextItem
+                  .asOf
+              )}
+            </span>
+
+            {sourceForContext
+              ?.url && (
+              <a
+                href={
+                  sourceForContext
+                    .url
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="text-link"
+              >
+                Open official source →
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* =================================================
+          TRUSTED SOURCE DIRECTORY PREVIEW
+      ================================================= */}
+
+      {featuredSources.length >
+        0 && (
+        <section
+          style={{
+            marginTop:
+              "24px",
+          }}
+        >
+          <span className="eyebrow">
+            TRUSTED SOURCE DIRECTORY
+          </span>
+
+          <h2
+            style={{
+              margin:
+                "8px 0 5px",
+
+              fontSize:
+                "22px",
+            }}
+          >
+            Where this guidance comes from
+          </h2>
+
+          <p
+            style={{
+              margin:
+                0,
+
+              color:
+                "#666d7e",
+
+              lineHeight:
+                1.6,
+            }}
+          >
+            InnerVoice summarizes general educational
+            guidance and always keeps the official source
+            available for parents to review directly.
+          </p>
+
+          <div style={styles.sourceGrid}>
+            {featuredSources.map(
+              source => (
+                <article
+                  key={
+                    source.id
+                  }
+                  style={
+                    styles
+                      .sourceCard
+                  }
+                >
+                  <span
+                    style={{
+                      display:
+                        "block",
+
+                      marginBottom:
+                        "5px",
+
+                      color:
+                        "#a15f42",
+
+                      fontSize:
+                        "10px",
+
+                      fontWeight:
+                        800,
+
+                      letterSpacing:
+                        "0.08em",
+                    }}
+                  >
+                    {
+                      source
+                        .organization
+                    }
+                  </span>
+
+                  <strong
+                    style={{
+                      display:
+                        "block",
+
+                      lineHeight:
+                        1.45,
+                    }}
+                  >
+                    {
+                      source
+                        .title
+                    }
+                  </strong>
+
+                  <a
+                    href={
+                      source.url
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-link"
+                    style={{
+                      display:
+                        "inline-block",
+
+                      marginTop:
+                        "9px",
+                    }}
+                  >
+                    View source →
+                  </a>
+                </article>
+              )
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* =================================================
+          DISCLAIMER
+      ================================================= */}
+
+      <div style={styles.footer}>
         <strong>
-          Educational support
+          Educational support, not diagnosis
         </strong>
 
         <p
@@ -484,9 +1059,12 @@ export default function ParentDashboard() {
               1.6,
           }}
         >
-          InnerVoice Parent Education Hub provides general
-          educational information and does not diagnose
-          abuse, trauma or mental-health conditions.
+          InnerVoice provides general educational
+          information. A single warning sign does not prove
+          abuse, trauma or a mental-health condition.
+          Persistent, severe or safety-related concerns
+          should be discussed with an appropriate qualified
+          professional.
         </p>
       </div>
     </div>

@@ -1,7 +1,10 @@
 import api from "./api";
 
 /* =========================================================
-   ALL AGE GROUPS
+   PARENT EDUCATION HUB API
+
+   Backend reads current content from Firestore and returns
+   source metadata with the guidance.
 ========================================================= */
 
 export const getGuidelines =
@@ -32,7 +35,22 @@ export const getGuidelineByAge =
     return response.data;
   };
 
+/* =========================================================
+   TRUSTED SOURCE DIRECTORY
+========================================================= */
+
+export const getGuidelineResources =
+  async () => {
+    const response =
+      await api.get(
+        "/guidelines/resources"
+      );
+
+    return response.data;
+  };
+
 export default {
   getGuidelines,
   getGuidelineByAge,
+  getGuidelineResources,
 };
