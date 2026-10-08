@@ -14,9 +14,14 @@ import {
   useAuth,
 } from "../../context/AuthContext";
 
-import Navbar from "./Navbar";
-import Sidebar from "./Sidebar";
-import MobileDrawer from "./MobileDrawer";
+import Navbar
+  from "./Navbar";
+
+import Sidebar
+  from "./Sidebar";
+
+import MobileDrawer
+  from "./MobileDrawer";
 
 export default function DashboardLayout() {
   const {
@@ -27,19 +32,25 @@ export default function DashboardLayout() {
   const [
     mobileMenuOpen,
     setMobileMenuOpen,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     recoveryReminderDismissed,
     setRecoveryReminderDismissed,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const closeMobileMenu =
     useCallback(
-      () =>
+      () => {
         setMobileMenuOpen(
           false
-        ),
+        );
+      },
+
       []
     );
 
@@ -47,40 +58,47 @@ export default function DashboardLayout() {
      MOBILE DRAWER
   ========================================================= */
 
-  useEffect(() => {
-    if (
-      !mobileMenuOpen
-    ) {
-      return undefined;
-    }
+  useEffect(
+    () => {
+      if (
+        !mobileMenuOpen
+      ) {
+        return undefined;
+      }
 
-    const closeOnDesktop =
-      () => {
-        if (
-          window.innerWidth >
-          900
-        ) {
-          closeMobileMenu();
-        }
-      };
+      const closeOnDesktop =
+        () => {
+          if (
+            window.innerWidth >
+            900
+          ) {
+            closeMobileMenu();
+          }
+        };
 
-    window.addEventListener(
-      "resize",
-      closeOnDesktop
-    );
-
-    return () =>
-      window.removeEventListener(
+      window.addEventListener(
         "resize",
         closeOnDesktop
       );
-  }, [
-    mobileMenuOpen,
-    closeMobileMenu,
-  ]);
+
+      return () => {
+        window.removeEventListener(
+          "resize",
+          closeOnDesktop
+        );
+      };
+    },
+
+    [
+      mobileMenuOpen,
+      closeMobileMenu,
+    ]
+  );
 
   /* =========================================================
-     RECOVERY REMINDER IDENTITY
+     RECOVERY REMINDER KEY
+
+     Each account receives its own reminder state.
   ========================================================= */
 
   const recoveryReminderKey =
@@ -90,9 +108,16 @@ export default function DashboardLayout() {
           user?.uid ||
           user?.anonymousId;
 
-        return identity
-          ? `innervoice:recovery-reminder-dismissed:${identity}`
-          : "";
+        if (
+          !identity
+        ) {
+          return "";
+        }
+
+        return (
+          "innervoice:recovery-reminder-dismissed:" +
+          identity
+        );
       },
 
       [
@@ -104,39 +129,84 @@ export default function DashboardLayout() {
   /* =========================================================
      LOAD "NOT NOW" STATE
 
-     The user can dismiss the reminder for the current
-     browser session. It will be available again in a new
-     session until recovery is configured.
+     The user can dismiss the reminder only for the current
+     browser session.
+
+     On the next fresh browser session/login, it can appear
+     again until recovery has actually been configured.
   ========================================================= */
 
-  useEffect(() => {
-    if (
-      !recoveryReminderKey
-    ) {
-      setRecoveryReminderDismissed(
-        false
-      );
+  useEffect(
+    () => {
+      if (
+        !recoveryReminderKey
+      ) {
+        setRecoveryReminderDismissed(
+          false
+        );
 
-      return;
-    }
+        return;
+      }
 
-    try {
-      setRecoveryReminderDismissed(
-        sessionStorage.getItem(
-          recoveryReminderKey
-        ) === "1"
-      );
-    } catch {
-      setRecoveryReminderDismissed(
-        false
-      );
-    }
-  }, [
-    recoveryReminderKey,
-  ]);
+      try {
+        const dismissed =
+          sessionStorage
+            .getItem(
+              recoveryReminderKey
+            ) ===
+          "1";
+
+        setRecoveryReminderDismissed(
+          dismissed
+        );
+      } catch {
+        setRecoveryReminderDismissed(
+          false
+        );
+      }
+    },
+
+    [
+      recoveryReminderKey,
+    ]
+  );
 
   /* =========================================================
-     SHOULD SHOW REMINDER
+     RECOVERY CONFIGURATION STATE
+
+     IMPORTANT:
+
+     Old accounts may NOT have:
+       recoveryConfigured: false
+
+     The field can be undefined because those accounts were
+     created before password recovery existed.
+
+     Therefore:
+       === false
+
+     is NOT enough.
+
+     An account is considered protected only when:
+     - recoveryConfigured === true
+       OR
+     - a recoveryQuestionId already exists.
+  ========================================================= */
+
+  const recoveryIsConfigured =
+    Boolean(
+      accountProfile &&
+      (
+        accountProfile
+          .recoveryConfigured ===
+          true ||
+        accountProfile
+          .recoveryQuestionId
+      )
+    );
+
+  /* =========================================================
+     SHOULD SHOW ACCOUNT SECURITY REMINDER
   ========================================================= */
 
   const shouldShowRecoveryReminder =
@@ -145,14 +215,12 @@ export default function DashboardLayout() {
       user.role !==
         "admin" &&
       accountProfile &&
-      accountProfile
-        .recoveryConfigured ===
-        false &&
+      !recoveryIsConfigured &&
       !recoveryReminderDismissed
     );
 
   /* =========================================================
-     DISMISS FOR CURRENT SESSION
+     DISMISS FOR CURRENT BROWSER SESSION
   ========================================================= */
 
   const dismissRecoveryReminder =
@@ -168,17 +236,27 @@ export default function DashboardLayout() {
       }
 
       try {
-        sessionStorage.setItem(
-          recoveryReminderKey,
-          "1"
-        );
+        sessionStorage
+          .setItem(
+            recoveryReminderKey,
+            "1"
+          );
       } catch {
-        // Ignore browser storage failures.
+        /*
+         * Storage being unavailable should never
+         * break the dashboard.
+         */
       }
     };
 
+  /* =========================================================
+     UI
+  ========================================================= */
+
   return (
     <div className="dashboard-layout">
+      {/* ACCESSIBILITY */}
+
       <a
         className="iv-skip-link"
         href="#inner-voice-main"
@@ -186,21 +264,27 @@ export default function DashboardLayout() {
         Skip to main content
       </a>
 
+      {/* TOP NAVIGATION */}
+
       <Navbar
         mobileMenuOpen={
           mobileMenuOpen
         }
-        onMenuClick={() =>
+        onMenuClick={() => {
           setMobileMenuOpen(
             true
-          )
-        }
+          );
+        }}
       />
 
       <div className="dashboard-body">
+        {/* DESKTOP SIDEBAR */}
+
         <div className="desktop-sidebar">
           <Sidebar />
         </div>
+
+        {/* MOBILE SIDEBAR */}
 
         <MobileDrawer
           open={
@@ -211,13 +295,25 @@ export default function DashboardLayout() {
           }
         />
 
+        {/* MAIN CONTENT */}
+
         <main
           id="inner-voice-main"
           className="dashboard-content"
           tabIndex={-1}
         >
           {/* =================================================
-              ACCOUNT RECOVERY REMINDER
+              ACCOUNT SECURITY / RECOVERY REMINDER
+
+              Shows for:
+              - User
+              - Parent
+              - Expert
+
+              Does not show for:
+              - Admin
+              - Accounts with recovery already configured
+              - Current-session dismissed reminder
           ================================================= */}
 
           {shouldShowRecoveryReminder && (
@@ -234,11 +330,11 @@ export default function DashboardLayout() {
                 justifyContent:
                   "space-between",
 
-                gap:
-                  18,
-
                 flexWrap:
                   "wrap",
+
+                gap:
+                  18,
 
                 marginBottom:
                   22,
@@ -259,6 +355,8 @@ export default function DashboardLayout() {
                   "0 8px 24px rgba(88, 55, 36, 0.05)",
               }}
             >
+              {/* MESSAGE */}
+
               <div
                 style={{
                   flex:
@@ -305,6 +403,9 @@ export default function DashboardLayout() {
 
                     fontSize:
                       15,
+
+                    lineHeight:
+                      1.4,
                   }}
                 >
                   Protect your account with password recovery
@@ -328,11 +429,13 @@ export default function DashboardLayout() {
                       1.65,
                   }}
                 >
-                  Add a private recovery question from your
-                  Profile so you can reset your password later
-                  without using an email address or phone number.
+                  Set up a private recovery question from your
+                  Profile. It lets you reset your password later
+                  without adding an email address or phone number.
                 </p>
               </div>
+
+              {/* ACTIONS */}
 
               <div
                 style={{
@@ -366,6 +469,9 @@ export default function DashboardLayout() {
 
                     padding:
                       "0 16px",
+
+                    border:
+                      "1px solid #b96f4c",
 
                     borderRadius:
                       10,
@@ -434,6 +540,8 @@ export default function DashboardLayout() {
               </div>
             </section>
           )}
+
+          {/* CURRENT ROUTE */}
 
           <Outlet />
         </main>

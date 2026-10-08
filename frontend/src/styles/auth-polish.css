@@ -1,0 +1,196 @@
+/* =========================================================
+   INNERVOICE — AUTH POLISH OVERRIDES
+
+   Purpose:
+   1. Keep Show / Hide inside password fields.
+   2. Restore professional registration intro positioning.
+   3. Preserve mobile responsiveness.
+
+   IMPORTANT:
+   This file must be imported AFTER responsive-final.css.
+========================================================= */
+
+
+/* =========================================================
+   PASSWORD FIELD WRAPPER
+
+   Used by:
+   - Register
+   - Forgot Password
+========================================================= */
+
+.iv-auth-page .iv-auth-password-field {
+  position: relative !important;
+
+  display: block !important;
+
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+
+/* =========================================================
+   PASSWORD INPUT
+
+   Extra right padding leaves space for Show / Hide.
+========================================================= */
+
+.iv-auth-page
+.iv-auth-password-field
+> input {
+  display: block !important;
+
+  width: 100% !important;
+
+  padding-right: 82px !important;
+}
+
+
+/* =========================================================
+   SHOW / HIDE BUTTON
+
+   Force the button to stay INSIDE the input field.
+========================================================= */
+
+.iv-auth-page
+.iv-auth-password-field
+> button[type="button"] {
+  position: absolute !important;
+
+  top: 50% !important;
+  right: 14px !important;
+
+  left: auto !important;
+  bottom: auto !important;
+
+  transform:
+    translateY(-50%) !important;
+
+  z-index: 5 !important;
+
+  display: inline-flex !important;
+
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: auto !important;
+
+  min-width: 48px !important;
+  max-width: none !important;
+
+  min-height: 34px !important;
+  height: 34px !important;
+
+  margin: 0 !important;
+
+  padding:
+    0
+    8px !important;
+
+  border: 0 !important;
+
+  border-radius:
+    8px !important;
+
+  background:
+    transparent !important;
+
+  color:
+    #97583a !important;
+
+  box-shadow:
+    none !important;
+
+  font: inherit !important;
+
+  font-size:
+    12px !important;
+
+  font-weight:
+    800 !important;
+
+  line-height:
+    1 !important;
+
+  cursor:
+    pointer !important;
+}
+
+
+/* =========================================================
+   SHOW / HIDE HOVER
+========================================================= */
+
+.iv-auth-page
+.iv-auth-password-field
+> button[type="button"]:hover:not(:disabled) {
+  background:
+    #fff3e9 !important;
+
+  color:
+    #b97452 !important;
+}
+
+
+/* =========================================================
+   SHOW / HIDE DISABLED
+========================================================= */
+
+.iv-auth-page
+.iv-auth-password-field
+> button[type="button"]:disabled {
+  opacity:
+    0.55 !important;
+
+  cursor:
+    not-allowed !important;
+}
+
+
+/* =========================================================
+   REGISTER DESKTOP LAYOUT
+
+   Restore "A space to begin." to the upper editorial area
+   instead of vertically centering it in the middle.
+========================================================= */
+
+@media (
+  min-width: 901px
+) {
+  .iv-auth-page--register
+  .iv-auth-main {
+    align-items:
+      start !important;
+
+    padding-top:
+      62px !important;
+  }
+
+  .iv-auth-page--register
+  .iv-auth-intro {
+    align-self:
+      start !important;
+
+    padding-top:
+      34px !important;
+  }
+}
+
+
+/* =========================================================
+   NARROW SCREENS
+========================================================= */
+
+@media (
+  max-width: 700px
+) {
+  .iv-auth-page
+  .iv-auth-password-field
+  > button[type="button"] {
+    right:
+      10px !important;
+
+    min-width:
+      44px !important;
+  }
+}
