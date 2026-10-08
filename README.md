@@ -41,7 +41,6 @@ End-to-end testing with Cypress.
 
 InnerVoice uses encrypted private records, vault-based access, role-based authorization, and protected expert verification workflows.
 
-AI support is not a substitute for professional mental healthcare or emergency services.
----
+**Disclaimer:** AI support is not a substitute for professional mental healthcare or emergency services.
 
 © 2026 InnerVoice. All rights reserved.
