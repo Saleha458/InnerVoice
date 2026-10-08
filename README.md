@@ -6,7 +6,7 @@
 
 ## Overview
 
-InnerVoice is a full-stack web platform providing a privacy-focused environment for emotional wellbeing, personal reflection, AI-assisted support, professional consultation, and parent guidance.
+InnerVoice is a privacy-first, full-stack wellbeing platform designed to provide a safe space for anonymous emotional expression and self-reflection. It integrates AI-powered support, encrypted journaling, mood tracking and secure communication with verified experts. The platform also offers evidence-backed parent guidance and dedicated role-based experiences, bringing personal wellbeing, privacy and professional support together in one place.
 
 ## Key Features
 
