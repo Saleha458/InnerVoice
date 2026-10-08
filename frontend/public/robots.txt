@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://innervoice.salehaimtiaz.com/sitemap.xml

@@ -1,13 +1,113 @@
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <meta
+      name="theme-color"
+      content="#ffffff"
+    />
+
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="/favicon.svg"
+    />
+
+    <title>InnerVoice | Privacy-First Wellbeing & AI Support</title>
+
+    <meta
+      name="description"
+      content="InnerVoice is a privacy-first wellbeing platform combining anonymous self-reflection, AI support, verified expert access, and evidence-backed parent guidance."
+    />
+
+    <meta
+      name="robots"
+      content="index, follow"
+    />
+
+    <link
+      rel="canonical"
+      href="https://innervoice.salehaimtiaz.com/"
+    />
+
+    <meta property="og:type" content="website" />
+
+    <meta
+      property="og:site_name"
+      content="InnerVoice"
+    />
+
+    <meta
+      property="og:title"
+      content="InnerVoice | Privacy-First Wellbeing & AI Support"
+    />
+
+    <meta
+      property="og:description"
+      content="A privacy-first wellbeing platform combining anonymous self-reflection, AI support, verified expert access, and evidence-backed parent guidance."
+    />
+
+    <meta
+      property="og:url"
+      content="https://innervoice.salehaimtiaz.com/"
+    />
+
+    <meta
+      name="twitter:card"
+      content="summary"
+    />
+
+    <meta
+      name="twitter:title"
+      content="InnerVoice | Privacy-First Wellbeing & AI Support"
+    />
+
+    <meta
+      name="twitter:description"
+      content="Anonymous self-reflection, AI support, verified expert access, and evidence-backed parent guidance."
+    />
+
+    <script>
+      (function () {
+        var isHome = window.location.pathname === "/";
+
+        if (!isHome) {
+          var robots = document.querySelector(
+            'meta[name="robots"]'
+          );
+
+          if (robots) {
+            robots.setAttribute(
+              "content",
+              "noindex, nofollow"
+            );
+          }
+
+          var canonical = document.querySelector(
+            'link[rel="canonical"]'
+          );
+
+          if (canonical) {
+            canonical.remove();
+          }
+        }
+      })();
+    </script>
   </head>
+
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+
+    <script
+      type="module"
+      src="/src/main.jsx"
+    ></script>
   </body>
 </html>
