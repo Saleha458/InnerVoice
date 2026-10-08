@@ -12,6 +12,69 @@ import {
 import api from "../../services/api";
 import AuthShell from "./AuthShell";
 
+/* =========================================================
+   LOCAL UI STYLES
+
+   Kept inside this component so global auth/responsive CSS
+   cannot push Show/Hide buttons outside password inputs.
+========================================================= */
+
+const fieldStyle = {
+  width: "100%",
+  minHeight: 56,
+  padding: "0 18px",
+  border: "1px solid #e5d2c4",
+  borderRadius: 14,
+  background: "#fffdfb",
+  color: "#332d29",
+  font: "inherit",
+  fontSize: 14,
+  boxSizing: "border-box",
+};
+
+const passwordFieldStyle = {
+  position: "relative",
+  width: "100%",
+};
+
+const passwordInputStyle = {
+  ...fieldStyle,
+  paddingRight: 82,
+};
+
+const showButtonStyle = {
+  position: "absolute",
+  top: "50%",
+  right: 14,
+  transform: "translateY(-50%)",
+
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+
+  minWidth: 52,
+  height: 34,
+  padding: "0 8px",
+
+  border: "none",
+  borderRadius: 8,
+
+  background: "transparent",
+  color: "#9b4e2b",
+
+  font: "inherit",
+  fontSize: 12,
+  fontWeight: 800,
+
+  cursor: "pointer",
+  zIndex: 2,
+};
+
+const formGroupStyle = {
+  display: "grid",
+  gap: 9,
+};
+
 export default function ForgotPassword() {
   const navigate =
     useNavigate();
@@ -72,11 +135,7 @@ export default function ForgotPassword() {
   ] = useState("");
 
   /* =========================================================
-     ALWAYS OPEN PAGE FROM THE TOP
-
-     React Router can preserve the previous page's scroll
-     position. That made the Forgot Password heading appear
-     clipped when arriving from the Login page.
+     ALWAYS OPEN FROM TOP
   ========================================================= */
 
   useEffect(() => {
@@ -86,6 +145,10 @@ export default function ForgotPassword() {
       behavior: "auto",
     });
   }, []);
+
+  /* =========================================================
+     PASSWORD RULES
+  ========================================================= */
 
   const passwordRules =
     useMemo(
@@ -125,15 +188,17 @@ export default function ForgotPassword() {
       .values(
         passwordRules
       )
-      .every(
-        Boolean
-      );
+      .every(Boolean);
 
   const passwordsMatch =
     confirmPassword.length >
       0 &&
     newPassword ===
       confirmPassword;
+
+  /* =========================================================
+     LOAD RECOVERY QUESTION
+  ========================================================= */
 
   async function loadQuestion(
     event
@@ -207,6 +272,10 @@ export default function ForgotPassword() {
     }
   }
 
+  /* =========================================================
+     RESET PASSWORD
+  ========================================================= */
+
   async function resetPassword(
     event
   ) {
@@ -225,14 +294,13 @@ export default function ForgotPassword() {
       return;
     }
 
+    const cleanAnswer =
+      recoveryAnswer.trim();
+
     if (
-      recoveryAnswer
-        .trim()
-        .length <
+      cleanAnswer.length <
         4 ||
-      recoveryAnswer
-        .trim()
-        .length >
+      cleanAnswer.length >
         100
     ) {
       setError(
@@ -277,7 +345,7 @@ export default function ForgotPassword() {
               anonymousId.trim(),
 
             recoveryAnswer:
-              recoveryAnswer.trim(),
+              cleanAnswer,
 
             newPassword,
 
@@ -300,8 +368,7 @@ export default function ForgotPassword() {
             "/login",
 
             {
-              replace:
-                true,
+              replace: true,
             }
           );
         },
@@ -321,6 +388,10 @@ export default function ForgotPassword() {
     }
   }
 
+  /* =========================================================
+     CHANGE ACCOUNT
+  ========================================================= */
+
   function changeAccount() {
     setQuestion("");
     setQuestionLoaded(false);
@@ -328,6 +399,9 @@ export default function ForgotPassword() {
     setRecoveryAnswer("");
     setNewPassword("");
     setConfirmPassword("");
+
+    setShowPassword(false);
+    setShowConfirmPassword(false);
 
     setError("");
     setSuccess("");
@@ -341,7 +415,18 @@ export default function ForgotPassword() {
 
   return (
     <AuthShell variant="login">
-      <div className="auth-card iv-forgot-card">
+      <div
+        className="auth-card iv-forgot-card"
+        style={{
+          width: "100%",
+          maxWidth: 620,
+          boxSizing: "border-box",
+        }}
+      >
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <div className="auth-header">
           <span className="eyebrow">
             PRIVATE ACCOUNT RECOVERY
@@ -357,6 +442,10 @@ export default function ForgotPassword() {
             account. No email or phone number is required.
           </p>
         </div>
+
+        {/* =================================================
+            FEEDBACK
+        ================================================= */}
 
         {error && (
           <div
@@ -376,14 +465,27 @@ export default function ForgotPassword() {
           </div>
         )}
 
+        {/* =================================================
+            STEP 1 — ANONYMOUS ID
+        ================================================= */}
+
         {!questionLoaded ? (
           <form
             className="auth-form iv-forgot-start-form"
             onSubmit={
               loadQuestion
             }
+            style={{
+              display: "grid",
+              gap: 20,
+            }}
           >
-            <div className="form-group">
+            <div
+              className="form-group"
+              style={
+                formGroupStyle
+              }
+            >
               <label htmlFor="forgot-anonymous-id">
                 Anonymous ID
               </label>
@@ -411,9 +513,16 @@ export default function ForgotPassword() {
                 disabled={
                   loading
                 }
+                style={
+                  fieldStyle
+                }
               />
 
-              <small>
+              <small
+                style={{
+                  lineHeight: 1.6,
+                }}
+              >
                 Enter the same Anonymous ID you use
                 to sign in.
               </small>
@@ -425,6 +534,10 @@ export default function ForgotPassword() {
               disabled={
                 loading
               }
+              style={{
+                width: "100%",
+                minHeight: 52,
+              }}
             >
               {loading
                 ? "Checking..."
@@ -432,28 +545,92 @@ export default function ForgotPassword() {
             </button>
           </form>
         ) : (
+          /* =================================================
+             STEP 2 — RESET PASSWORD
+          ================================================= */
+
           <form
             className="auth-form iv-forgot-reset-form"
             onSubmit={
               resetPassword
             }
+            style={{
+              display: "grid",
+              gap: 22,
+            }}
           >
-            <div className="notice-box iv-recovery-question-card">
-              <span className="iv-recovery-question-label">
-                YOUR RECOVERY QUESTION
+            {/* RECOVERY QUESTION */}
+
+            <div
+              className="notice-box iv-recovery-question-card"
+              style={{
+                padding: "18px 20px",
+                margin: 0,
+
+                border:
+                  "1px solid #ebcfba",
+
+                borderRadius: 15,
+
+                background:
+                  "#fff7ef",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+
+                  marginBottom: 7,
+
+                  color: "#a45f40",
+
+                  fontSize: 10,
+                  fontWeight: 850,
+
+                  letterSpacing:
+                    "0.11em",
+                }}
+              >
+                RECOVERY QUESTION
               </span>
 
-              <strong>
+              <strong
+                style={{
+                  display: "block",
+
+                  color: "#372a23",
+
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                }}
+              >
                 {question}
               </strong>
 
-              <p>
+              <p
+                style={{
+                  margin:
+                    "7px 0 0",
+
+                  color: "#806b60",
+
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                }}
+              >
                 Enter the private answer you chose
                 when recovery was configured.
               </p>
             </div>
 
-            <div className="form-group">
+            {/* RECOVERY ANSWER */}
+
+            <div
+              className="form-group"
+              style={
+                formGroupStyle
+              }
+            >
               <label htmlFor="recovery-answer">
                 Recovery answer
               </label>
@@ -480,15 +657,30 @@ export default function ForgotPassword() {
                   loading
                 }
                 placeholder="Enter your private recovery answer"
+                style={
+                  fieldStyle
+                }
               />
             </div>
 
-            <div className="form-group">
+            {/* NEW PASSWORD */}
+
+            <div
+              className="form-group"
+              style={
+                formGroupStyle
+              }
+            >
               <label htmlFor="new-password">
                 New password
               </label>
 
-              <div className="iv-auth-password-field">
+              <div
+                className="iv-auth-password-field"
+                style={
+                  passwordFieldStyle
+                }
+              >
                 <input
                   id="new-password"
                   type={
@@ -512,6 +704,9 @@ export default function ForgotPassword() {
                   disabled={
                     loading
                   }
+                  style={
+                    passwordInputStyle
+                  }
                 />
 
                 <button
@@ -530,6 +725,9 @@ export default function ForgotPassword() {
                       ? "Hide password"
                       : "Show password"
                   }
+                  style={
+                    showButtonStyle
+                  }
                 >
                   {showPassword
                     ? "Hide"
@@ -537,7 +735,37 @@ export default function ForgotPassword() {
                 </button>
               </div>
 
-              <div className="iv-auth-password-rules">
+              {/* PASSWORD RULES */}
+
+              <div
+                className="iv-auth-password-rules"
+                style={{
+                  display: "grid",
+
+                  gridTemplateColumns:
+                    "repeat(2, minmax(0, 1fr))",
+
+                  gap:
+                    "10px 20px",
+
+                  marginTop: 4,
+                  padding:
+                    "15px 18px",
+
+                  border:
+                    "1px solid #ead7c7",
+
+                  borderRadius: 14,
+
+                  background:
+                    "#fff8f1",
+
+                  color:
+                    "#765544",
+
+                  fontSize: 12,
+                }}
+              >
                 <div>
                   {passwordRules.length
                     ? "✓"
@@ -575,12 +803,24 @@ export default function ForgotPassword() {
               </div>
             </div>
 
-            <div className="form-group">
+            {/* CONFIRM PASSWORD */}
+
+            <div
+              className="form-group"
+              style={
+                formGroupStyle
+              }
+            >
               <label htmlFor="confirm-new-password">
                 Confirm new password
               </label>
 
-              <div className="iv-auth-password-field">
+              <div
+                className="iv-auth-password-field"
+                style={
+                  passwordFieldStyle
+                }
+              >
                 <input
                   id="confirm-new-password"
                   type={
@@ -604,6 +844,9 @@ export default function ForgotPassword() {
                   disabled={
                     loading
                   }
+                  style={
+                    passwordInputStyle
+                  }
                 />
 
                 <button
@@ -622,6 +865,9 @@ export default function ForgotPassword() {
                       ? "Hide confirmation password"
                       : "Show confirmation password"
                   }
+                  style={
+                    showButtonStyle
+                  }
                 >
                   {showConfirmPassword
                     ? "Hide"
@@ -629,16 +875,21 @@ export default function ForgotPassword() {
                 </button>
               </div>
 
-              {confirmPassword
-                .length >
+              {confirmPassword.length >
                 0 && (
                 <p
-                  className={`iv-password-match ${
-                    passwordsMatch
-                      ? "is-match"
-                      : "is-mismatch"
-                  }`}
                   role="status"
+                  style={{
+                    margin: 0,
+
+                    color:
+                      passwordsMatch
+                        ? "#287c58"
+                        : "#ae493a",
+
+                    fontSize: 12,
+                    fontWeight: 750,
+                  }}
                 >
                   {passwordsMatch
                     ? "✓ Passwords match"
@@ -647,13 +898,32 @@ export default function ForgotPassword() {
               )}
             </div>
 
-            <div className="iv-forgot-actions">
+            {/* ACTION BUTTONS */}
+
+            <div
+              style={{
+                display: "grid",
+
+                gridTemplateColumns:
+                  "minmax(0, 1.6fr) minmax(190px, 1fr)",
+
+                gap: 12,
+
+                alignItems:
+                  "stretch",
+              }}
+            >
               <button
                 className="primary-button"
                 type="submit"
                 disabled={
                   loading
                 }
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  margin: 0,
+                }}
               >
                 {loading
                   ? "Resetting..."
@@ -669,6 +939,16 @@ export default function ForgotPassword() {
                 onClick={
                   changeAccount
                 }
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  margin: 0,
+
+                  whiteSpace:
+                    "normal",
+
+                  lineHeight: 1.35,
+                }}
               >
                 Use a different Anonymous ID
               </button>
@@ -676,7 +956,16 @@ export default function ForgotPassword() {
           </form>
         )}
 
-        <div className="auth-footer">
+        {/* =================================================
+            FOOTER
+        ================================================= */}
+
+        <div
+          className="auth-footer"
+          style={{
+            marginTop: 24,
+          }}
+        >
           <p>
             Remembered your password?{" "}
 
